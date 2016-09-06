@@ -1,0 +1,22 @@
+[package]
+name = "tokio-smp"
+version = "0.1.0"
+authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
+license = "MIT/Apache-2.0"
+description = """
+Seastar for tokio.
+"""
+
+[dependencies]
+hwloc = "0.3.0"
+libc = "0.2.7"
+error-chain = "0.5.0"
+
+# Deriving
+custom_derive = "0.1.5"
+derive_builder = "0.2.0"
+
+[dev-dependencies]
+env_logger = "0.3"
+
+
