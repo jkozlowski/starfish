@@ -100,22 +100,30 @@ use error::hwloc_error;
 
 use align;
 use std::collections::HashSet;
-use hwloc::{ Topology, ObjectType, CpuSet};
+use hwloc::{ Topology, TopologyObject, ObjectType, CpuSet};
 
 const EXPECTED_SIZE_AT_DEPTH: usize = 1;
 
 pub fn find_memory_depth(topology: &Topology) -> hwloc_error::Result<usize> {
     //  auto depth = hwloc_get_type_depth(topology, HWLOC_OBJ_PU);
-    let depth: u32 = try!(topology.depth_for_type(&ObjectType::PU));
+    let mut depth: u32 = try!(topology.depth_for_type(&ObjectType::PU));
 
     //  auto obj = hwloc_get_next_obj_by_depth(topology, depth, nullptr);
-    //
-    //    while (!obj->memory.local_memory && obj) {
-    //    obj = hwloc_get_ancestor_obj_by_depth(topology, --depth, obj);
-    //    }
-    //    assert(obj);
-    //    return depth;
-    return Ok(1);
+    let objs = topology.objects_at_depth(depth);
+    let mut obj: Option<&TopologyObject> = objs.first().map(|obj1| *obj1);
+
+    //  while (!obj->memory.local_memory && obj) {
+    while obj.is_some() && obj.unwrap().memory().local_memory() != 0 {
+        // obj = hwloc_get_ancestor_obj_by_depth(topology, --depth, obj);
+        obj = obj.unwrap().parent();
+        depth -= 1;
+    //  }
+    }
+
+    //  assert(obj);
+    assert!(obj.is_some());
+    //  return depth;
+    return Ok(depth as usize);
 }
 
 pub fn allocate(c: Configuration) -> hwloc_error::Result<u32> {
