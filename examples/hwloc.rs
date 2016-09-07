@@ -2,7 +2,6 @@ extern crate hwloc;
 extern crate libc;
 extern crate tokio_smp;
 
-use tokio_smp::error::hwloc_error::*;
 use tokio_smp::resources;
 use tokio_smp::resources::{Configuration};
 
@@ -11,7 +10,7 @@ use tokio_smp::resources::{Configuration};
 fn main() {
 
     let c = Configuration::default()
-                          .total_memory(Some(17179869186))
+                          //.total_memory(Some(17179869186))
                           .cpu_set(Some(vec!(0,1).into_iter().collect()))
                           .build();
 

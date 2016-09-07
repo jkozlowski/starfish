@@ -1,6 +1,8 @@
-use std;
-use std::cmp;
 use std::cmp::{Ordering};
+use std::vec::{Vec};
+use std::collections::{HashMap, hash_map};
+
+pub type Cpu = u32;
 
 custom_derive! {
     #[derive(Default, Builder)]
@@ -8,20 +10,32 @@ custom_derive! {
         total_memory:    Option<usize>,
         reserve_memory:  Option<usize>,  // if total_memory not specified
         cpus:            Option<usize>,
-        cpu_set:         Option<HashSet<u32>>,
+        cpu_set:         Option<HashSet<Cpu>>,
         max_io_requests: Option<usize>,
         io_queues:       Option<usize>
     }
 }
 
+custom_derive! {
+    #[derive(Default, Builder)]
+    pub struct Resources {
+        cpus: Vec<Cpu>
+        //    io_queue_topology io_queues;
+    }
+}
+
 impl Configuration {
+
+    pub fn get_total_memory(&self) -> Option<usize> {
+        return self.total_memory;
+    }
 
     pub fn get_reserve_memory(&self) -> Option<usize> {
         return self.reserve_memory;
     }
 
-    pub fn get_total_memory(&self) -> Option<usize> {
-        return self.total_memory;
+    pub fn get_cpus(&self) -> Option<usize> {
+        return self.cpus;
     }
 
     // yuck!
@@ -39,7 +53,7 @@ impl Configuration {
 
 const DEFAULT_PANIC_FACTOR: f32 = 1.0;
 
-fn calculate_memory(c: Configuration, available_memory: usize, panic_factor: f32) -> hwloc_error::Result<usize> {
+fn calculate_memory(c: &Configuration, mut available_memory: usize, panic_factor: f32) -> hwloc_error::Result<usize> {
     //  size_t default_reserve_memory = std::max<size_t>(1 << 30, 0.05 * available_memory) * panic_factor;
     let useable_memory: f32 = 0.05f32 * available_memory as f32;
     let default_reserve_memory: usize = (memory_to_reserve(useable_memory) * panic_factor) as usize;
@@ -50,16 +64,14 @@ fn calculate_memory(c: Configuration, available_memory: usize, panic_factor: f32
     //  size_t min_memory = 500'000'000;
     let min_memory: usize = 500_000_000;
 
-    let mut memory_to_reserve = available_memory;
-
     //  if (available_memory >= reserve + min_memory) {
     if available_memory >= reserve + min_memory {
         //  available_memory -= reserve;
-        memory_to_reserve -= reserve;
+        available_memory -= reserve;
     } else {
         //  // Allow starting up even in low memory configurations (e.g. 2GB boot2docker VM)
         //  available_memory = min_memory;
-        memory_to_reserve = min_memory;
+        available_memory = min_memory;
     }
 
     //  size_t mem = c.total_memory.value_or(available_memory);
@@ -86,12 +98,25 @@ fn memory_to_reserve(useable_memory: f32) -> f32 {
 extern crate hwloc;
 use error::hwloc_error;
 
+use align;
 use std::collections::HashSet;
-use hwloc::{ Topology, CPUBIND_PROCESS
-    , TopologyObject, ObjectType
-    , CpuSet};
+use hwloc::{ Topology, ObjectType, CpuSet};
 
-const expected_size_at_depth: usize = 1;
+const EXPECTED_SIZE_AT_DEPTH: usize = 1;
+
+pub fn find_memory_depth(topology: &Topology) -> hwloc_error::Result<usize> {
+    //  auto depth = hwloc_get_type_depth(topology, HWLOC_OBJ_PU);
+    let depth: u32 = try!(topology.depth_for_type(&ObjectType::PU));
+
+    //  auto obj = hwloc_get_next_obj_by_depth(topology, depth, nullptr);
+    //
+    //    while (!obj->memory.local_memory && obj) {
+    //    obj = hwloc_get_ancestor_obj_by_depth(topology, --depth, obj);
+    //    }
+    //    assert(obj);
+    //    return depth;
+    return Ok(1);
+}
 
 pub fn allocate(c: Configuration) -> hwloc_error::Result<u32> {
 
@@ -103,7 +128,7 @@ pub fn allocate(c: Configuration) -> hwloc_error::Result<u32> {
     //  auto free_hwloc = defer([&] { hwloc_topology_destroy(topology); });
     //  // Load the struct with the current topologuy
     //  hwloc_topology_load(topology);
-    let mut topology = Topology::new();
+    let topology = Topology::new();
 
     //  if (c.cpu_set) {
     if let Some(ref cpu_set) = c.cpu_set {
@@ -140,8 +165,8 @@ pub fn allocate(c: Configuration) -> hwloc_error::Result<u32> {
 
     //  assert(hwloc_get_nbobjs_by_depth(topology, machine_depth) == 1);
     let objects_at_depth = topology.objects_at_depth(machine_depth);
-    if objects_at_depth.len() != expected_size_at_depth {
-        return Err(hwloc_error::ErrorKind::UnexpectedSizeAtDepth(machine_depth, objects_at_depth.len(), expected_size_at_depth).into());
+    if objects_at_depth.len() != EXPECTED_SIZE_AT_DEPTH {
+        return Err(hwloc_error::ErrorKind::UnexpectedSizeAtDepth(machine_depth, objects_at_depth.len(), EXPECTED_SIZE_AT_DEPTH).into());
     }
 
     //  auto machine = hwloc_get_obj_by_depth(topology, machine_depth, 0);
@@ -150,24 +175,41 @@ pub fn allocate(c: Configuration) -> hwloc_error::Result<u32> {
     //  auto available_memory = machine->memory.total_memory;
     let available_memory = machine.memory().total_memory() as usize;
 
-    println!("available_memory: {}", available_memory);
-
     // // hwloc doesn't account for kernel reserved memory, so set panic_factor = 2
     // size_t mem = calculate_memory(c, available_memory, 2);
-    let mem: usize = try!(calculate_memory(c, available_memory, DEFAULT_PANIC_FACTOR));
-    //    unsigned available_procs = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PU);
-    //    unsigned procs = c.cpus.value_or(available_procs);
-    //    if (procs > available_procs) {
-    //        throw std::runtime_error("insufficient processing units");
-    //    }
-    //    auto mem_per_proc = align_down<size_t>(mem / procs, 2 << 20);
-    //
-    //    resources ret;
-    //    std::unordered_map<hwloc_obj_t, size_t> topo_used_mem;
-    //    std::vector<std::pair<cpu, size_t>> remains;
-    //    size_t remain;
-    //    unsigned depth = find_memory_depth(topology);
-    //
+    let mem: usize = try!(calculate_memory(&c, available_memory, DEFAULT_PANIC_FACTOR));
+
+    //  unsigned available_procs = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PU);
+    let available_procs: usize = try!(topology.objects_with_type(&ObjectType::PU)).len();
+
+    //  unsigned procs = c.cpus.value_or(available_procs);
+    let procs: usize = c.get_cpus().unwrap_or(available_procs);
+
+    //  if (procs > available_procs) {
+    if procs > available_procs {
+        //  throw std::runtime_error("insufficient processing units");
+        return Err(hwloc_error::ErrorKind::InsufficientProcessingUnits(procs, available_procs).into());
+    //  }
+    }
+
+    //  auto mem_per_proc = align_down<size_t>(mem / procs, 2 << 20);
+    let mem_per_proc: usize = align::align_down(mem / procs, (2 as usize).wrapping_shl(20));
+
+    //  resources ret;
+    let mut resources = Resources::default();
+
+    //  std::unordered_map<hwloc_obj_t, size_t> topo_used_mem;
+    let mut topo_used_mem: HashMap<ObjectType, usize> = HashMap::new();
+
+    //  std::vector<std::pair<cpu, size_t>> remains;
+    let mut remains: Vec<(Cpu, usize)> = Vec::new();
+
+    //  size_t remain;
+    let mut remain: usize;
+
+    //  unsigned depth = find_memory_depth(topology);
+    let unsigned_depth = find_memory_depth(&topology);
+
     //    auto cpu_sets = distribute_objects(topology, procs);
     //
     //    // Divide local memory to cpus

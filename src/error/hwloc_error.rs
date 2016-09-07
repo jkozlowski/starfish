@@ -25,5 +25,10 @@ error_chain! {
       display("insufficient physical memory: requested_memory({}) > available_memory({})",
               requested_memory, available_memory)
     }
+    InsufficientProcessingUnits(requested_pus: usize, available_pus: usize) {
+      description("insufficient processing units")
+      display("insufficient processing units: requested ({}) > available({})",
+              requested_pus, available_pus)
+    }
   }
 }

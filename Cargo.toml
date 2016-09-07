@@ -8,6 +8,9 @@ Seastar for tokio.
 """
 
 [dependencies]
+# Generic align
+# num = "0.1"
+
 hwloc = "0.3.0"
 libc = "0.2.7"
 error-chain = "0.5.0"
