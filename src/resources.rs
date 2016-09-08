@@ -113,7 +113,7 @@ pub fn find_memory_depth(topology: &Topology) -> hwloc_error::Result<usize> {
     let mut obj: Option<&TopologyObject> = objs.first().map(|obj1| *obj1);
 
     //  while (!obj->memory.local_memory && obj) {
-    while obj.is_some() && obj.unwrap().memory().local_memory() != 0 {
+    while obj.is_some() && obj.unwrap().memory().local_memory() == 0 {
         // obj = hwloc_get_ancestor_obj_by_depth(topology, --depth, obj);
         obj = obj.unwrap().parent();
         depth -= 1;
