@@ -216,7 +216,7 @@ pub fn allocate(c: Configuration) -> hwloc_error::Result<u32> {
     let mut remain: usize;
 
     //  unsigned depth = find_memory_depth(topology);
-    let unsigned_depth = find_memory_depth(&topology);
+    let depth = find_memory_depth(&topology);
 
     //    auto cpu_sets = distribute_objects(topology, procs);
     //
