@@ -17,6 +17,12 @@ pub struct Memory {
     nodeid: u32,
 }
 
+#[derive(Debug)]
+pub struct IoQueue {
+    id: usize,
+    capacity: usize
+}
+
 custom_derive! {
     #[derive(Default, Debug, Builder)]
     pub struct Configuration {
@@ -26,14 +32,6 @@ custom_derive! {
         cpu_set:         Option<HashSet<CpuId>>,
         max_io_requests: Option<usize>,
         io_queues:       Option<usize>
-    }
-}
-
-custom_derive! {
-    #[derive(Default, Debug, Builder)]
-    pub struct Resources {
-        cpus: Vec<Cpu>
-        //    io_queue_topology io_queues;
     }
 }
 
@@ -51,6 +49,14 @@ impl Configuration {
         return self.cpus;
     }
 
+    pub fn get_max_io_requests(&self) -> Option<usize> {
+        return self.max_io_requests;
+    }
+
+    pub fn get_io_queues(&self) -> Option<usize> {
+        return self.io_queues;
+    }
+
     // yuck!
     pub fn build(&self) -> Self {
         return Configuration {
@@ -61,6 +67,31 @@ impl Configuration {
             max_io_requests: self.max_io_requests.clone(),
             io_queues:       self.io_queues.clone()
         }
+    }
+}
+
+custom_derive! {
+    // Since this is static information, we will keep a copy at each CPU.
+    // This will allow us to easily find who is the IO coordinator for a given
+    // node without a trip to a remote CPU.
+    #[derive(Default, Debug, Builder)]
+    pub struct IoQueueTopology {
+        shard_to_coordinator: Vec<usize>,
+        coordinators: Vec<IoQueue>
+    }
+}
+
+custom_derive! {
+    #[derive(Default, Debug, Builder)]
+    pub struct Resources {
+        cpus: Vec<Cpu>,
+        io_queues: IoQueueTopology
+    }
+}
+
+impl Resources {
+    pub fn get_cpus(&self) -> &Vec<Cpu> {
+        &self.cpus
     }
 }
 
@@ -191,6 +222,111 @@ fn get_pu_obj_for_cpu_id<'a>(topology: &'a Topology, cpu_id: CpuId) -> hwloc_err
                                          .find(| &obj | obj.os_index() == cpu_id)
                                          .ok_or("unable to find pu_obj with cpu_id"));
     Ok(pu_obj_with_cpu_id)
+}
+
+//static io_queue_topology
+//allocate_io_queues(hwloc_topology_t& topology, configuration c, std::vector<cpu> cpus) {
+fn allocate_io_queues(topology: &Topology, configuration: &Configuration, cpus: &Vec<Cpu>) -> hwloc_error::Result<IoQueueTopology> {
+    //  unsigned num_io_queues = c.io_queues.value_or(cpus.size());
+    //  unsigned max_io_requests = c.max_io_requests.value_or(128 * num_io_queues);
+    let num_io_queues = configuration.get_io_queues().unwrap_or(cpus.len());
+    let max_io_requests = configuration.get_max_io_requests().unwrap_or(128 * num_io_queues);
+
+    //  unsigned depth = find_memory_depth(topology);
+    let depth = try!(find_memory_depth(&topology));
+
+    //  auto node_of_shard = [&topology, &cpus, &depth] (unsigned shard) {
+    let node_of_shard = |shard| -> hwloc_error::Result<i32> {
+        //  auto pu = hwloc_get_pu_obj_by_os_index(topology, cpus[shard].cpu_id);
+        let this_cpu = cpus.get(shard).unwrap();
+        let pu = try!(get_pu_obj_for_cpu_id(&topology, this_cpu.cpu_id));
+        //  auto node = hwloc_get_ancestor_obj_by_depth(topology, depth, pu);
+        let node = try!(pu.ancestor_by_depth(depth as u32).ok_or(""));
+        //  return hwloc_bitmap_first(node->nodeset);
+        let nodeset = try!(node.nodeset().ok_or(""));
+        Ok(nodeset.first())
+    //  };
+    };
+
+    //  // There are two things we are trying to achieve by populating a numa_nodes map.
+    //  //
+    //  // The first is to find out how many nodes we have in the system. We can't use
+    //  // hwloc for that, because at this point we are not longer talking about the physical system,
+    //  // but the actual booted seastar server instead. So if we have restricted the run to a subset
+    //  // of the available processors, counting topology nodes won't spur the same result.
+    //  //
+    //  // Secondly, we need to find out which processors live in each node. For a reason similar to the
+    //  // above, hwloc won't do us any good here. Later on, we will use this information to assign
+    //  // shards to coordinators that are node-local to themselves.
+    //  std::unordered_map<unsigned, std::set<unsigned>> numa_nodes;
+    let mut numa_nodes: HashMap<usize, HashSet<usize>> = HashMap::new();
+
+    //    for (auto shard: boost::irange(0, int(cpus.size()))) {
+    for (shard, this_cpu) in cpus.iter().enumerate() {
+        //  auto node_id = node_of_shard(shard);
+        let node_id = try!(node_of_shard(shard));
+    //
+    //    if (numa_nodes.count(node_id) == 0) {
+    //    numa_nodes.emplace(node_id, std::set<unsigned>());
+    //    }
+    //    numa_nodes.at(node_id).insert(shard);
+    //  }
+    }
+    //
+    //  io_queue_topology ret;
+    let ret = IoQueueTopology::default();
+    //    ret.shard_to_coordinator.resize(cpus.size());
+    //
+    //    // User may be playing with --smp option, but num_io_queues was independently
+    //    // determined by iotune, so adjust for any conflicts.
+    //    if (num_io_queues > cpus.size()) {
+    //    print("Warning: number of IO queues (%d) greater than logical cores (%d). Adjusting downwards.\n", num_io_queues, cpus.size());
+    //    num_io_queues = cpus.size();
+    //    }
+    //
+    //    auto find_shard = [&cpus] (unsigned cpu_id) {
+    //    auto idx = 0u;
+    //    for (auto& c: cpus) {
+    //    if (c.cpu_id == cpu_id) {
+    //    return idx;
+    //    }
+    //    idx++;
+    //    }
+    //    assert(0);
+    //    };
+    //
+    //    auto cpu_sets = distribute_objects(topology, num_io_queues);
+    //    // First step: distribute the IO queues given the information returned in cpu_sets.
+    //    // If there is one IO queue per processor, only this loop will be executed.
+    //    std::unordered_map<unsigned, std::vector<unsigned>> node_coordinators;
+    //    for (auto&& cs : cpu_sets()) {
+    //    auto io_coordinator = find_shard(hwloc_bitmap_first(cs));
+    //
+    //    ret.coordinators.emplace_back(io_queue{io_coordinator, std::max(max_io_requests / num_io_queues , 1u)});
+    //    // If a processor is a coordinator, it is also obviously a coordinator of itself
+    //    ret.shard_to_coordinator[io_coordinator] = io_coordinator;
+    //
+    //    auto node_id = node_of_shard(io_coordinator);
+    //    if (node_coordinators.count(node_id) == 0) {
+    //    node_coordinators.emplace(node_id, std::vector<unsigned>());
+    //    }
+    //    node_coordinators.at(node_id).push_back(io_coordinator);
+    //    numa_nodes[node_id].erase(io_coordinator);
+    //    }
+    //
+    //    // If there are more processors than coordinators, we will have to assign them to existing
+    //    // coordinators. We always do that within the same NUMA node.
+    //    for (auto& node: numa_nodes) {
+    //    auto cid_idx = 0;
+    //    for (auto& remaining_shard: node.second) {
+    //    auto idx = cid_idx++ % node_coordinators.at(node.first).size();
+    //    auto io_coordinator = node_coordinators.at(node.first)[idx];
+    //    ret.shard_to_coordinator[remaining_shard] = io_coordinator;
+    //    }
+    //    }
+
+    //  return ret;
+    Ok(ret)
 }
 
 pub fn allocate(c: Configuration) -> hwloc_error::Result<Resources> {
@@ -349,6 +485,7 @@ pub fn allocate(c: Configuration) -> hwloc_error::Result<Resources> {
     }
 
     //  ret.io_queues = allocate_io_queues(topology, c, ret.cpus);
+    let io_queues = try!(allocate_io_queues(&topology, &c, ret.get_cpus()));
 
     //  return ret;
     Ok(ret)
