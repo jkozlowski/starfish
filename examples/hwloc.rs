@@ -12,10 +12,11 @@ fn main() {
     let c = Configuration::default()
                           //.total_memory(Some(17179869186))
                           .cpu_set(Some(vec!(0,1).into_iter().collect()))
+                          .cpus(Some(2))
                           .build();
 
     match resources::allocate(c) {
-        Ok(i)  => println!("Result: {}", i),
+        Ok(i)  => println!("Result: {:?}", i),
         Err(e) => println!("Could not allocate: {:?}", e)
     }
 
