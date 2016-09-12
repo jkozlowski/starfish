@@ -1,1 +1,1 @@
-pub mod hwloc_error;
+pub mod resources_error;

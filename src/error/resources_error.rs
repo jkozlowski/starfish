@@ -1,17 +1,9 @@
-extern crate hwloc;
-
-use hwloc::{TypeDepthError};
-
 error_chain! {
   types {
     Error, ErrorKind, ChainErr, Result;
   }
 
   links {
-  }
-
-  foreign_links {
-    TypeDepthError, Hwloc;
   }
 
   errors {

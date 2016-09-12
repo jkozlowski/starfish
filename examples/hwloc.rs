@@ -1,5 +1,3 @@
-extern crate hwloc;
-extern crate libc;
 extern crate tokio_smp;
 
 use tokio_smp::resources;
