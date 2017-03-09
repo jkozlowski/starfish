@@ -139,10 +139,13 @@ impl Smp {
         mem::replace(&mut all_event_loops_done, Some(Barrier::new(smp_count)));
 
         crossbeam::scope(|scope| {
-            let mut reactor_receives = Vec::with_capacity(smp_count - 1);
+            let mut reactor_receives = Vec::with_capacity(smp_count);
             let mut queues_publishes = Vec::with_capacity(smp_count);
 
             // What a copout!
+            let (smp_0_reactor_publish, smp_0_reactor_receive) = channel();
+            reactor_receives.push(smp_0_reactor_receive);
+
             let (smp_0_queue_publish, smp_0_queue_receive) = channel();
             queues_publishes.push(smp_0_queue_publish);
 
@@ -158,46 +161,38 @@ impl Smp {
                 let init = &inited;
                 let reactor_storage = &reactors_storage;
 
-                scope.spawn(move ||
+                scope.spawn(move || {
+                    let mut other_reactor = OtherReactor {};
                     Smp::configure_single_reactor(reactor_id,
+                                                  &mut other_reactor,
                                                   reactor_registered,
                                                   smp_queue_constructed,
                                                   init,
                                                   reactor_publish,
                                                   queue_receive,
-                                                  reactor_storage));
+                                                  reactor_storage)});
             }
 
-            Reactor::allocate_reactor(0, |r| {
-                info!("Thread [{:?}] started", 0);
-                reactors_registered.wait();
-
-                info!("Thread [{:?}]: Reactors registered", 0);
-
-
-
-                smp_queues_constructed.wait();
-
-                let smp_queue = smp_0_queue_receive.recv().expect("Expected SmpQueue");
-                SMP_QUEUES.set(&smp_queue, || {
-                    info!("Thread [{:?}]: Smp queues setup: {:?}", 0, smp_queue.reactor_id());
-
-                    for ref reactor in reactors_storage.get() {
-                        info!("Thread [{:?}]: {:?}: {:?}", 0, reactor.ptr, unsafe { &**(reactor.ptr) });
-                    }
-                    //start_all_queues();
-                    //assign_io_queue(0, queue_idx);
-                    inited.wait();
-
-                    //engine().configure(configuration);
-                    //engine()._lowres_clock = std::make_unique<lowres_clock>();
-                });
-            })
+            let mut reactor_zero = Reactor0 {
+                smp_count: smp_count,
+                reactor_receives: &reactor_receives,
+                queue_senders: &queues_publishes,
+                reactors_storage: &reactors_storage
+            };
+            Smp::configure_single_reactor(0,
+                                          &mut reactor_zero,
+                                          &reactors_registered,
+                                          &smp_queues_constructed,
+                                          &inited,
+                                          smp_0_reactor_publish,
+                                          smp_0_queue_receive,
+                                          &reactors_storage);
         });
     }
 
     fn configure_single_reactor(
         reactor_id: usize,
+        reactor_init: &mut ReactorInit,
         reactor_registered: &Barrier,
         smp_queue_constructed: &Barrier,
         init: &Barrier,
@@ -211,6 +206,8 @@ impl Smp {
 
             reactor_registered.wait();
             info!("Thread [{:?}]: Reactor registered", reactor_id);
+
+            reactor_init.on_reactor_registered(r);
 
             smp_queue_constructed.wait();
             info!("Thread [{:?}]: Smp queue constructed", reactor_id);
@@ -231,6 +228,84 @@ impl Smp {
             });
         })
     }
+}
+
+trait ReactorInit {
+    fn on_reactor_registered(&mut self, r: &Reactor);
+}
+
+struct Reactor0<'a> {
+    smp_count: usize,
+    reactor_receives: &'a Vec<Receiver<UnsafePtr<Reactor>>>,
+    queue_senders: &'a Vec<Sender<SmpQueues>>,
+    reactors_storage: &'a Storage<Vec<UnsafePtr<Reactor>>>
+}
+
+impl<'a> ReactorInit for Reactor0<'a> {
+    fn on_reactor_registered(&mut self, r: &Reactor) {
+        let mut reactors = Vec::with_capacity(self.smp_count);
+
+        for rx in self.reactor_receives {
+            let reactor = rx.recv().unwrap();
+            reactors.push(reactor);
+        }
+
+        assert!(reactors.len() == self.smp_count);
+
+        self.reactors_storage.set(reactors);
+
+        // REALLY SHADY STUFF HERE
+        let mut all_producers = Vec::with_capacity(self.smp_count);
+        let mut all_consumers = Vec::with_capacity(self.smp_count);
+        {
+            for i in 0..self.smp_count {
+                let mut pair_producers = Vec::with_capacity(self.smp_count);
+                unsafe { pair_producers.set_len(self.smp_count) }
+                let mut pair_consumers = Vec::with_capacity(self.smp_count);
+                unsafe { pair_consumers.set_len(self.smp_count) }
+
+                assert!(pair_producers.len() == self.smp_count);
+                assert!(pair_consumers.len() == self.smp_count);
+
+                all_producers.push(pair_producers);
+                all_consumers.push(pair_consumers);
+            }
+
+            // Really shady stuff here...
+            let rs = self.reactors_storage.get();
+            for i in 0..self.smp_count {
+                for j in 0..self.smp_count {
+                    let (p, c) = unsafe {
+                        let from = rs[i].cp();
+                        let to = rs[j].cp();
+                        make_smp_message_queue(from, to)
+                    };
+                    unsafe {
+                        let b = all_producers[i].get_unchecked_mut(j);
+                        ptr::write(b, p);
+                    }
+                    unsafe {
+                        let b = all_consumers[j].get_unchecked_mut(i);
+                        ptr::write(b, c);
+                    }
+                }
+            }
+        }
+
+        assert!(all_producers.len() == self.smp_count);
+        assert!(all_consumers.len() == self.smp_count);
+
+        for (p, c, s, i) in itertools::multizip((all_producers, all_consumers, self.queue_senders, 0..)) {
+            s.send(SmpQueues::new(p, c, i));
+        }
+    }
+}
+
+struct OtherReactor {
+}
+
+impl ReactorInit for OtherReactor {
+    fn on_reactor_registered(&mut self, r: &Reactor) {}
 }
 
 #[cfg(test)]
