@@ -1,8 +1,6 @@
 use eventfd::EventfdFd;
 use eventfd::file_desc::Io;
-use futures;
 use futures::Async;
-use futures::Complete;
 use futures::Future;
 use futures::Poll;
 use futures::unsync::oneshot::channel;
@@ -311,7 +309,7 @@ struct CompletionImpl<T> {
 
 impl<T> Completion for CompletionImpl<T>
 where T: AsMut<[u8]> + Clone {
-    fn complete(mut self: Box<Self>, result: usize) {
+    fn complete(self: Box<Self>, result: usize) {
         let buf = self.buf.clone();
         self.sender.complete((buf, result));
     }
@@ -435,7 +433,6 @@ impl IoPoll {
                               &mut timeout as *mut aio::timespec) as usize
         };
 
-        assert!(n >= 0);
         assert!(n < MAX_IO);
 
         trace!("process_io: {:?} events", n);

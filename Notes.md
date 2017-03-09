@@ -32,6 +32,28 @@ app_template
 smp
 ---
 
+// https://github.com/rust-lang/rust/blob/4b40bc85cbc1d072179c92ce01655db0272aa598/src/libstd/io/stdio.rs#L215-L245
+// https://doc.rust-lang.org/1.0.0/std/thread/fn.scoped.html
+// https://doc.rust-lang.org/std/sync/struct.Barrier.html
+// https://doc.rust-lang.org/std/cell/index.html
+// https://users.rust-lang.org/t/rust-thread-local-bad-performance/4385
+// https://github.com/rust-lang/rust/issues/27779
+// https://play.rust-lang.org/?gist=1560082065f1cafffd14&version=nightly
+// https://gist.github.com/Connorcpu/3dc6233bd59522f0b6d650e90d781c63
+// http://stackoverflow.com/questions/32750829/passing-a-reference-to-a-stack-variable-to-a-scoped-thread
+// http://blog.ezyang.com/2013/12/two-bugs-in-the-borrow-checker-every-rust-developer-should-know-about/
+// https://doc.rust-lang.org/src/std/sync/once.rs.html#139-329
+
+//static std::vector<posix_thread> _threads;
+//static std::experimental::optional<boost::barrier> _all_event_loops_done;
+//static std::vector<reactor*> _reactors;
+//static smp_message_queue** _qs;
+//static std::thread::id _tmain;
+//        static boost::barrier reactors_registered(smp::count);
+//        static boost::barrier smp_queues_constructed(smp::count);
+//        static boost::barrier inited(smp::count);
+
+
 called from app-template: 
 void smp::configure(boost::program_options::variables_map configuration)
 

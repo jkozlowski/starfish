@@ -1,5 +1,5 @@
 use error::resources_error;
-use libc::{sysconf, _SC_NPROCESSORS_ONLN, c_int, uint64_t};
+use libc::{sysconf, _SC_NPROCESSORS_ONLN};
 use resources::{Resources, Configuration, Cpu, Memory, IoQueueTopology, IoQueue};
 use resource::{calculate_memory_default_panic_factor};
 use std::cmp::{max};

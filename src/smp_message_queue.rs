@@ -1,6 +1,6 @@
 use bounded_spsc_queue;
 use bounded_spsc_queue::{Producer, Consumer};
-use smp::Reactor;
+use reactor::Reactor;
 use smp::UnsafePtr;
 
 pub struct Message {

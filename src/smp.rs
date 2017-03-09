@@ -1,70 +1,19 @@
-// https://github.com/rust-lang/rust/blob/4b40bc85cbc1d072179c92ce01655db0272aa598/src/libstd/io/stdio.rs#L215-L245
-// https://doc.rust-lang.org/1.0.0/std/thread/fn.scoped.html
-// https://doc.rust-lang.org/std/sync/struct.Barrier.html
-// https://doc.rust-lang.org/std/cell/index.html
-// https://users.rust-lang.org/t/rust-thread-local-bad-performance/4385
-// https://github.com/rust-lang/rust/issues/27779
-// https://play.rust-lang.org/?gist=1560082065f1cafffd14&version=nightly
-// https://gist.github.com/Connorcpu/3dc6233bd59522f0b6d650e90d781c63
-// http://stackoverflow.com/questions/32750829/passing-a-reference-to-a-stack-variable-to-a-scoped-thread
-// http://blog.ezyang.com/2013/12/two-bugs-in-the-borrow-checker-every-rust-developer-should-know-about/
-// https://doc.rust-lang.org/src/std/sync/once.rs.html#139-329
-
-//static std::vector<posix_thread> _threads;
-//static std::experimental::optional<boost::barrier> _all_event_loops_done;
-//static std::vector<reactor*> _reactors;
-//static smp_message_queue** _qs;
-//static std::thread::id _tmain;
-//        static boost::barrier reactors_registered(smp::count);
-//        static boost::barrier smp_queues_constructed(smp::count);
-//        static boost::barrier inited(smp::count);
-
 /// This is a whoooole bunch of unsafe code!
 
 use core::nonzero::NonZero;
-use core::ops::Deref;
 use crossbeam;
-use crossbeam::Scope;
-use crossbeam::ScopedJoinHandle;
-use slab::Slab;
+use reactor::Reactor;
 use smp_message_queue::SmpQueues;
 use smp_message_queue::make_smp_message_queue;
-use state::LocalStorage;
 use state::Storage;
-use std::cell::Cell;
-use std::cell::RefCell;
-use std::cell::RefMut;
 use std::marker::PhantomData;
 use std::mem;
+use std::ptr;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
-use std::ptr;
-use std::ptr::Unique;
 use std::sync::Barrier;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
 use std::sync::mpsc::channel;
-use std::sync::Arc;
-use std::marker::Copy;
-use thread_scoped;
 use itertools;
-
-use std::thread;
-use std::time::Duration;
-
-scoped_thread_local!(static REACTOR: Reactor);
-scoped_thread_local!(static SMP_QUEUES: SmpQueues);
-
-#[derive(Debug)]
-pub struct Reactor {
-    id: usize,
-    val: usize
-    //    sleeping: AtomicBool
-}
-
-pub struct WakeupHandle<'a> {
-    sleeping: &'a AtomicBool
-}
 
 #[derive(Clone, Copy)]
 pub struct UnsafePtr<T> {
@@ -75,39 +24,23 @@ pub struct UnsafePtr<T> {
 impl<T> UnsafePtr<T> {
     pub unsafe fn new(t: &T) -> UnsafePtr<T> {
         UnsafePtr {
-            ptr: unsafe { NonZero::new(t as *const T) },
+            ptr: NonZero::new(t as *const T),
             _marker: PhantomData
         }
     }
 
     pub fn cp(&self) -> UnsafePtr<T> {
         UnsafePtr {
-            ptr: unsafe { self.ptr },
+            ptr: self.ptr,
             _marker: PhantomData
         }
     }
 }
 
-/// Just trust me, ok
+/// Just trust me, it's ok
 unsafe impl<T> Send for UnsafePtr<T> {}
 
 unsafe impl<T> Sync for UnsafePtr<T> {}
-
-impl Reactor {
-    #[inline]
-    pub fn with<F, R>(f: F) -> R where F: FnOnce(&Reactor) -> R {
-        REACTOR.with(f)
-    }
-
-    pub fn allocate_reactor<F, R>(id: usize, f: F) where F: FnOnce(&Reactor) -> R {
-        let reactor = Reactor {
-            id: id,
-            val: id + 1,
-            //            sleeping: AtomicBool::new(false)
-        };
-        REACTOR.set(&reactor, || f(&reactor));
-    }
-}
 
 pub struct Smp {}
 
@@ -207,13 +140,14 @@ impl Smp {
             reactor_registered.wait();
             info!("Thread [{:?}]: Reactor registered", reactor_id);
 
-            reactor_init.on_reactor_registered(r);
+            reactor_init.on_reactor_registered();
 
             smp_queue_constructed.wait();
             info!("Thread [{:?}]: Smp queue constructed", reactor_id);
 
             let smp_queue = queue_receive.recv().expect("Expected SmpQueue");
-            SMP_QUEUES.set(&smp_queue, || {
+
+            Reactor::assign_queues(&smp_queue, || {
                 info!("Thread [{:?}]: Smp queues setup: {:?}", reactor_id, smp_queue.reactor_id());
 
                 for ref reactor in reactor_storage.get() {
@@ -225,13 +159,13 @@ impl Smp {
 
                 // engine().configure(configuration);
                 // engine().run();
-            });
+            })
         })
     }
 }
 
 trait ReactorInit {
-    fn on_reactor_registered(&mut self, r: &Reactor);
+    fn on_reactor_registered(&mut self);
 }
 
 struct Reactor0<'a> {
@@ -242,7 +176,7 @@ struct Reactor0<'a> {
 }
 
 impl<'a> ReactorInit for Reactor0<'a> {
-    fn on_reactor_registered(&mut self, r: &Reactor) {
+    fn on_reactor_registered(&mut self) {
         let mut reactors = Vec::with_capacity(self.smp_count);
 
         for rx in self.reactor_receives {
@@ -275,7 +209,7 @@ impl<'a> ReactorInit for Reactor0<'a> {
             let rs = self.reactors_storage.get();
             for i in 0..self.smp_count {
                 for j in 0..self.smp_count {
-                    let (p, c) = unsafe {
+                    let (p, c) = {
                         let from = rs[i].cp();
                         let to = rs[j].cp();
                         make_smp_message_queue(from, to)
@@ -305,15 +239,13 @@ struct OtherReactor {
 }
 
 impl ReactorInit for OtherReactor {
-    fn on_reactor_registered(&mut self, r: &Reactor) {}
+    fn on_reactor_registered(&mut self) {}
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use env_logger;
-    use std::thread;
-    use std::time::Duration;
     use std::ptr;
 
     #[test]

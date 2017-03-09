@@ -1,7 +1,5 @@
 #![recursion_limit = "1024"]
 #![feature(const_fn)]
-#![feature(placement_new_protocol)]
-#![feature(unique)]
 #![feature(nonzero)]
 #[warn(unused_imports)]
 
@@ -21,7 +19,7 @@ extern crate thread_scoped;
 extern crate slab;
 extern crate crossbeam;
 extern crate core;
-#[macro_use] extern crate itertools;
+extern crate itertools;
 #[cfg(test)] extern crate env_logger;
 
 pub mod resource;
@@ -33,3 +31,4 @@ pub mod smp_message_queue;
 pub mod file;
 pub mod eventfd;
 pub mod signal;
+pub mod reactor;
