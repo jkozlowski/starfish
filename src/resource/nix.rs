@@ -67,8 +67,8 @@ extern {
 }
 
 #[cfg(target_os="linux")]
-fn get_available_memory() -> usize {
-    1
+fn get_available_memory() -> resources_error::Result<usize> {
+    Ok(1)
 }
 
 //// Without hwloc, we don't support tuning the number of IO queues. So each CPU gets theirs.

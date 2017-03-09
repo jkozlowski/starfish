@@ -13,9 +13,18 @@ The Road to Seastar
 * hwloc bindings: https://github.com/daschl/hwloc-rs; http://nitschinger.at/Discovering-Hardware-Topology-in-Rust/
 
 Notes
-=====
+-----
 
 * https://github.com/scylladb/seastar/wiki/SMP - Symmetric multiprocessing
+
+file io
+-------
+
+Everything basically in file.hh, file-impl.hh, posix.hh, and some in reactor.c.
+
+* posix_file_impl (reactor.c): issues io_prep_preadv call to the engine().submit_io_read.
+* Interesting: https://github.com/facebook/folly/tree/master/folly/experimental/io
+* reactor::run() is where everything starts proper
 
 app_template
 ------------

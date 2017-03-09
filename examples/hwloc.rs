@@ -1,7 +1,7 @@
 extern crate tokio_smp;
 
 use tokio_smp::resources;
-use tokio_smp::resources::{Configuration};
+use tokio_smp::resources::Configuration;
 
 /// Example which binds an arbitrary process (in this example this very same one) to
 /// the last core.

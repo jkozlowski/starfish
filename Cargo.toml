@@ -10,7 +10,6 @@ Symmetric multiprocessing for tokio.
 
 [dependencies]
 # Figuring out the memory map
-nix = "0.6.0"
 libc = "0.2.11"
 error-chain = "0.5.0"
 
@@ -18,9 +17,36 @@ error-chain = "0.5.0"
 custom_derive = "0.1.5"
 derive_builder = "0.2.0"
 
+# Tokio
+mio = "0.6.4"
+futures = "0.1.10"
+tokio-core = "0.1.4"
+bounded-spsc-queue = "0.1.2"
+thread-scoped = "1.0.1"
+state = { version = "0.2", features = ["tls"] }
+scoped-tls = "0.1"
+slab = "0.3.0"
+crossbeam = "0.2.10"
+itertools = "0.5.9"
+
+# ticks
+env_logger = "0.3"
+log = "0.3"
+
+[dependencies.nix]
+version = "0.6.0"
+features = ["eventfd"]
+
 [dev-dependencies]
 env_logger = "0.3"
+hamcrest = "0.1.2"
+spectral = "0.6.0"
 
 [build-dependencies]
+bindgen = "0.19.0"
 gcc = "0.3.35"
+pkg-config = "0.3.8"
 
+[[bin]]
+name = "ticks"
+path = "ticks/main.rs"
