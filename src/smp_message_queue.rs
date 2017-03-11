@@ -1,6 +1,6 @@
 use bounded_spsc_queue;
 use bounded_spsc_queue::{Producer, Consumer};
-use reactor::ReactorHandle;
+use sys::imp::reactor_handle::ReactorHandle;
 
 pub struct Message {
     val: usize

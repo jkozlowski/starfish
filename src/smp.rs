@@ -1,6 +1,6 @@
 use crossbeam;
 use reactor::Reactor;
-use reactor::ReactorHandle;
+use sys::imp::reactor_handle::ReactorHandle;
 use smp_message_queue::SmpQueues;
 use smp_message_queue::make_smp_message_queue;
 use std::mem;
