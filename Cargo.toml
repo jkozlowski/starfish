@@ -14,8 +14,7 @@ libc = "0.2.11"
 error-chain = "0.5.0"
 
 # Deriving
-custom_derive = "0.1.5"
-derive_builder = "0.2.0"
+derive_builder = "0.3.0"
 
 # Tokio
 mio = "0.6.4"

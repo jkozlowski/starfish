@@ -5,40 +5,32 @@ use resource::nix;
 
 pub type CpuId = u32;
 
-custom_derive! {
-    #[derive(Default, Debug, Builder, Clone)]
-    pub struct Cpu {
-        cpu_id: CpuId,
-        mem: Vec<Memory>
-    }
+#[derive(Default, Debug, Builder, Clone)]
+pub struct Cpu {
+    cpu_id: CpuId,
+    mem: Vec<Memory>
 }
 
-custom_derive! {
-    #[derive(Default, Debug, Builder, Clone)]
-    pub struct Memory {
-        bytes: usize,
-        nodeid: u32,
-    }
+#[derive(Default, Debug, Builder, Clone)]
+pub struct Memory {
+    bytes: usize,
+    nodeid: u32,
 }
 
-custom_derive! {
-    #[derive(Default, Debug, Builder, Clone)]
-    pub struct IoQueue {
-        id: usize,
-        capacity: usize
-    }
+#[derive(Default, Debug, Builder, Clone)]
+pub struct IoQueue {
+    id: usize,
+    capacity: usize
 }
 
-custom_derive! {
-    #[derive(Default, Debug, Builder)]
-    pub struct Configuration {
-        total_memory:    Option<usize>,
-        reserve_memory:  Option<usize>,  // if total_memory not specified
-        cpus:            Option<usize>,
-        cpu_set:         Option<HashSet<CpuId>>,
-        max_io_requests: Option<usize>,
-        io_queues:       Option<usize>
-    }
+#[derive(Default, Debug, Builder)]
+pub struct Configuration {
+    total_memory:    Option<usize>,
+    reserve_memory:  Option<usize>,  // if total_memory not specified
+    cpus:            Option<usize>,
+    cpu_set:         Option<HashSet<CpuId>>,
+    max_io_requests: Option<usize>,
+    io_queues:       Option<usize>
 }
 
 impl Configuration {
@@ -66,29 +58,15 @@ impl Configuration {
     pub fn get_io_queues(&self) -> Option<usize> {
         return self.io_queues;
     }
-
-    // yuck!
-    pub fn build(&self) -> Self {
-        return Configuration {
-            total_memory:    self.total_memory.clone(),
-            reserve_memory:  self.reserve_memory.clone(),
-            cpus:            self.cpus.clone(),
-            cpu_set:         self.cpu_set.clone(),
-            max_io_requests: self.max_io_requests.clone(),
-            io_queues:       self.io_queues.clone()
-        }
-    }
 }
 
-custom_derive! {
-    // Since this is static information, we will keep a copy at each CPU.
-    // This will allow us to easily find who is the IO coordinator for a given
-    // node without a trip to a remote CPU.
-    #[derive(Default, Debug, Builder, Clone)]
-    pub struct IoQueueTopology {
-        shard_to_coordinator: Vec<usize>,
-        coordinators: Vec<IoQueue>
-    }
+// Since this is static information, we will keep a copy at each CPU.
+// This will allow us to easily find who is the IO coordinator for a given
+// node without a trip to a remote CPU.
+#[derive(Default, Debug, Builder, Clone)]
+pub struct IoQueueTopology {
+    shard_to_coordinator: Vec<usize>,
+    coordinators: Vec<IoQueue>
 }
 
 impl IoQueueTopology {
@@ -101,12 +79,10 @@ impl IoQueueTopology {
     }
 }
 
-custom_derive! {
-    #[derive(Default, Debug, Builder, Clone)]
-    pub struct Resources {
-        cpus: Vec<Cpu>,
-        io_queues: IoQueueTopology
-    }
+#[derive(Default, Debug, Builder, Clone)]
+pub struct Resources {
+    cpus: Vec<Cpu>,
+    io_queues: IoQueueTopology
 }
 
 impl Resources {

@@ -32,6 +32,8 @@ app_template
 smp
 ---
 
+// https://docs.rs/log4rs/0.6.2/log4rs/
+// https://sfackler.github.io/rust-log-mdc/doc/v0.1.0/log_mdc/
 // https://github.com/rust-lang/rust/blob/4b40bc85cbc1d072179c92ce01655db0272aa598/src/libstd/io/stdio.rs#L215-L245
 // https://doc.rust-lang.org/1.0.0/std/thread/fn.scoped.html
 // https://doc.rust-lang.org/std/sync/struct.Barrier.html

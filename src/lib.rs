@@ -3,9 +3,8 @@
 #![feature(nonzero)]
 #[warn(unused_imports)]
 
-#[macro_use] extern crate error_chain;
-#[macro_use] extern crate custom_derive;
 #[macro_use] extern crate derive_builder;
+#[macro_use] extern crate error_chain;
 #[macro_use] extern crate log;
 #[macro_use] extern crate scoped_tls;
 extern crate nix;
@@ -18,7 +17,6 @@ extern crate state;
 extern crate thread_scoped;
 extern crate slab;
 extern crate crossbeam;
-extern crate core;
 extern crate itertools;
 
 #[cfg(test)]
@@ -58,15 +56,16 @@ pub mod test {
     }
 }
 
-pub mod resource;
-pub mod resources;
-pub mod align;
 pub mod error;
+pub mod eventfd;
+pub mod file;
+pub mod reactor;
+pub mod resource;
+pub mod signal;
+
+pub mod align;
+pub mod resources;
 pub mod smp;
 pub mod smp_message_queue;
-pub mod file;
-pub mod eventfd;
-pub mod signal;
-pub mod reactor;
 
 mod sys;

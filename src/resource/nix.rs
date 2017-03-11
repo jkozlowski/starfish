@@ -1,12 +1,21 @@
 use error::resources_error;
 use libc::{sysconf, _SC_NPROCESSORS_ONLN};
-use resources::{Resources, Configuration, Cpu, Memory, IoQueueTopology, IoQueue};
+use resources::Resources;
+use resources::ResourcesBuilder;
+use resources::Configuration;
+use resources::Cpu;
+use resources::CpuBuilder;
+use resources::Memory;
+use resources::MemoryBuilder;
+use resources::IoQueueTopology;
+use resources::IoQueue;
+use resources::IoQueueBuilder;
 use resource::{calculate_memory_default_panic_factor};
 use std::cmp::{max};
 
 pub fn allocate(c: Configuration) -> resources_error::Result<Resources> {
     //  resources ret;
-    let mut ret = Resources::default();
+    let mut ret = ResourcesBuilder::default();
 
     //  auto available_memory = ::sysconf(_SC_PAGESIZE) * size_t(::sysconf(_SC_PHYS_PAGES));
     let available_memory = try!(get_available_memory());
@@ -24,28 +33,32 @@ pub fn allocate(c: Configuration) -> resources_error::Result<Resources> {
     let procs = c.get_cpus().unwrap_or(cpuset_procs);
 
     //  ret.cpus.reserve(procs);
-    ret.get_cpus_mut().reserve(procs);
+    let mut cpus = Vec::with_capacity(procs);
 
     //  for (unsigned i = 0; i < procs; ++i) {
     for cpu_id in 0..procs {
         //  ret.cpus.push_back(cpu{i, {{mem / procs, 0}}});
-        let mem = Memory::default()
+        let mem = MemoryBuilder::default()
                          .bytes(mem / procs)
                          .nodeid(0 as u32)
-                         .clone();
-        let cpu = Cpu::default()
+                         .build()
+                         .unwrap();
+        let cpu = CpuBuilder::default()
                       .cpu_id(cpu_id as u32)
                       .mem(vec!(mem))
-                      .clone();
-        ret.get_cpus_mut().push(cpu);
+                      .build()
+                      .unwrap();
+        cpus.push(cpu);
     }
 
     //  ret.io_queues = allocate_io_queues(c, ret.cpus);
-    let io_queues = allocate_io_queues(&c, &ret.get_cpus());
+    let io_queues = allocate_io_queues(&c, &cpus);
     ret.io_queues(io_queues);
 
+    ret.cpus(cpus);
+
     //  return ret;
-    Ok(ret)
+    Ok(ret.build().unwrap())
 }
 
 #[cfg(target_os="macos")]
@@ -96,10 +109,11 @@ fn allocate_io_queues(c: &Configuration, cpus: &Vec<Cpu>) -> IoQueueTopology {
         //  ret.coordinators[shard].id = shard;
         //  ret.coordinators[shard].capacity =  std::max(max_io_requests / nr_cpus, 1u);
         let capacity = max(max_io_requests / nr_cpus, 1);
-        let io_queue = IoQueue::default()
+        let io_queue = IoQueueBuilder::default()
                                .id(shard)
                                .capacity(capacity)
-                               .clone();
+                               .build()
+                               .unwrap();
         ret.get_coordinators_mut().push(io_queue);
     }
 

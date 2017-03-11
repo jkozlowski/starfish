@@ -37,7 +37,6 @@ impl Smp {
             let mut reactor_receives = Vec::with_capacity(smp_count);
             let mut queues_publishes = Vec::with_capacity(smp_count);
 
-            // What a copout!
             let (smp_0_reactor_publish, smp_0_reactor_receive) = channel();
             reactor_receives.push(smp_0_reactor_receive);
 
