@@ -1,5 +1,3 @@
-/// This is a whoooole bunch of unsafe code!
-
 use crossbeam;
 use reactor::Reactor;
 use reactor::ReactorHandle;
@@ -18,8 +16,6 @@ use itertools;
 pub struct Smp {}
 
 impl Smp {
-    // TODO:
-    // # signals
     pub fn configure() {
         let smp_count: usize = 4;
         let mut all_event_loops_done = None;
@@ -27,16 +23,10 @@ impl Smp {
         // TODO: mask signals
         // TODO: figure out thread_affinity
         // TODO: figure out nr_cpus
-
         // TODO: figure out memory layout and cpu configuration
 
-        //  // Better to put it into the smp class, but at smp construction time
-        //  // correct smp::count is not known.
-        //  static boost::barrier reactors_registered(smp::count);
         let reactors_registered = Barrier::new(smp_count);
-        //  static boost::barrier smp_queues_constructed(smp::count);
         let smp_queues_constructed = Barrier::new(smp_count);
-        //  static boost::barrier inited(smp::count);
         let inited = Barrier::new(smp_count);
 
         // TODO: allocate io queues and assign coordinators
@@ -73,7 +63,8 @@ impl Smp {
                                                   smp_queue_constructed,
                                                   init,
                                                   reactor_publish,
-                                                  queue_receive)});
+                                                  queue_receive)
+                });
             }
 
             let mut reactor_zero = Reactor0 {
@@ -195,8 +186,7 @@ impl<'a> ReactorInit for Reactor0<'a> {
     }
 }
 
-struct OtherReactor {
-}
+struct OtherReactor {}
 
 impl ReactorInit for OtherReactor {
     fn on_reactor_registered(&mut self) {}
@@ -207,10 +197,9 @@ mod tests {
     use super::*;
     use env_logger;
     use std::ptr;
+    use test;
 
-    #[test]
-    fn it_works() {
-        env_logger::init().unwrap();
+    test!(it_works, {
         Smp::configure();
-    }
+    });
 }
