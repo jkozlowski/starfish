@@ -1,7 +1,6 @@
 use bounded_spsc_queue;
 use bounded_spsc_queue::{Producer, Consumer};
-use reactor::Reactor;
-use smp::UnsafePtr;
+use reactor::ReactorHandle;
 
 pub struct Message {
     val: usize
@@ -9,11 +8,11 @@ pub struct Message {
 
 pub struct SmpMessageQueueProducer {
     queue: Producer<Message>,
-    remote: UnsafePtr<Reactor>
+    remote: ReactorHandle
 }
 
 impl SmpMessageQueueProducer {
-    pub fn new(queue: Producer<Message>, remote: UnsafePtr<Reactor>) -> SmpMessageQueueProducer {
+    pub fn new(queue: Producer<Message>, remote: ReactorHandle) -> SmpMessageQueueProducer {
         SmpMessageQueueProducer {
             queue: queue,
             remote: remote
@@ -23,11 +22,11 @@ impl SmpMessageQueueProducer {
 
 pub struct SmpMessageQueueConsumer {
     queue: Consumer<Message>,
-    remote: UnsafePtr<Reactor>
+    remote: ReactorHandle
 }
 
 impl SmpMessageQueueConsumer {
-    pub fn new(queue: Consumer<Message>, remote: UnsafePtr<Reactor>) -> SmpMessageQueueConsumer {
+    pub fn new(queue: Consumer<Message>, remote: ReactorHandle) -> SmpMessageQueueConsumer {
         SmpMessageQueueConsumer {
             queue: queue,
             remote: remote
@@ -37,7 +36,7 @@ impl SmpMessageQueueConsumer {
 
 const QUEUE_LENGTH: usize = 128;
 
-pub fn make_smp_message_queue(from: UnsafePtr<Reactor>, to: UnsafePtr<Reactor>) -> (SmpMessageQueueProducer, SmpMessageQueueConsumer) {
+pub fn make_smp_message_queue(from: ReactorHandle, to: ReactorHandle) -> (SmpMessageQueueProducer, SmpMessageQueueConsumer) {
     let (p, c) = bounded_spsc_queue::make(QUEUE_LENGTH);
     let producer = SmpMessageQueueProducer::new(p, to);
     let consumer = SmpMessageQueueConsumer::new(c, from);
