@@ -1,10 +1,10 @@
 use libc;
 use smp_message_queue::SmpQueues;
+use std::fmt;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 scoped_thread_local!(static REACTOR: Reactor);
-scoped_thread_local!(static SMP_QUEUES: SmpQueues);
 
 #[derive(Clone)]
 pub struct ReactorHandle {
@@ -13,7 +13,6 @@ pub struct ReactorHandle {
 }
 
 impl ReactorHandle {
-
     pub fn new(sleeping: Arc<AtomicBool>) -> ReactorHandle {
         ReactorHandle {
             sleeping: sleeping,
@@ -39,9 +38,16 @@ impl ReactorHandle {
     }
 }
 
-#[derive(Debug)]
 pub struct Reactor {
     id: usize,
+    sleeping: Arc<AtomicBool>,
+    smp_queues: SmpQueues,
+}
+
+impl fmt::Debug for Reactor {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Reactor({})", self.id)
+    }
 }
 
 impl Reactor {
@@ -50,15 +56,18 @@ impl Reactor {
         REACTOR.with(f)
     }
 
-    pub fn allocate_reactor<F, R>(id: usize, f: F) where F: FnOnce(&Reactor) -> R {
+    pub fn allocate_reactor<F, R>(
+        id: usize,
+        sleeping: Arc<AtomicBool>,
+        smp_queues: SmpQueues,
+        f: F)
+    where F: FnOnce(&Reactor) -> R
+    {
         let reactor = Reactor {
             id: id,
-            //            sleeping: AtomicBool::new(false)
+            sleeping: sleeping,
+            smp_queues: smp_queues
         };
         REACTOR.set(&reactor, || f(&reactor));
-    }
-
-    pub fn assign_queues<F, R>(smp_queue: &SmpQueues, f: F) where F: FnOnce() -> R {
-        SMP_QUEUES.set(&smp_queue, f);
     }
 }

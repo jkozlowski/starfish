@@ -100,32 +100,30 @@ impl Smp {
         reactor_publish: Sender<ReactorHandle>,
         queue_receive: Receiver<SmpQueues>)
     {
+        trace!("Thread [{:?}]: started", reactor_id);
+
         let sleeping = Arc::new(AtomicBool::new(false));
+        reactor_publish.send(ReactorHandle::new(sleeping.clone())).unwrap();
 
-        Reactor::allocate_reactor(reactor_id, |r| {
-            trace!("Thread [{:?}]: started; {:?}", reactor_id, r as *const _);
-            reactor_publish.send(ReactorHandle::new(sleeping.clone())).unwrap();
+        reactor_registered.wait();
+        info!("Thread [{:?}]: Reactor registered", reactor_id);
 
-            reactor_registered.wait();
-            info!("Thread [{:?}]: Reactor registered", reactor_id);
+        reactor_init.on_reactor_registered();
 
-            reactor_init.on_reactor_registered();
+        smp_queue_constructed.wait();
+        info!("Thread [{:?}]: Smp queue constructed", reactor_id);
 
-            smp_queue_constructed.wait();
-            info!("Thread [{:?}]: Smp queue constructed", reactor_id);
+        let smp_queue = queue_receive.recv().expect("Expected SmpQueue");
 
-            let smp_queue = queue_receive.recv().expect("Expected SmpQueue");
+        Reactor::allocate_reactor(reactor_id, sleeping.clone(), smp_queue, |r| {
+            info!("Thread [{:?}]: Reactor created", reactor_id);
 
-            Reactor::assign_queues(&smp_queue, || {
-                info!("Thread [{:?}]: Smp queues setup: {:?}", reactor_id, smp_queue.reactor_id());
+            // start_all_queues();
+            // assign_io_queue(i, queue_idx);
+            init.wait();
 
-                // start_all_queues();
-                // assign_io_queue(i, queue_idx);
-                init.wait();
-
-                // engine().configure(configuration);
-                // engine().run();
-            })
+            // engine().configure(configuration);
+            // engine().run();
         })
     }
 }
