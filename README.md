@@ -21,6 +21,8 @@ tokio-file-aio
 Useful
 ------
 
+* https://github.com/slog-rs/misc/tree/2.x.y
+
 Problems with linux signals:
 * https://github.com/alexcrichton/tokio-signal/blob/master/src/unix.rs
 * https://github.com/carllerche/mio/issues/16

@@ -5,7 +5,7 @@
 
 #[macro_use] extern crate derive_builder;
 #[macro_use] extern crate error_chain;
-#[macro_use] extern crate log;
+#[macro_use] pub extern crate slog;
 #[macro_use] extern crate scoped_tls;
 extern crate nix;
 extern crate libc;
@@ -20,13 +20,18 @@ extern crate crossbeam;
 extern crate itertools;
 
 #[cfg(test)]
-extern crate env_logger;
+extern crate slog_term;
+#[cfg(test)]
+extern crate slog_scope;
 
 #[cfg(test)]
 #[macro_use]
 pub mod test {
-
-    use env_logger;
+    use std;
+    use slog::*;
+    use slog_term;
+    use slog_scope;
+    use std::sync::Arc;
     use std::sync::{Once, ONCE_INIT};
 
     static LOGGER_INIT: Once = ONCE_INIT;
@@ -50,9 +55,12 @@ pub mod test {
     }
 
     pub fn ensure_env_logger_initialized() {
-        LOGGER_INIT.call_once(|| {
-            env_logger::init().unwrap();
-        });
+        let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
+        let root = Logger::root(
+            Arc::new(slog_term::FullFormat::new(plain).build().fuse()),
+            o!("version" => env!("CARGO_PKG_VERSION"))
+        );
+        slog_scope::set_global_logger(root.to_erased());
     }
 }
 

@@ -19,6 +19,7 @@ use nix::sys::stat;
 use nix::sys::statfs;
 use nix::sys::statfs::vfs::Statfs;
 use nix::sys::statfs::vfs::TMPFS_MAGIC;
+use slog::Logger;
 use std;
 use std::boxed::Box;
 use std::cell::Cell;
@@ -60,6 +61,7 @@ impl Drop for IoContext {
 
 #[allow(dead_code)]
 pub struct FileManager {
+    log: Logger,
     io: Rc<RefCell<PollEvented<EventfdFd>>>,
 
     io_context: Rc<IoContext>,
@@ -75,13 +77,13 @@ pub struct FileManager {
 const MAX_IO: usize = 128;
 
 impl FileManager {
-    pub fn create(handle: &Handle) -> io::Result<FileManager> {
-        trace!("FileManager::create");
+    pub fn create(log: Logger, handle: &Handle) -> io::Result<FileManager> {
+        trace!(log, "FileManager::create");
 
         let eventfd = try!(EventfdFd::new());
         let io = try!(PollEvented::new(eventfd, handle));
 
-        let file_manager = FileManager::new(io);
+        let file_manager = FileManager::new(log, io);
         file_manager.setup_iopoll(handle);
         Ok(file_manager)
     }
@@ -149,11 +151,12 @@ impl FileManager {
         Ok(File::new(io, self))
     }
 
-    fn new(io: PollEvented<EventfdFd>) -> FileManager {
+    fn new(log: Logger, io: PollEvented<EventfdFd>) -> FileManager {
         let mut io_context = IoContext { inner: ptr::null_mut() };
         FileManager::io_setup(&mut io_context.inner);
 
         let file_manager = FileManager {
+            log: log,
             io: Rc::new(RefCell::new(io)),
             io_context: Rc::new(io_context),
             pending_aio: RefCell::new(Vec::new()),
@@ -173,6 +176,7 @@ impl FileManager {
 
     fn setup_iopoll(&self, handle: &Handle) {
         let io_poll = IoPoll {
+            log: self.log.clone(),
             io_context: self.io_context.clone(),
             io: self.io.clone()
         };
@@ -183,7 +187,7 @@ impl FileManager {
     fn submit_io_read<F, R>(&self, f: F) -> Receiver<R>
         where F: FnOnce(*mut aio::iocb, Sender<R>) -> Box<Completion> {
         self.aio_reads.set(self.aio_reads.get() + 1);
-        trace!("submit_io_read ({:?})", self.aio_reads.get());
+        trace!(self.log, "submit_io_read"; "aio_reads" => self.aio_reads.get());
         self.submit_io(f)
     }
 
@@ -255,7 +259,7 @@ impl FileManager {
 
             let mut nr_consumed: usize = 0;
             if r < 0 {
-                trace!("Result: {:?}", r);
+                trace!(self.log, "Result"; "r" => r);
                 // TODO: handle the problems
                 //      auto ec = -r;
                 //      switch (ec) {
@@ -279,7 +283,7 @@ impl FileManager {
                 //      }
             } else {
                 nr_consumed = r as usize;
-                trace!("nr consumed: {:?}", nr_consumed);
+                trace!(self.log, "nr consumed"; "nr_consumed" => nr_consumed);
             }
 
             did_work = true;
@@ -311,7 +315,7 @@ impl<T> Completion for CompletionImpl<T>
 where T: AsMut<[u8]> + Clone {
     fn complete(self: Box<Self>, result: usize) {
         let buf = self.buf.clone();
-        self.sender.complete((buf, result));
+        self.sender.send((buf, result));
     }
 }
 
@@ -390,6 +394,7 @@ extern {
 }
 
 struct IoPoll {
+    log: Logger,
     io: Rc<RefCell<PollEvented<EventfdFd>>>,
     io_context: Rc<IoContext>
 }
@@ -421,7 +426,7 @@ impl Future for IoPoll {
 
 impl IoPoll {
     fn process_io(&self) -> usize {
-        trace!("process_io: START");
+        trace!(self.log, "process_io: START");
 
         let mut ev: [aio::io_event; MAX_IO] = unsafe { mem::uninitialized() };
 
@@ -435,7 +440,7 @@ impl IoPoll {
 
         assert!(n < MAX_IO);
 
-        trace!("process_io: {:?} events", n);
+        trace!(self.log, "process_io: {:?} events", n);
 
         for e in &mut ev[0..n] {
             let pr: Box<Box<Completion>> = unsafe {
@@ -449,7 +454,7 @@ impl IoPoll {
             pr.complete(r)
         }
 
-        trace!("process_io: END");
+        trace!(self.log, "process_io: END");
 
         n
     }

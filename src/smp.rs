@@ -3,6 +3,7 @@ use reactor::Reactor;
 use sys::imp::reactor_handle::ReactorHandle;
 use smp_message_queue::SmpQueues;
 use smp_message_queue::make_smp_message_queue;
+use slog::Logger;
 use std::mem;
 use std::ptr;
 use std::sync::Arc;
@@ -16,7 +17,7 @@ use itertools;
 pub struct Smp {}
 
 impl Smp {
-    pub fn configure() {
+    pub fn configure(log: Logger) {
         let smp_count: usize = 4;
         let mut all_event_loops_done = None;
 
@@ -34,6 +35,7 @@ impl Smp {
         mem::replace(&mut all_event_loops_done, Some(Barrier::new(smp_count)));
 
         crossbeam::scope(|scope| {
+            let log = log.clone();
             let mut reactor_receives = Vec::with_capacity(smp_count);
             let mut queues_publishes = Vec::with_capacity(smp_count);
 
@@ -53,10 +55,12 @@ impl Smp {
                 let reactor_registered = &reactors_registered;
                 let smp_queue_constructed = &smp_queues_constructed;
                 let init = &inited;
+                let log = log.clone();
 
                 scope.spawn(move || {
                     let mut other_reactor = OtherReactor {};
-                    Smp::configure_single_reactor(reactor_id,
+                    Smp::configure_single_reactor(log,
+                                                  reactor_id,
                                                   &mut other_reactor,
                                                   reactor_registered,
                                                   smp_queue_constructed,
@@ -71,7 +75,8 @@ impl Smp {
                 reactor_receives: &reactor_receives,
                 queue_senders: &queues_publishes,
             };
-            Smp::configure_single_reactor(0,
+            Smp::configure_single_reactor(log,
+                                          0,
                                           &mut reactor_zero,
                                           &reactors_registered,
                                           &smp_queues_constructed,
@@ -82,6 +87,7 @@ impl Smp {
     }
 
     fn configure_single_reactor(
+        root: Logger,
         reactor_id: usize,
         reactor_init: &mut ReactorInit,
         reactor_registered: &Barrier,
@@ -90,23 +96,24 @@ impl Smp {
         reactor_publish: Sender<ReactorHandle>,
         queue_receive: Receiver<SmpQueues>)
     {
-        trace!("Thread [{:?}]: started", reactor_id);
+        let log = root.new(o!("reactor_id" => reactor_id));
+        trace!(log, "started");
 
         let sleeping = Arc::new(AtomicBool::new(false));
         reactor_publish.send(ReactorHandle::new(sleeping.clone())).unwrap();
 
         reactor_registered.wait();
-        info!("Thread [{:?}]: Reactor registered", reactor_id);
+        info!(log, "Reactor registered");
 
         reactor_init.on_reactor_registered();
 
         smp_queue_constructed.wait();
-        info!("Thread [{:?}]: Smp queue constructed", reactor_id);
+        info!(log, "Smp queue constructed");
 
         let smp_queue = queue_receive.recv().expect("Expected SmpQueue");
 
         Reactor::allocate_reactor(reactor_id, sleeping.clone(), smp_queue, |r| {
-            info!("Thread [{:?}]: Reactor created", reactor_id);
+            info!(log, "Reactor created");
 
             // start_all_queues();
             // assign_io_queue(i, queue_idx);
@@ -194,11 +201,12 @@ impl ReactorInit for OtherReactor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use env_logger;
+    use slog::*;
+    use slog_scope;
     use std::ptr;
     use test;
 
     test!(it_works, {
-        Smp::configure();
+        Smp::configure(slog_scope::logger());
     });
 }

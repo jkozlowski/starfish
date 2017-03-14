@@ -12,6 +12,7 @@ Symmetric multiprocessing for tokio.
 # Figuring out the memory map
 libc = "0.2.11"
 error-chain = "0.5.0"
+slog = ">= 2.0.0-1.0, < 2.0.0-2"
 
 # Deriving
 derive_builder = "0.3.0"
@@ -29,23 +30,23 @@ crossbeam = "0.2.10"
 itertools = "0.5.9"
 
 # ticks
-env_logger = "0.3"
-log = "0.3"
+#log = "0.3"
 
 [dependencies.nix]
 version = "0.6.0"
 features = ["eventfd"]
 
 [dev-dependencies]
-env_logger = "0.3"
 hamcrest = "0.1.2"
 spectral = "0.6.0"
+slog-term = ">= 2.0.0-1.0, < 2.0.0-2"
+slog-scope = ">= 2.0.0-1.0, < 2.0.0-2"
 
 [build-dependencies]
 bindgen = "0.19.0"
 gcc = "0.3.35"
 pkg-config = "0.3.8"
 
-[[bin]]
-name = "ticks"
-path = "ticks/main.rs"
+#[[bin]]
+#name = "ticks"
+#path = "ticks/main.rs"
