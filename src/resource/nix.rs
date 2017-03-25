@@ -10,8 +10,8 @@ use resources::MemoryBuilder;
 use resources::IoQueueTopology;
 use resources::IoQueue;
 use resources::IoQueueBuilder;
-use resource::{calculate_memory_default_panic_factor};
-use std::cmp::{max};
+use resource::calculate_memory_default_panic_factor;
+use std::cmp::max;
 
 pub fn allocate(c: Configuration) -> resources_error::Result<Resources> {
     //  resources ret;
@@ -26,7 +26,7 @@ pub fn allocate(c: Configuration) -> resources_error::Result<Resources> {
     //  auto cpuset_procs = c.cpu_set ? c.cpu_set->size() : nr_processing_units();
     let cpuset_procs = match c.get_cpu_set() {
         Some(cpu_set) => cpu_set.len(),
-        None          => try!(nr_processing_units())
+        None => try!(nr_processing_units()),
     };
 
     //  auto procs = c.cpus.value_or(cpuset_procs);
@@ -39,15 +39,15 @@ pub fn allocate(c: Configuration) -> resources_error::Result<Resources> {
     for cpu_id in 0..procs {
         //  ret.cpus.push_back(cpu{i, {{mem / procs, 0}}});
         let mem = MemoryBuilder::default()
-                         .bytes(mem / procs)
-                         .nodeid(0 as u32)
-                         .build()
-                         .unwrap();
+            .bytes(mem / procs)
+            .nodeid(0 as u32)
+            .build()
+            .unwrap();
         let cpu = CpuBuilder::default()
-                      .cpu_id(cpu_id as u32)
-                      .mem(vec!(mem))
-                      .build()
-                      .unwrap();
+            .cpu_id(cpu_id as u32)
+            .mem(vec![mem])
+            .build()
+            .unwrap();
         cpus.push(cpu);
     }
 
@@ -75,7 +75,7 @@ fn get_available_memory() -> resources_error::Result<usize> {
 }
 
 #[cfg(target_os="macos")]
-extern {
+extern "C" {
     fn memsize(bytes: *mut uint64_t) -> c_int;
 }
 
@@ -110,10 +110,10 @@ fn allocate_io_queues(c: &Configuration, cpus: &Vec<Cpu>) -> IoQueueTopology {
         //  ret.coordinators[shard].capacity =  std::max(max_io_requests / nr_cpus, 1u);
         let capacity = max(max_io_requests / nr_cpus, 1);
         let io_queue = IoQueueBuilder::default()
-                               .id(shard)
-                               .capacity(capacity)
-                               .build()
-                               .unwrap();
+            .id(shard)
+            .capacity(capacity)
+            .build()
+            .unwrap();
         ret.get_coordinators_mut().push(io_queue);
     }
 

@@ -3,20 +3,19 @@ use bounded_spsc_queue::{Producer, Consumer};
 use sys::imp::reactor_handle::ReactorHandle;
 
 pub struct Message {
-    MySender<F, T>
+    // MySender<F, T>
 }
 
 pub struct SmpMessageQueueProducer {
     queue: Producer<Message>,
-    remote: ReactorHandle
+    remote: ReactorHandle,
 }
 
 impl SmpMessageQueueProducer {
-
     pub fn new(queue: Producer<Message>, remote: ReactorHandle) -> SmpMessageQueueProducer {
         SmpMessageQueueProducer {
             queue: queue,
-            remote: remote
+            remote: remote,
         }
     }
 
@@ -30,21 +29,23 @@ impl SmpMessageQueueProducer {
 
 pub struct SmpMessageQueueConsumer {
     queue: Consumer<Message>,
-    remote: ReactorHandle
+    remote: ReactorHandle,
 }
 
 impl SmpMessageQueueConsumer {
     pub fn new(queue: Consumer<Message>, remote: ReactorHandle) -> SmpMessageQueueConsumer {
         SmpMessageQueueConsumer {
             queue: queue,
-            remote: remote
+            remote: remote,
         }
     }
 }
 
 const QUEUE_LENGTH: usize = 128;
 
-pub fn make_smp_message_queue(from: ReactorHandle, to: ReactorHandle) -> (SmpMessageQueueProducer, SmpMessageQueueConsumer) {
+pub fn make_smp_message_queue(from: ReactorHandle,
+                              to: ReactorHandle)
+                              -> (SmpMessageQueueProducer, SmpMessageQueueConsumer) {
     let (p, c) = bounded_spsc_queue::make(QUEUE_LENGTH);
     let producer = SmpMessageQueueProducer::new(p, to);
     let consumer = SmpMessageQueueConsumer::new(c, from);
@@ -54,18 +55,18 @@ pub fn make_smp_message_queue(from: ReactorHandle, to: ReactorHandle) -> (SmpMes
 pub struct SmpQueues {
     producers: Vec<SmpMessageQueueProducer>,
     consumers: Vec<SmpMessageQueueConsumer>,
-    reactor_id: usize
+    reactor_id: usize,
 }
 
 impl SmpQueues {
-
     pub fn new(producers: Vec<SmpMessageQueueProducer>,
                consumers: Vec<SmpMessageQueueConsumer>,
-               reactor_id: usize) -> SmpQueues {
+               reactor_id: usize)
+               -> SmpQueues {
         SmpQueues {
             producers: producers,
             consumers: consumers,
-            reactor_id: reactor_id
+            reactor_id: reactor_id,
         }
     }
 
@@ -73,21 +74,21 @@ impl SmpQueues {
         self.reactor_id
     }
 
-//    void start(unsigned cpuid);
-//    template<size_t PrefetchCnt, typename Func>
-//    size_t process_queue(lf_queue& q, Func process);
-//    size_t process_incoming();
-//    size_t process_completions();
-//    private:
-//    void work();
-//    void submit_item(work_item* wi);
-//    void respond(work_item* wi);
-//    void move_pending();
-//    void flush_request_batch();
-//    void flush_response_batch();
-//    bool has_unflushed_responses() const;
-//    bool pure_poll_rx() const;
-//    bool pure_poll_tx() const;
+    //    void start(unsigned cpuid);
+    //    template<size_t PrefetchCnt, typename Func>
+    //    size_t process_queue(lf_queue& q, Func process);
+    //    size_t process_incoming();
+    //    size_t process_completions();
+    //    private:
+    //    void work();
+    //    void submit_item(work_item* wi);
+    //    void respond(work_item* wi);
+    //    void move_pending();
+    //    void flush_request_batch();
+    //    void flush_response_batch();
+    //    bool has_unflushed_responses() const;
+    //    bool pure_poll_rx() const;
+    //    bool pure_poll_tx() const;
 }
 
 //reactor::smp_pollfn::poll

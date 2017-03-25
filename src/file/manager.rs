@@ -50,12 +50,14 @@ use tokio_core::reactor::PollEvented;
 include!(concat!(env!("OUT_DIR"), "/aio.rs"));
 
 pub struct IoContext {
-    inner: aio::io_context_t
+    inner: aio::io_context_t,
 }
 
 impl Drop for IoContext {
     fn drop(&mut self) {
-        unsafe { aio::io_destroy(self.inner); }
+        unsafe {
+            aio::io_destroy(self.inner);
+        }
     }
 }
 
@@ -71,7 +73,7 @@ pub struct FileManager {
     aio_reads: Cell<u64>,
     aio_read_bytes: Cell<u64>,
     aio_writes: Cell<u64>,
-    aio_write_bytes: Cell<u64>
+    aio_write_bytes: Cell<u64>,
 }
 
 const MAX_IO: usize = 128;
@@ -88,7 +90,7 @@ impl FileManager {
         Ok(file_manager)
     }
 
-    pub fn open_file_dma<P: ? Sized + NixPath>(&self, path: &P, flags: OFlag) -> io::Result<File> {
+    pub fn open_file_dma<P: ?Sized + NixPath>(&self, path: &P, flags: OFlag) -> io::Result<File> {
         //  return _thread_pool.submit<syscall_result<int>>([name, flags, options, strict_o_direct = _strict_o_direct] {
         //  static constexpr mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 0644
         let mode = stat::S_IRUSR | stat::S_IWUSR | stat::S_IRGRP | stat::S_IROTH; // 0644
@@ -163,7 +165,7 @@ impl FileManager {
             aio_reads: Cell::new(0),
             aio_read_bytes: Cell::new(0),
             aio_writes: Cell::new(0),
-            aio_write_bytes: Cell::new(0)
+            aio_write_bytes: Cell::new(0),
         };
 
         file_manager
@@ -178,21 +180,23 @@ impl FileManager {
         let io_poll = IoPoll {
             log: self.log.clone(),
             io_context: self.io_context.clone(),
-            io: self.io.clone()
+            io: self.io.clone(),
         };
         let io_poll_unit = io_poll.map_err(|_| ());
         handle.spawn(io_poll_unit)
     }
 
     fn submit_io_read<F, R>(&self, f: F) -> Receiver<R>
-        where F: FnOnce(*mut aio::iocb, Sender<R>) -> Box<Completion> {
+        where F: FnOnce(*mut aio::iocb, Sender<R>) -> Box<Completion>
+    {
         self.aio_reads.set(self.aio_reads.get() + 1);
         trace!(self.log, "submit_io_read"; "aio_reads" => self.aio_reads.get());
         self.submit_io(f)
     }
 
     fn submit_io<F, R>(&self, prepare_io: F) -> Receiver<R>
-        where F: FnOnce(*mut aio::iocb, Sender<R>) -> Box<Completion> {
+        where F: FnOnce(*mut aio::iocb, Sender<R>) -> Box<Completion>
+    {
         let (sender, receiver) = channel();
 
         let mut io = aio::iocb::default();
@@ -308,11 +312,12 @@ trait Completion {
 
 struct CompletionImpl<T> {
     buf: T,
-    sender: Sender<(T, usize)>
+    sender: Sender<(T, usize)>,
 }
 
 impl<T> Completion for CompletionImpl<T>
-where T: AsMut<[u8]> + Clone {
+    where T: AsMut<[u8]> + Clone
+{
     fn complete(self: Box<Self>, result: usize) {
         let buf = self.buf.clone();
         self.sender.send((buf, result));
@@ -334,7 +339,7 @@ pub struct File<'a> {
     manager: &'a FileManager,
     memory_dma_alignment: u64,
     disk_read_dma_alignment: u64,
-    disk_write_dma_alignment: u64
+    disk_write_dma_alignment: u64,
 }
 
 impl<'a> File<'a> {
@@ -344,7 +349,7 @@ impl<'a> File<'a> {
             manager: manager,
             memory_dma_alignment: 4096,
             disk_read_dma_alignment: 4096,
-            disk_write_dma_alignment: 4096
+            disk_write_dma_alignment: 4096,
         };
 
         File::query_dma_alignment(&mut file);
@@ -366,37 +371,35 @@ impl<'a> File<'a> {
     }
 
     pub fn read_dma<T>(&self, aligned_pos: usize, mut aligned_buf: T) -> Receiver<(T, usize)>
-        where T: AsMut<[u8]> + Clone + 'static {
-        self.manager.submit_io_read(move |iocb, sender| {
-            unsafe {
-                io_prep_pread_c(iocb,
-                                self.inner.as_raw_fd(),
-                                aligned_buf.as_mut().as_mut_ptr() as *mut c_void,
-                                aligned_buf.as_mut().len() as size_t,
-                                aligned_pos as i64);
-                Box::new(CompletionImpl {
-                    buf: aligned_buf,
-                    sender: sender
-                })
-            }
+        where T: AsMut<[u8]> + Clone + 'static
+    {
+        self.manager.submit_io_read(move |iocb, sender| unsafe {
+            io_prep_pread_c(iocb,
+                            self.inner.as_raw_fd(),
+                            aligned_buf.as_mut().as_mut_ptr() as *mut c_void,
+                            aligned_buf.as_mut().len() as size_t,
+                            aligned_pos as i64);
+            Box::new(CompletionImpl {
+                         buf: aligned_buf,
+                         sender: sender,
+                     })
         })
     }
 }
 
-extern {
+extern "C" {
     pub fn io_prep_pread_c(iocb: *mut aio::iocb,
                            fd: c_int,
                            buf: *mut c_void,
                            count: size_t,
                            offset: c_long);
-    pub fn io_set_eventfd_c(iocb: *mut aio::iocb,
-                            eventfd: c_int);
+    pub fn io_set_eventfd_c(iocb: *mut aio::iocb, eventfd: c_int);
 }
 
 struct IoPoll {
     log: Logger,
     io: Rc<RefCell<PollEvented<EventfdFd>>>,
-    io_context: Rc<IoContext>
+    io_context: Rc<IoContext>,
 }
 
 impl Future for IoPoll {
@@ -406,7 +409,7 @@ impl Future for IoPoll {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         let mut io = (*self.io).borrow_mut();
         if let Async::NotReady = io.poll_read() {
-            return Ok(Async::NotReady)
+            return Ok(Async::NotReady);
         }
         let mut buf: [u8; 8] = [0; 8];
         match io.read(&mut buf) {
@@ -414,12 +417,12 @@ impl Future for IoPoll {
                 self.process_io();
                 io.need_read();
                 Ok(Async::NotReady)
-            },
+            }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 io.need_read();
                 Ok(Async::NotReady)
             }
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 }
@@ -430,10 +433,15 @@ impl IoPoll {
 
         let mut ev: [aio::io_event; MAX_IO] = unsafe { mem::uninitialized() };
 
-        let mut timeout = aio::timespec { tv_sec: 0, tv_nsec: 0 };
+        let mut timeout = aio::timespec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        };
 
         let n = unsafe {
-            aio::io_getevents(self.io_context.inner, 1, MAX_IO as i64,
+            aio::io_getevents(self.io_context.inner,
+                              1,
+                              MAX_IO as i64,
                               ev.as_mut_ptr() as *mut aio::io_event,
                               &mut timeout as *mut aio::timespec) as usize
         };
@@ -443,9 +451,7 @@ impl IoPoll {
         trace!(self.log, "process_io: {:?} events", n);
 
         for e in &mut ev[0..n] {
-            let pr: Box<Box<Completion>> = unsafe {
-                Box::from_raw(e.data as *mut Box<Completion>)
-            };
+            let pr: Box<Box<Completion>> = unsafe { Box::from_raw(e.data as *mut Box<Completion>) };
 
             e.data = ptr::null_mut();
 

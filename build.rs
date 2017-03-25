@@ -32,13 +32,11 @@ fn main() {
             .compile("libaio_macros.a");
     }
 
-    return
+    return;
 }
 
 fn generate_bindgen<T: Into<String>>(path: T, out_dir: &Path, mod_name: String) {
-    let aio_abi = bindgen::Builder::new(path)
-        .generate()
-        .expect("Failed to generate bindings");
+    let aio_abi = bindgen::Builder::new(path).generate().expect("Failed to generate bindings");
 
     let dest_path = out_dir.join(format!("{}.rs", mod_name));
     let mut file = File::create(&dest_path).expect("Failed to open file");

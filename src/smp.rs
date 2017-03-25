@@ -86,16 +86,14 @@ impl Smp {
         });
     }
 
-    fn configure_single_reactor(
-        root: Logger,
-        reactor_id: usize,
-        reactor_init: &mut ReactorInit,
-        reactor_registered: &Barrier,
-        smp_queue_constructed: &Barrier,
-        init: &Barrier,
-        reactor_publish: Sender<ReactorHandle>,
-        queue_receive: Receiver<SmpQueues>)
-    {
+    fn configure_single_reactor(root: Logger,
+                                reactor_id: usize,
+                                reactor_init: &mut ReactorInit,
+                                reactor_registered: &Barrier,
+                                smp_queue_constructed: &Barrier,
+                                init: &Barrier,
+                                reactor_publish: Sender<ReactorHandle>,
+                                queue_receive: Receiver<SmpQueues>) {
         let log = root.new(o!("reactor_id" => reactor_id));
         trace!(log, "started");
 
@@ -112,20 +110,15 @@ impl Smp {
 
         let smp_queue = queue_receive.recv().expect("Expected SmpQueue");
 
-        Reactor::allocate_reactor(
-            reactor_id,
-            log.clone(),
-            sleeping.clone(),
-            smp_queue,
-            |r| {
-                info!(log, "Reactor created");
+        Reactor::allocate_reactor(reactor_id, log.clone(), sleeping.clone(), smp_queue, |r| {
+            info!(log, "Reactor created");
 
-                // start_all_queues();
-                // assign_io_queue(i, queue_idx);
-                init.wait();
+            // start_all_queues();
+            // assign_io_queue(i, queue_idx);
+            init.wait();
 
-                // engine().configure(configuration);
-                // engine().run();
+            // engine().configure(configuration);
+            // engine().run();
         })
     }
 }
@@ -137,7 +130,7 @@ trait ReactorInit {
 struct Reactor0<'a> {
     smp_count: usize,
     reactor_receives: &'a Vec<Receiver<ReactorHandle>>,
-    queue_senders: &'a Vec<Sender<SmpQueues>>
+    queue_senders: &'a Vec<Sender<SmpQueues>>,
 }
 
 impl<'a> ReactorInit for Reactor0<'a> {
@@ -191,7 +184,10 @@ impl<'a> ReactorInit for Reactor0<'a> {
         assert!(all_producers.len() == self.smp_count);
         assert!(all_consumers.len() == self.smp_count);
 
-        for (p, c, s, i) in itertools::multizip((all_producers, all_consumers, self.queue_senders, 0..)) {
+        for (p, c, s, i) in itertools::multizip((all_producers,
+                                                 all_consumers,
+                                                 self.queue_senders,
+                                                 0..)) {
             s.send(SmpQueues::new(p, c, i)).unwrap();
         }
     }

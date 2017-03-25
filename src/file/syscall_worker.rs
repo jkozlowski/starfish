@@ -27,7 +27,7 @@ const BATCH_SIZE: usize = 16;
 const PREFETCH_CNT: usize = 2;
 
 pub struct SyscallWorker {
-    producer: Producer<Message>
+    producer: Producer<Message>,
 }
 
 //struct MySender<F, T> {
@@ -59,27 +59,27 @@ impl SyscallWorker {
 
         thread::spawn(move || work(consumer));
 
-        return worker
+        return worker;
     }
 
-//    pub fn spawn<F, R>(&self, f: F) -> WorkerFuture<R, ()>
-//        where F: FnOnce() -> R
-//    {
-//        let (tx, rx) = channel();
-//        let keep_running_flag = Arc::new(AtomicBool::new(false));
-//
-//        // AssertUnwindSafe is used here becuase `Send + 'static` is basically
-//        // an alias for an implementation of the `UnwindSafe` trait but we can't
-//        // express that in the standard library right now.
-////        let sender = MySender {
-////            fut: AssertUnwindSafe(f).catch_unwind(),
-////            tx: Some(tx),
-////            keep_running_flag: keep_running_flag.clone(),
-////        };
-////        executor::spawn(sender).execute();
-////        WorkerFuture { inner: rx, keep_running_flag: keep_running_flag.clone() }
-//        unimplemented!();
-//    }
+    //    pub fn spawn<F, R>(&self, f: F) -> WorkerFuture<R, ()>
+    //        where F: FnOnce() -> R
+    //    {
+    //        let (tx, rx) = channel();
+    //        let keep_running_flag = Arc::new(AtomicBool::new(false));
+    //
+    //        // AssertUnwindSafe is used here becuase `Send + 'static` is basically
+    //        // an alias for an implementation of the `UnwindSafe` trait but we can't
+    //        // express that in the standard library right now.
+    ////        let sender = MySender {
+    ////            fut: AssertUnwindSafe(f).catch_unwind(),
+    ////            tx: Some(tx),
+    ////            keep_running_flag: keep_running_flag.clone(),
+    ////        };
+    ////        executor::spawn(sender).execute();
+    ////        WorkerFuture { inner: rx, keep_running_flag: keep_running_flag.clone() }
+    //        unimplemented!();
+    //    }
 }
 
 fn work(consumer: Consumer<Message>) {

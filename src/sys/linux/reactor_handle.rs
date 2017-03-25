@@ -5,7 +5,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct ReactorHandle {
     sleeping: Arc<AtomicBool>,
-    thread: libc::pthread_t
+    thread: libc::pthread_t,
 }
 
 impl ReactorHandle {
@@ -13,7 +13,7 @@ impl ReactorHandle {
         ReactorHandle {
             sleeping: sleeping,
             // TODO: should check return value?
-            thread: unsafe { libc::pthread_self() }
+            thread: unsafe { libc::pthread_self() },
         }
     }
 

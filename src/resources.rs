@@ -1,5 +1,5 @@
-use std::vec::{Vec};
-use std::collections::{HashSet};
+use std::vec::Vec;
+use std::collections::HashSet;
 use error::resources_error;
 use resource::nix;
 
@@ -8,7 +8,7 @@ pub type CpuId = u32;
 #[derive(Default, Debug, Builder, Clone)]
 pub struct Cpu {
     cpu_id: CpuId,
-    mem: Vec<Memory>
+    mem: Vec<Memory>,
 }
 
 #[derive(Default, Debug, Builder, Clone)]
@@ -20,21 +20,20 @@ pub struct Memory {
 #[derive(Default, Debug, Builder, Clone)]
 pub struct IoQueue {
     id: usize,
-    capacity: usize
+    capacity: usize,
 }
 
 #[derive(Default, Debug, Builder)]
 pub struct Configuration {
-    total_memory:    Option<usize>,
-    reserve_memory:  Option<usize>,  // if total_memory not specified
-    cpus:            Option<usize>,
-    cpu_set:         Option<HashSet<CpuId>>,
+    total_memory: Option<usize>,
+    reserve_memory: Option<usize>, // if total_memory not specified
+    cpus: Option<usize>,
+    cpu_set: Option<HashSet<CpuId>>,
     max_io_requests: Option<usize>,
-    io_queues:       Option<usize>
+    io_queues: Option<usize>,
 }
 
 impl Configuration {
-
     pub fn get_total_memory(&self) -> Option<usize> {
         return self.total_memory;
     }
@@ -66,7 +65,7 @@ impl Configuration {
 #[derive(Default, Debug, Builder, Clone)]
 pub struct IoQueueTopology {
     shard_to_coordinator: Vec<usize>,
-    coordinators: Vec<IoQueue>
+    coordinators: Vec<IoQueue>,
 }
 
 impl IoQueueTopology {
@@ -82,7 +81,7 @@ impl IoQueueTopology {
 #[derive(Default, Debug, Builder, Clone)]
 pub struct Resources {
     cpus: Vec<Cpu>,
-    io_queues: IoQueueTopology
+    io_queues: IoQueueTopology,
 }
 
 impl Resources {

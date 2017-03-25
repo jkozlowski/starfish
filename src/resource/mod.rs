@@ -5,8 +5,8 @@ pub mod hwloc_error;
 pub mod nix;
 
 use error::resources_error;
-use resources::{Configuration};
-use std::cmp::{Ordering};
+use resources::Configuration;
+use std::cmp::Ordering;
 
 const DEFAULT_PANIC_FACTOR: f32 = 1.0;
 
@@ -45,7 +45,8 @@ fn calculate_memory(c: &Configuration,
     //  if (mem > available_memory) {
     if mem > available_memory {
         //  throw std::runtime_error("insufficient physical memory");
-        return Err(resources_error::ErrorKind::InsufficientPhysicalMemory(mem, available_memory).into());
+        return Err(resources_error::ErrorKind::InsufficientPhysicalMemory(mem, available_memory)
+                       .into());
     } else {
         //  return mem;
         return Ok(mem);
@@ -57,6 +58,6 @@ fn memory_to_reserve(useable_memory: f32) -> f32 {
     match min_memory.partial_cmp(&useable_memory).unwrap_or(Ordering::Equal) {
         Ordering::Equal => min_memory,
         Ordering::Less => useable_memory,
-        Ordering::Greater => min_memory
+        Ordering::Greater => min_memory,
     }
 }

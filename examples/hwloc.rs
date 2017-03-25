@@ -16,8 +16,8 @@ fn main() {
                           .unwrap();
 
     match resources::allocate(c) {
-        Ok(i)  => println!("Result: {:?}", i),
-        Err(e) => println!("Could not allocate: {:?}", e)
+        Ok(i) => println!("Result: {:?}", i),
+        Err(e) => println!("Could not allocate: {:?}", e),
     }
 
     println!("Thank you!");

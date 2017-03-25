@@ -2,11 +2,14 @@
 #![feature(const_fn)]
 #![feature(nonzero)]
 #[warn(unused_imports)]
-
-#[macro_use] extern crate derive_builder;
-#[macro_use] extern crate error_chain;
-#[macro_use] pub extern crate slog;
-#[macro_use] extern crate scoped_tls;
+#[macro_use]
+extern crate derive_builder;
+#[macro_use]
+extern crate error_chain;
+#[macro_use]
+pub extern crate slog;
+#[macro_use]
+extern crate scoped_tls;
 extern crate nix;
 extern crate libc;
 extern crate tokio_core;
@@ -56,10 +59,8 @@ pub mod test {
 
     pub fn ensure_env_logger_initialized() {
         let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
-        let root = Logger::root(
-            Arc::new(slog_term::FullFormat::new(plain).build().fuse()),
-            o!("version" => env!("CARGO_PKG_VERSION"))
-        );
+        let root = Logger::root(Arc::new(slog_term::FullFormat::new(plain).build().fuse()),
+                                o!("version" => env!("CARGO_PKG_VERSION")));
         slog_scope::set_global_logger(root.to_erased());
     }
 }

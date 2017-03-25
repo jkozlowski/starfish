@@ -17,7 +17,7 @@ use std::os::unix::io::RawFd;
 use std::io::Read;
 
 pub struct EventfdFd {
-    eventfd_io: Io
+    eventfd_io: Io,
 }
 
 impl EventfdFd {
@@ -41,11 +41,21 @@ impl EventfdFd {
 }
 
 impl Evented for EventfdFd {
-    fn register(&self, poll: &Poll, token: Token, interest: Ready, opts: PollOpt) -> io::Result<()> {
+    fn register(&self,
+                poll: &Poll,
+                token: Token,
+                interest: Ready,
+                opts: PollOpt)
+                -> io::Result<()> {
         EventedFd(&self.as_raw_fd()).register(poll, token, interest, opts)
     }
 
-    fn reregister(&self, poll: &Poll, token: Token, interest: Ready, opts: PollOpt) -> io::Result<()> {
+    fn reregister(&self,
+                  poll: &Poll,
+                  token: Token,
+                  interest: Ready,
+                  opts: PollOpt)
+                  -> io::Result<()> {
         EventedFd(&self.as_raw_fd()).reregister(poll, token, interest, opts)
     }
 
