@@ -69,7 +69,6 @@ pub mod eventfd;
 pub mod file;
 pub mod reactor;
 pub mod resource;
-pub mod signal;
 
 pub mod align;
 pub mod resources;
