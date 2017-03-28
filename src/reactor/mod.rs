@@ -3,11 +3,77 @@ use slog::Logger;
 use std::fmt;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use util::semaphore::Semaphore;
+use tokio_core::reactor::Core;
 
 scoped_thread_local!(static REACTOR: Reactor);
 
 pub struct Reactor {
     id: usize,
+    //    reactor_backend_epoll _backend;
+    backend: Core,
+    //    sigset_t _active_sigmask; // holds sigmask while sleeping with sig disabled
+    //    std::vector<pollfn*> _pollers;
+    //    std::unique_ptr<io_queue> my_io_queue = {};
+    //    shard_id _io_coordinator;
+    //    io_queue* _io_queue;
+    //    std::vector<std::function<future<> ()>> _exit_funcs;
+    //    unsigned _id = 0;
+    //    bool _stopping = false;
+    //    bool _stopped = false;
+    //    condition_variable _stop_requested;
+    //    bool _handle_sigint = true;
+    //    promise<std::unique_ptr<network_stack>> _network_stack_ready_promise;
+    //    int _return = 0;
+    //    timer_t _steady_clock_timer = {};
+    //    timer_t _task_quota_timer = {};
+    //    promise<> _start_promise;
+    //    semaphore _cpu_started;
+    cpu_started: Semaphore,
+
+    //    uint64_t _tasks_processed = 0;
+    //    unsigned _max_task_backlog = 1000;
+    //    seastar::timer_set<timer<>, &timer<>::_link> _timers;
+    //    seastar::timer_set<timer<>, &timer<>::_link>::timer_list_t _expired_timers;
+    //    seastar::timer_set<timer<lowres_clock>, &timer<lowres_clock>::_link> _lowres_timers;
+    //    seastar::timer_set<timer<lowres_clock>, &timer<lowres_clock>::_link>::timer_list_t _expired_lowres_timers;
+    //    io_context_t _io_context;
+    //    std::vector<struct ::iocb> _pending_aio;
+    //    semaphore _io_context_available;
+    //    uint64_t _aio_reads = 0;
+    //    uint64_t _aio_read_bytes = 0;
+    //    uint64_t _aio_writes = 0;
+    //    uint64_t _aio_write_bytes = 0;
+    //    uint64_t _fsyncs = 0;
+    //    uint64_t _cxx_exceptions = 0;
+    //    circular_buffer<std::unique_ptr<task>> _pending_tasks;
+    //    circular_buffer<std::unique_ptr<task>> _at_destroy_tasks;
+    //    std::chrono::duration<double> _task_quota;
+    //    /// Handler that will be called when there is no task to execute on cpu.
+    //    /// It represents a low priority work.
+    //    ///
+    //    /// Handler's return value determines whether handler did any actual work. If no work was done then reactor will go
+    //    /// into sleep.
+    //    ///
+    //    /// Handler's argument is a function that returns true if a task which should be executed on cpu appears or false
+    //    /// otherwise. This function should be used by a handler to return early if a task appears.
+    //    idle_cpu_handler _idle_cpu_handler{ [] (work_waiting_on_reactor) {return idle_cpu_handler_result::no_more_work;} };
+    //    std::unique_ptr<network_stack> _network_stack;
+    //    // _lowres_clock will only be created on cpu 0
+    //    std::unique_ptr<lowres_clock> _lowres_clock;
+    //    lowres_clock::time_point _lowres_next_timeout;
+    //    std::experimental::optional<poller> _epoll_poller;
+    //    std::experimental::optional<pollable_fd> _aio_eventfd;
+    //    const bool _reuseport;
+    //    circular_buffer<double> _loads;
+    //    double _load = 0;
+    //    std::chrono::nanoseconds _max_poll_time = calculate_poll_time();
+    //    circular_buffer<output_stream<char>* > _flush_batching;
+    //    std::atomic<bool> _sleeping alignas(64);
+    //    pthread_t _thread_id alignas(64) = pthread_self();
+    //    bool _strict_o_direct = true;
+    //    signals _signals;
+    //    thread_pool _thread_pool;
     sleeping: Arc<AtomicBool>,
     log: Logger,
     smp_queues: SmpQueues,
@@ -196,6 +262,8 @@ impl Reactor {
     {
         let reactor = Reactor {
             id: id,
+            backend: Core::new().unwrap(),
+            cpu_started: Semaphore::new(0),
             log: log,
             sleeping: sleeping,
             smp_queues: smp_queues,

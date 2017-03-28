@@ -101,17 +101,17 @@ impl Smp {
         reactor_publish.send(ReactorHandle::new(sleeping.clone())).unwrap();
 
         reactor_registered.wait();
-        info!(log, "Reactor registered");
+        trace!(log, "Reactor registered");
 
         reactor_init.on_reactor_registered();
 
         smp_queue_constructed.wait();
-        info!(log, "Smp queue constructed");
+        trace!(log, "Smp queue constructed");
 
         let smp_queue = queue_receive.recv().expect("Expected SmpQueue");
 
         Reactor::allocate_reactor(reactor_id, log.clone(), sleeping.clone(), smp_queue, |r| {
-            info!(log, "Reactor created");
+            trace!(log, "Reactor created");
 
             // start_all_queues();
             // assign_io_queue(i, queue_idx);
@@ -197,15 +197,4 @@ struct OtherReactor {}
 
 impl ReactorInit for OtherReactor {
     fn on_reactor_registered(&mut self) {}
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use slog_scope;
-    use test;
-
-    test!(it_works, {
-        Smp::configure(slog_scope::logger());
-    });
 }

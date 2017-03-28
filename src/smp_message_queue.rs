@@ -1,22 +1,88 @@
 use bounded_spsc_queue;
 use bounded_spsc_queue::{Producer, Consumer};
+use futures::Future;
+use futures::future::BoxFuture;
+use futures::future::CatchUnwind;
+use futures::unsync::oneshot::channel;
+use futures::unsync::oneshot::Sender;
+use futures::unsync::oneshot::Receiver;
+use std::panic::AssertUnwindSafe;
 use sys::imp::reactor_handle::ReactorHandle;
 
-pub struct Message {
-    // MySender<F, T>
+// 1) Do not do cancellation for the time being.
+
+pub trait AsyncItem: Send {
+    //    future<> process() {}
+    //    complete();
+    //    auto nr = process_queue<prefetch_cnt>(_pending, [this] (work_item* wi) {
+    //        wi->process().then([this, wi] {
+    //            respond(wi);
+    //        });
+    //    });
+
+    //    void smp_message_queue::respond(work_item* item) {
+    //    _completed_fifo.push_back(item);
+    //    if (_completed_fifo.size() >= batch_size || engine()._stopped) {
+    //        flush_response_batch();
+    //    }
+    //}
 }
 
+//
+struct AsyncMessage<F, R> {
+    fut: F,
+
+    // This is where the remote reactor will write back the value.
+    result: Option<R>,
+
+    // Should only be touched back on the sending reactor!
+    sender: Sender<R>,
+}
+
+unsafe impl<F, R> Send for AsyncMessage<F, R> {}
+
+impl<R, E, F: Future<Item = R, Error = E> + Send> AsyncItem for AsyncMessage<F, R> {}
+
 pub struct SmpMessageQueueProducer {
-    queue: Producer<Message>,
+    queue: Producer<Box<AsyncItem>>,
     remote: ReactorHandle,
 }
 
 impl SmpMessageQueueProducer {
-    pub fn new(queue: Producer<Message>, remote: ReactorHandle) -> SmpMessageQueueProducer {
+    pub fn new(queue: Producer<Box<AsyncItem>>, remote: ReactorHandle) -> SmpMessageQueueProducer {
         SmpMessageQueueProducer {
             queue: queue,
             remote: remote,
         }
+    }
+
+    pub fn submit<F>(&self, f: F) -> Receiver<Result<F::Item, F::Error>>
+        where F: Future + Send + 'static,
+              F::Item: Send + 'static,
+              F::Error: Send + 'static
+    {
+        let (sender, rcv) = channel();
+        let async_message = AsyncMessage {
+            fut: AssertUnwindSafe(f).catch_unwind(),
+            result: None,
+            sender: sender,
+        };
+
+        // TODO: This can block, so really we should implement this in the future,
+        // TODO: so we can wait.
+        self.queue.push(Box::new(async_message));
+        //        let keep_running_flag = Arc::new(AtomicBool::new(false));
+        //        // AssertUnwindSafe is used here becuase `Send + 'static` is basically
+        //        // an alias for an implementation of the `UnwindSafe` trait but we can't
+        //        // express that in the standard library right now.
+        //        let sender = MySender {
+        //            fut: AssertUnwindSafe(f).catch_unwind(),
+        //            tx: Some(tx),
+        //            keep_running_flag: keep_running_flag.clone(),
+        //        };
+        //        executor::spawn(sender).execute(self.inner.clone());
+        //        CpuFuture { inner: rx , keep_running_flag: keep_running_flag.clone() }
+        rcv
     }
 
     //    futurize_t<std::result_of_t<Func()>> submit(Func&& func) {
@@ -28,12 +94,12 @@ impl SmpMessageQueueProducer {
 }
 
 pub struct SmpMessageQueueConsumer {
-    queue: Consumer<Message>,
+    queue: Consumer<Box<AsyncItem>>,
     remote: ReactorHandle,
 }
 
 impl SmpMessageQueueConsumer {
-    pub fn new(queue: Consumer<Message>, remote: ReactorHandle) -> SmpMessageQueueConsumer {
+    pub fn new(queue: Consumer<Box<AsyncItem>>, remote: ReactorHandle) -> SmpMessageQueueConsumer {
         SmpMessageQueueConsumer {
             queue: queue,
             remote: remote,
@@ -74,6 +140,19 @@ impl SmpQueues {
         self.reactor_id
     }
 
+    pub fn submit_to<F>(&self, reactor_id: usize, f: F) -> Receiver<Result<F::Item, F::Error>>
+        where F: Future + Send + 'static,
+              F::Item: Send + 'static,
+              F::Error: Send + 'static
+    {
+        if reactor_id == self.reactor_id {
+            // TODO: handle this case, although it is slightly annoying
+            unimplemented!();
+        } else {
+            self.producers[reactor_id].submit(f)
+        }
+    }
+
     //    void start(unsigned cpuid);
     //    template<size_t PrefetchCnt, typename Func>
     //    size_t process_queue(lf_queue& q, Func process);
@@ -108,36 +187,3 @@ impl SmpQueues {
 //    -> smp_message_queue::flush_request_batch
 //    -> smp_message_queue::process_completions
 //
-//struct async_work_item : work_item {
-//        Func _func;
-//        using futurator = futurize<std::result_of_t<Func()>>;
-//        using future_type = typename futurator::type;
-//        using value_type = typename future_type::value_type;
-//        std::experimental::optional<value_type> _result;
-//        std::exception_ptr _ex; // if !_result
-//        typename futurator::promise_type _promise; // used on local side
-//        async_work_item(Func&& func) : _func(std::move(func)) {}
-//        virtual future<> process() override {
-//            try {
-//                return futurator::apply(this->_func).then_wrapped([this] (auto&& f) {
-//                    try {
-//                        _result = f.get();
-//                    } catch (...) {
-//                        _ex = std::current_exception();
-//                    }
-//                });
-//            } catch (...) {
-//                _ex = std::current_exception();
-//                return make_ready_future();
-//            }
-//        }
-//        virtual void complete() override {
-//            if (_result) {
-//                _promise.set_value(std::move(*_result));
-//            } else {
-//                // FIXME: _ex was allocated on another cpu
-//                _promise.set_exception(std::move(_ex));
-//            }
-//        }
-//        future_type get_future() { return _promise.get_future(); }
-//    };

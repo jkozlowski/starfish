@@ -1,6 +1,7 @@
 #![recursion_limit = "1024"]
 #![feature(const_fn)]
 #![feature(nonzero)]
+#![feature(rc_raw)]
 #[warn(unused_imports)]
 #[macro_use]
 extern crate derive_builder;
@@ -70,8 +71,10 @@ pub mod eventfd;
 pub mod file;
 pub mod reactor;
 pub mod resource;
+pub mod util;
 
 pub mod align;
+pub mod app;
 pub mod resources;
 pub mod smp;
 pub mod smp_message_queue;
