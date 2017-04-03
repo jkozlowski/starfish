@@ -21,6 +21,7 @@ tokio-file-aio
 Useful
 ------
 
+* https://www.clever-cloud.com/blog/engineering/2017/03/28/lapin-new-rust-amqp-library/
 * https://github.com/slog-rs/misc/tree/2.x.y
 
 Problems with linux signals:

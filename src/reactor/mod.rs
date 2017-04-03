@@ -191,6 +191,11 @@ impl Reactor {
         //        std::function<bool()> pure_check_for_work = [this] () {
         //            return pure_poll_once() || !_pending_tasks.empty() || seastar::thread::try_run_one_yielded_thread();
         //        };
+        REACTOR.set(&self, || {
+            REACTOR.with(|r| {
+                info!(r.log, "seems to work");
+            })
+        });
         //        while (true) {
         //            run_tasks(_pending_tasks);
         //            if (_stopped) {
@@ -253,22 +258,20 @@ impl Reactor {
         //        return _return;
     }
 
-    pub fn allocate_reactor<F, R>(id: usize,
-                                  log: Logger,
-                                  sleeping: Arc<AtomicBool>,
-                                  smp_queues: SmpQueues,
-                                  f: F)
-        where F: FnOnce(&Reactor) -> R
+    pub fn new(id: usize,
+               log: Logger,
+               sleeping: Arc<AtomicBool>,
+               smp_queues: SmpQueues)
+        -> Reactor
     {
-        let reactor = Reactor {
+        Reactor {
             id: id,
             backend: Core::new().unwrap(),
             cpu_started: Semaphore::new(0),
             log: log,
             sleeping: sleeping,
             smp_queues: smp_queues,
-        };
-        REACTOR.set(&reactor, || f(&reactor));
+        }
     }
 }
 

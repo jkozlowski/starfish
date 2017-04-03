@@ -110,16 +110,16 @@ impl Smp {
 
         let smp_queue = queue_receive.recv().expect("Expected SmpQueue");
 
-        Reactor::allocate_reactor(reactor_id, log.clone(), sleeping.clone(), smp_queue, |r| {
-            trace!(log, "Reactor created");
+        let mut reactor = Reactor::new(reactor_id, log.clone(), sleeping.clone(), smp_queue);
 
-            // start_all_queues();
-            // assign_io_queue(i, queue_idx);
-            init.wait();
+        trace!(log, "Reactor created");
 
-            // engine().configure(configuration);
-            // engine().run();
-        })
+        // start_all_queues();
+        // assign_io_queue(i, queue_idx);
+        init.wait();
+
+        // engine().configure(configuration);
+        reactor.run();
     }
 }
 
