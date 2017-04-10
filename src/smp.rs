@@ -188,7 +188,7 @@ impl<'a> ReactorInit for Reactor0<'a> {
                                                  all_consumers,
                                                  self.queue_senders,
                                                  0..)) {
-            s.send(SmpQueues::new(p, c, i)).unwrap();
+            s.send(SmpQueues::new(p, c, i, self.smp_count)).unwrap();
         }
     }
 }

@@ -2,6 +2,7 @@
 #![feature(const_fn)]
 #![feature(nonzero)]
 #![feature(rc_raw)]
+#![feature(conservative_impl_trait)]
 #[warn(unused_imports)]
 #[macro_use]
 extern crate derive_builder;
@@ -60,8 +61,7 @@ pub mod test {
 
     pub fn ensure_env_logger_initialized() {
         let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
-        let root = Logger::root(Arc::new(slog_term::FullFormat::new(plain).build().fuse()),
-                                o!("version" => env!("CARGO_PKG_VERSION")));
+        let root = Logger::root(Arc::new(slog_term::FullFormat::new(plain).build().fuse()), o!());
         slog_scope::set_global_logger(root.to_erased());
     }
 }

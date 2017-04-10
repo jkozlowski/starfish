@@ -18,6 +18,8 @@
 //! exception object.
 
 use futures::Future;
+use futures::Async;
+use futures::Poll;
 use futures::task::Task;
 use futures::unsync::oneshot::{channel, Sender, Receiver};
 use std::cell::RefCell;
@@ -95,7 +97,7 @@ impl Semaphore {
     /// \return a future that becomes ready when sufficient units are available
     ///         to satisfy the request.  If the semaphore was \ref broken(), may
     ///         contain an exception.
-    pub fn wait(&self, nr: usize) -> SemaphoreWait {
+    pub fn wait(&self, nr: usize) -> impl Future<Item=(), Error=()> {
         assert!(nr >= 1, "nr should be >= 1, was {}", nr);
 
         let mut self_mut = self.inner.borrow_mut();
@@ -144,6 +146,24 @@ impl Semaphore {
 impl Default for Semaphore {
     fn default() -> Semaphore {
         Semaphore::new(1)
+    }
+}
+
+
+// TODO: saddly cannot use impl trait for now, since needs to return same type
+impl Future for SemaphoreWait {
+
+    type Item = ();
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<(), ()> {
+        match *self {
+            SemaphoreWait::Ready => Ok(Async::Ready(())),
+            SemaphoreWait::Wait(ref mut receiver) => {
+                receiver.poll()
+                        .map_err(|_| ())
+            }
+        }
     }
 }
 

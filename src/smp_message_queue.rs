@@ -122,22 +122,33 @@ pub struct SmpQueues {
     producers: Vec<SmpMessageQueueProducer>,
     consumers: Vec<SmpMessageQueueConsumer>,
     reactor_id: usize,
+    smp_count: usize
 }
 
 impl SmpQueues {
     pub fn new(producers: Vec<SmpMessageQueueProducer>,
                consumers: Vec<SmpMessageQueueConsumer>,
-               reactor_id: usize)
+               reactor_id: usize,
+               smp_count: usize)
                -> SmpQueues {
+        assert!(producers.len() == smp_count,
+            "producers.len: expected {}, found {}", smp_count, producers.len());
+        assert!(consumers.len() == smp_count,
+            "consumers.len: expected {}, found {}", smp_count, consumers.len());
         SmpQueues {
             producers: producers,
             consumers: consumers,
             reactor_id: reactor_id,
+            smp_count: smp_count
         }
     }
 
     pub fn reactor_id(&self) -> usize {
         self.reactor_id
+    }
+
+    pub fn smp_count(&self) -> usize {
+        self.smp_count
     }
 
     pub fn submit_to<F>(&self, reactor_id: usize, f: F) -> Receiver<Result<F::Item, F::Error>>
