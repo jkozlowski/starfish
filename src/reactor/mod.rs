@@ -1,12 +1,12 @@
+use futures::Future;
 use smp_message_queue::SmpQueues;
 use slog::Logger;
+use state::LocalStorage;
 use std::fmt;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use util::semaphore::Semaphore;
 use tokio_core::reactor::Core;
-
-scoped_thread_local!(static REACTOR: Reactor);
+use util::semaphore::Semaphore;
 
 pub struct Reactor {
     id: usize,
@@ -86,14 +86,20 @@ impl fmt::Debug for Reactor {
 }
 
 impl Reactor {
-    #[inline]
-    pub fn with<F, R>(f: F) -> R
-        where F: FnOnce(&Reactor) -> R
-    {
-        REACTOR.with(f)
-    }
+//    #[inline]
+//    pub fn with<F, R>(f: F) -> R
+//        where F: FnOnce(&Reactor) -> R
+//    {
+//        REACTOR.with(f)
+//    }
 
-    pub fn run(&mut self) {
+    pub fn run(id: usize,
+               log: Logger,
+               sleeping: Arc<AtomicBool>,
+               smp_queues: SmpQueues) {
+        let cpu_started = Semaphore::new(0);
+        let backend = Core::new().unwrap();
+
         //        auto collectd_metrics = register_collectd_metrics();
         //
         //    #ifndef HAVE_OSV
@@ -113,11 +119,22 @@ impl Reactor {
         //           _signals.handle_signal_once(SIGTERM, [this] { stop(); });
         //        }
         //
-        //        _cpu_started.wait(smp::count).then([this] {
-        //            _network_stack->initialize().then([this] {
-        //                _start_promise.set_value();
-        //            });
-        //        });
+
+        let log_1 = log.clone();
+        let cpu_started_fut =
+            cpu_started
+                .wait(smp_queues.smp_count())
+                .and_then(move |_| {
+                    trace!(log_1, "cpu_started");
+                    //  _network_stack->initialize().then([this] {
+                    //      _start_promise.set_value();
+                    //  });
+                    Ok(())
+                });
+
+        let mut backend = Core::new().unwrap();
+        let handle = backend.handle();
+        handle.spawn(cpu_started_fut);
         //        _network_stack_ready_promise.get_future().then([this] (std::unique_ptr<network_stack> stack) {
         //            _network_stack = std::move(stack);
         //            for (unsigned c = 0; c < smp::count; c++) {
@@ -191,12 +208,9 @@ impl Reactor {
         //        std::function<bool()> pure_check_for_work = [this] () {
         //            return pure_poll_once() || !_pending_tasks.empty() || seastar::thread::try_run_one_yielded_thread();
         //        };
-        REACTOR.set(&self, || {
-            REACTOR.with(|r| {
-                info!(r.log, "seems to work");
-            })
-        });
-        //        while (true) {
+
+        while true {
+            backend.turn(None);
         //            run_tasks(_pending_tasks);
         //            if (_stopped) {
         //                load_timer.cancel();
@@ -249,7 +263,9 @@ impl Reactor {
         //                    check_for_work();
         //                }
         //            }
-        //        }
+        }
+        info!(log, "seems to work");
+//        })});
         //        // To prevent ordering issues from rising, destroy the I/O queue explicitly at this point.
         //        // This is needed because the reactor is destroyed from the thread_local destructors. If
         //        // the I/O queue happens to use any other infrastructure that is also kept this way (for

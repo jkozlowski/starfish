@@ -23,6 +23,7 @@ futures = "0.1.10"
 tokio-core = "0.1.4"
 bounded-spsc-queue = "0.1.2"
 thread-scoped = "1.0.1"
+thread_local = "0.3.3"
 state = { version = "0.2", features = ["tls"] }
 scoped-tls = "0.1"
 slab = "0.3.0"

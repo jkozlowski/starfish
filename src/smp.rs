@@ -1,4 +1,5 @@
 use crossbeam;
+use reactor;
 use reactor::Reactor;
 use sys::imp::reactor_handle::ReactorHandle;
 use smp_message_queue::SmpQueues;
@@ -110,16 +111,20 @@ impl Smp {
 
         let smp_queue = queue_receive.recv().expect("Expected SmpQueue");
 
-        let mut reactor = Reactor::new(reactor_id, log.clone(), sleeping.clone(), smp_queue);
+//        reactor::REACTOR.set(move || {
+//            Reactor::new(reactor_id, log.clone(), sleeping.clone(), smp_queue)
+//        });
 
-        trace!(log, "Reactor created");
+//        reactor::REACTOR.get();
+
+//        trace!(log, "Reactor created");
 
         // start_all_queues();
         // assign_io_queue(i, queue_idx);
         init.wait();
 
         // engine().configure(configuration);
-        reactor.run();
+        reactor::Reactor::run(reactor_id, log.clone(), sleeping.clone(), smp_queue);
     }
 }
 
