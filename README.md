@@ -21,6 +21,8 @@ tokio-file-aio
 Useful
 ------
 
+* https://docs.rs/tk-easyloop/0.1.1/tk_easyloop/
+* https://github.com/tailhook?tab=repositories
 * https://www.clever-cloud.com/blog/engineering/2017/03/28/lapin-new-rust-amqp-library/
 * https://github.com/slog-rs/misc/tree/2.x.y
 

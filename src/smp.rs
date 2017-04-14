@@ -35,6 +35,17 @@ impl Smp {
 
         mem::replace(&mut all_event_loops_done, Some(Barrier::new(smp_count)));
 
+//        unsafe {
+//            let mut reactors: Vec<*const Reactor> = Vec::new();
+//            {
+//                reactors.resize(smp_count, 0 as *const Reactor);
+//            }
+//            let r = &mut reactor::REACTOR.0;
+//            *r = Box::into_raw(Box::new(reactors));
+//        }
+
+        info!(log, "Whats up");
+
         crossbeam::scope(|scope| {
             let log = log.clone();
             let mut reactor_receives = Vec::with_capacity(smp_count);

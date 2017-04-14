@@ -174,8 +174,8 @@ pub enum SemaphoreWait {
 
 #[cfg(test)]
 mod test {
-    #[test]
-    pub fn smoke() {}
+//    #[test]
+//    pub fn smoke() {}
 }
 
 /////*

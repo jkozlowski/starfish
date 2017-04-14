@@ -3,6 +3,7 @@
 #![feature(nonzero)]
 #![feature(rc_raw)]
 #![feature(conservative_impl_trait)]
+#![feature(drop_types_in_const)]
 #[warn(unused_imports)]
 #[macro_use]
 extern crate derive_builder;
