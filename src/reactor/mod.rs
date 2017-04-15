@@ -10,9 +10,9 @@ use std::sync::Arc;
 use tokio_core::reactor::Core;
 use util::semaphore::Semaphore;
 
-//pub struct Lazy<T>(pub *const T);
-//
-//pub static mut REACTOR: Lazy<Vec<*const Reactor>> = Lazy(0 as *const Vec<*const Reactor>);
+pub struct Lazy<T>(pub *const T);
+
+pub static mut REACTOR: Lazy<Vec<*const Reactor>> = Lazy(0 as *const Vec<*const Reactor>);
 
 //#[allow(missing_copy_implementations)]
 //#[allow(non_camel_case_types)]
@@ -138,7 +138,7 @@ impl Reactor {
                sleeping: Arc<AtomicBool>,
                smp_queues: SmpQueues) {
 
-//        let reactor = Reactor::new(id, log, sleeping, smp_queues);
+        let reactor = Reactor::new(id, log, sleeping, smp_queues);
 
         //        auto collectd_metrics = register_collectd_metrics();
         //
@@ -304,7 +304,7 @@ impl Reactor {
         //                }
         //            }
 //        }
-//        info!(reactor.log, "seems to work: {}", id);
+        info!(reactor.log, "seems to work: {}", id);
 //        })});
         //        // To prevent ordering issues from rising, destroy the I/O queue explicitly at this point.
         //        // This is needed because the reactor is destroyed from the thread_local destructors. If
@@ -329,15 +329,13 @@ impl Reactor {
             smp_queues: smp_queues,
         };
 
-        unimplemented!();
-
-//        unsafe {
-//            let reactors: &mut Vec<*const Reactor> = mem::transmute(REACTOR.0);
-//            let reactor = Box::into_raw(Box::new(reactor));
-//            let elem = reactors.get_unchecked_mut(id);
-//            *elem = reactor;
-//            mem::transmute(reactor)
-//        }
+        unsafe {
+            let reactors: &mut Vec<*const Reactor> = mem::transmute(REACTOR.0);
+            let reactor = Box::into_raw(Box::new(reactor));
+            let elem = reactors.get_unchecked_mut(id);
+            *elem = reactor;
+            mem::transmute(reactor)
+        }
     }
 }
 
