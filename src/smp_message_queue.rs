@@ -1,8 +1,6 @@
 use bounded_spsc_queue;
 use bounded_spsc_queue::{Producer, Consumer};
 use futures::Future;
-use futures::future::BoxFuture;
-use futures::future::CatchUnwind;
 use futures::unsync::oneshot::channel;
 use futures::unsync::oneshot::Sender;
 use futures::unsync::oneshot::Receiver;
@@ -122,7 +120,7 @@ pub struct SmpQueues {
     producers: Vec<SmpMessageQueueProducer>,
     consumers: Vec<SmpMessageQueueConsumer>,
     reactor_id: usize,
-    smp_count: usize
+    smp_count: usize,
 }
 
 impl SmpQueues {
@@ -132,14 +130,18 @@ impl SmpQueues {
                smp_count: usize)
                -> SmpQueues {
         assert!(producers.len() == smp_count,
-            "producers.len: expected {}, found {}", smp_count, producers.len());
+                "producers.len: expected {}, found {}",
+                smp_count,
+                producers.len());
         assert!(consumers.len() == smp_count,
-            "consumers.len: expected {}, found {}", smp_count, consumers.len());
+                "consumers.len: expected {}, found {}",
+                smp_count,
+                consumers.len());
         SmpQueues {
             producers: producers,
             consumers: consumers,
             reactor_id: reactor_id,
-            smp_count: smp_count
+            smp_count: smp_count,
         }
     }
 

@@ -1,52 +1,17 @@
-use futures::Future;
 use smp_message_queue::SmpQueues;
 use slog::Logger;
-use state::LocalStorage;
+use std::cell::UnsafeCell;
 use std::fmt;
 use std::mem;
-use std::vec::Vec;
+use std::ptr::null;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tokio_core::reactor::Core;
 use util::semaphore::Semaphore;
 
-pub struct Lazy<T>(pub *const T);
-
-pub static mut REACTOR: Lazy<Vec<*const Reactor>> = Lazy(0 as *const Vec<*const Reactor>);
-
-//#[allow(missing_copy_implementations)]
-//#[allow(non_camel_case_types)]
-//#[allow(dead_code)]
-//#[doc = r" This is an example for using doc comment attributes"]
-//struct EXAMPLE {
-//    __private_field: (),
-//}
-//#[doc(hidden)]
-//static EXAMPLE: EXAMPLE = EXAMPLE{__private_field: (),};
-//impl ::__Deref for EXAMPLE {
-//    type
-//    Target
-//    =
-//    u8;
-//    #[allow(unsafe_code)]
-//    fn deref(&self) -> &u8 {
-//        unsafe {
-//            #[inline(always)]
-//            fn __static_ref_initialize() -> u8 { 42 }
-//            #[inline(always)]
-//            unsafe fn __stability() -> &'static u8 {
-//                use std::sync::ONCE_INIT;
-//                static mut LAZY: ::lazy::Lazy<u8> =
-//                    ::lazy::Lazy(0 as *const u8, ONCE_INIT);
-//                LAZY.get(__static_ref_initialize)
-//            }
-//            __stability()
-//        }
-//    }
-//}
-//impl ::LazyStatic for EXAMPLE {
-//    fn initialize(lazy: &Self) { let _ = &**lazy; }
-//}
+thread_local! {
+    static REACTOR: UnsafeCell<*const Reactor> = UnsafeCell::new(null());
+}
 
 pub struct Reactor {
     id: usize,
@@ -125,21 +90,28 @@ impl fmt::Debug for Reactor {
     }
 }
 
+#[inline]
+pub fn local() -> &'static Reactor {
+    REACTOR.with(|l| unsafe { mem::transmute(*l.get()) })
+}
+
+pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_queues: SmpQueues) {
+    let reactor = Reactor {
+        id: id,
+        backend: Core::new().unwrap(),
+        cpu_started: Semaphore::new(0),
+        log: log,
+        sleeping: sleeping,
+        smp_queues: smp_queues,
+    };
+
+    REACTOR.with(|l| unsafe {
+                     *l.get() = Box::into_raw(Box::new(reactor));
+                 })
+}
+
 impl Reactor {
-//    #[inline]
-//    pub fn with<F, R>(f: F) -> R
-//        where F: FnOnce(&Reactor) -> R
-//    {
-//        REACTOR.with(f)
-//    }
-
-    pub fn run(id: usize,
-               log: Logger,
-               sleeping: Arc<AtomicBool>,
-               smp_queues: SmpQueues) {
-
-        let reactor = Reactor::new(id, log, sleeping, smp_queues);
-
+    pub fn run(&'static self) {
         //        auto collectd_metrics = register_collectd_metrics();
         //
         //    #ifndef HAVE_OSV
@@ -160,21 +132,21 @@ impl Reactor {
         //        }
         //
 
-//        let log_1 = log.clone();
-//        let cpu_started_fut =
-//            cpu_started
-//                .wait(smp_queues.smp_count())
-//                .and_then(move |_| {
-//                    trace!(log_1, "cpu_started");
-//                    //  _network_stack->initialize().then([this] {
-//                    //      _start_promise.set_value();
-//                    //  });
-//                    Ok(())
-//                });
-//
-//        let mut backend = Core::new().unwrap();
-//        let handle = backend.handle();
-//        handle.spawn(cpu_started_fut);
+        //        let log_1 = log.clone();
+        //        let cpu_started_fut =
+        //            cpu_started
+        //                .wait(smp_queues.smp_count())
+        //                .and_then(move |_| {
+        //                    trace!(log_1, "cpu_started");
+        //                    //  _network_stack->initialize().then([this] {
+        //                    //      _start_promise.set_value();
+        //                    //  });
+        //                    Ok(())
+        //                });
+        //
+        //        let mut backend = Core::new().unwrap();
+        //        let handle = backend.handle();
+        //        handle.spawn(cpu_started_fut);
         //        _network_stack_ready_promise.get_future().then([this] (std::unique_ptr<network_stack> stack) {
         //            _network_stack = std::move(stack);
         //            for (unsigned c = 0; c < smp::count; c++) {
@@ -249,8 +221,8 @@ impl Reactor {
         //            return pure_poll_once() || !_pending_tasks.empty() || seastar::thread::try_run_one_yielded_thread();
         //        };
 
-//        while true {
-//            backend.turn(None);
+        //        while true {
+        //            backend.turn(None);
         //            run_tasks(_pending_tasks);
         //            if (_stopped) {
         //                load_timer.cancel();
@@ -303,39 +275,16 @@ impl Reactor {
         //                    check_for_work();
         //                }
         //            }
-//        }
-        info!(reactor.log, "seems to work: {}", id);
-//        })});
+        //        }
+        info!(self.log, "seems to work: {}", self.id);
+        info!(self.log, "wohooo");
+        //        })});
         //        // To prevent ordering issues from rising, destroy the I/O queue explicitly at this point.
         //        // This is needed because the reactor is destroyed from the thread_local destructors. If
         //        // the I/O queue happens to use any other infrastructure that is also kept this way (for
         //        // instance, collectd), we will not have any way to guarantee who is destroyed first.
         //        my_io_queue.reset(nullptr);
         //        return _return;
-    }
-
-    pub fn new(id: usize,
-               log: Logger,
-               sleeping: Arc<AtomicBool>,
-               smp_queues: SmpQueues)
-        -> &'static Reactor
-    {
-        let reactor = Reactor {
-            id: id,
-            backend: Core::new().unwrap(),
-            cpu_started: Semaphore::new(0),
-            log: log,
-            sleeping: sleeping,
-            smp_queues: smp_queues,
-        };
-
-        unsafe {
-            let reactors: &mut Vec<*const Reactor> = mem::transmute(REACTOR.0);
-            let reactor = Box::into_raw(Box::new(reactor));
-            let elem = reactors.get_unchecked_mut(id);
-            *elem = reactor;
-            mem::transmute(reactor)
-        }
     }
 }
 

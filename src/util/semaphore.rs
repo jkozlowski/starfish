@@ -20,7 +20,6 @@
 use futures::Future;
 use futures::Async;
 use futures::Poll;
-use futures::task::Task;
 use futures::unsync::oneshot::{channel, Sender, Receiver};
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -97,7 +96,7 @@ impl Semaphore {
     /// \return a future that becomes ready when sufficient units are available
     ///         to satisfy the request.  If the semaphore was \ref broken(), may
     ///         contain an exception.
-    pub fn wait(&self, nr: usize) -> impl Future<Item=(), Error=()> {
+    pub fn wait(&self, nr: usize) -> impl Future<Item = (), Error = ()> {
         assert!(nr >= 1, "nr should be >= 1, was {}", nr);
 
         let mut self_mut = self.inner.borrow_mut();
@@ -152,17 +151,13 @@ impl Default for Semaphore {
 
 // TODO: saddly cannot use impl trait for now, since needs to return same type
 impl Future for SemaphoreWait {
-
     type Item = ();
     type Error = ();
 
     fn poll(&mut self) -> Poll<(), ()> {
         match *self {
             SemaphoreWait::Ready => Ok(Async::Ready(())),
-            SemaphoreWait::Wait(ref mut receiver) => {
-                receiver.poll()
-                        .map_err(|_| ())
-            }
+            SemaphoreWait::Wait(ref mut receiver) => receiver.poll().map_err(|_| ()),
         }
     }
 }
@@ -174,8 +169,8 @@ pub enum SemaphoreWait {
 
 #[cfg(test)]
 mod test {
-//    #[test]
-//    pub fn smoke() {}
+    #[test]
+    pub fn smoke() {}
 }
 
 /////*

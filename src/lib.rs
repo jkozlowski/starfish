@@ -1,7 +1,5 @@
 #![recursion_limit = "1024"]
 #![feature(const_fn)]
-#![feature(nonzero)]
-#![feature(rc_raw)]
 #![feature(conservative_impl_trait)]
 #![feature(drop_types_in_const)]
 #[warn(unused_imports)]
@@ -11,7 +9,6 @@ extern crate derive_builder;
 extern crate error_chain;
 #[macro_use]
 pub extern crate slog;
-#[macro_use]
 extern crate scoped_tls;
 extern crate nix;
 extern crate libc;
@@ -19,8 +16,6 @@ extern crate tokio_core;
 extern crate mio;
 extern crate futures;
 extern crate bounded_spsc_queue;
-extern crate state;
-extern crate thread_scoped;
 extern crate slab;
 extern crate crossbeam;
 extern crate itertools;
@@ -38,7 +33,6 @@ pub mod test {
     use slog_term;
     use slog_scope;
     use std::sync::Arc;
-    use std::sync::{Once, ONCE_INIT};
 
     #[macro_export]
     macro_rules! test {
@@ -60,7 +54,8 @@ pub mod test {
 
     pub fn ensure_env_logger_initialized() -> slog_scope::GlobalLoggerGuard {
         let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
-        let root = Logger::root(Arc::new(slog_term::FullFormat::new(plain).build().fuse()), o!());
+        let root = Logger::root(Arc::new(slog_term::FullFormat::new(plain).build().fuse()),
+                                o!());
         slog_scope::set_global_logger(root.to_erased())
     }
 }

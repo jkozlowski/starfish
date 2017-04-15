@@ -1,6 +1,5 @@
 use crossbeam;
 use reactor;
-use reactor::Reactor;
 use sys::imp::reactor_handle::ReactorHandle;
 use smp_message_queue::SmpQueues;
 use smp_message_queue::make_smp_message_queue;
@@ -35,16 +34,14 @@ impl Smp {
 
         mem::replace(&mut all_event_loops_done, Some(Barrier::new(smp_count)));
 
-        unsafe {
-            let mut reactors: Vec<*const Reactor> = Vec::new();
-            {
-                reactors.resize(smp_count, 0 as *const Reactor);
-            }
-            let r = &mut reactor::REACTOR.0;
-            *r = Box::into_raw(Box::new(reactors));
-        }
-
-        info!(log, "Whats up");
+        //        unsafe {
+        //            let mut reactors: Vec<*const Reactor> = Vec::new();
+        //            {
+        //                reactors.resize(smp_count, 0 as *const Reactor);
+        //            }
+        //            let r = &mut reactor::REACTOR.0;
+        //            *r = Box::into_raw(Box::new(reactors));
+        //        }
 
         crossbeam::scope(|scope| {
             let log = log.clone();
@@ -129,7 +126,8 @@ impl Smp {
         init.wait();
 
         // engine().configure(configuration);
-        reactor::Reactor::run(reactor_id, log.clone(), sleeping.clone(), smp_queue);
+        reactor::create_reactor(reactor_id, log.clone(), sleeping.clone(), smp_queue);
+        reactor::local().run();
     }
 }
 
