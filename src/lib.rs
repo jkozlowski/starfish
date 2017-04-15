@@ -40,8 +40,6 @@ pub mod test {
     use std::sync::Arc;
     use std::sync::{Once, ONCE_INIT};
 
-    static LOGGER_INIT: Once = ONCE_INIT;
-
     #[macro_export]
     macro_rules! test {
         (should_panic, $name:ident, $test:block) => {
@@ -51,7 +49,7 @@ pub mod test {
             #[test]
             $( #[$attr] )*
             fn $name() {
-                test::ensure_env_logger_initialized();
+                let _guard = test::ensure_env_logger_initialized();
                 $test
             }
         };
@@ -60,10 +58,10 @@ pub mod test {
         };
     }
 
-    pub fn ensure_env_logger_initialized() {
+    pub fn ensure_env_logger_initialized() -> slog_scope::GlobalLoggerGuard {
         let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
         let root = Logger::root(Arc::new(slog_term::FullFormat::new(plain).build().fuse()), o!());
-        slog_scope::set_global_logger(root.to_erased());
+        slog_scope::set_global_logger(root.to_erased())
     }
 }
 

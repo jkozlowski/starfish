@@ -122,13 +122,7 @@ impl Smp {
 
         let smp_queue = queue_receive.recv().expect("Expected SmpQueue");
 
-//        reactor::REACTOR.set(move || {
-//            Reactor::new(reactor_id, log.clone(), sleeping.clone(), smp_queue)
-//        });
-
-//        reactor::REACTOR.get();
-
-//        trace!(log, "Reactor created");
+        trace!(log, "Reactor created");
 
         // start_all_queues();
         // assign_io_queue(i, queue_idx);
