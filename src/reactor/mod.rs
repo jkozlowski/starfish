@@ -1,3 +1,4 @@
+use futures::Future;
 use smp_message_queue::SmpQueues;
 use slog::Logger;
 use std::cell::UnsafeCell;
@@ -95,7 +96,8 @@ pub fn local() -> &'static Reactor {
     REACTOR.with(|l| unsafe { mem::transmute(*l.get()) })
 }
 
-pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_queues: SmpQueues) {
+pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_queues: SmpQueues)
+    -> &'static mut Reactor {
     let reactor = Reactor {
         id: id,
         backend: Core::new().unwrap(),
@@ -105,13 +107,15 @@ pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_que
         smp_queues: smp_queues,
     };
 
-    REACTOR.with(|l| unsafe {
-                     *l.get() = Box::into_raw(Box::new(reactor));
-                 })
+    REACTOR.with(|l|
+    unsafe {
+         *l.get() = Box::into_raw(Box::new(reactor));
+         mem::transmute(*l.get())
+    })
 }
 
 impl Reactor {
-    pub fn run(&'static self) {
+    pub fn run(&'static mut self) {
         //        auto collectd_metrics = register_collectd_metrics();
         //
         //    #ifndef HAVE_OSV
@@ -132,21 +136,18 @@ impl Reactor {
         //        }
         //
 
-        //        let log_1 = log.clone();
-        //        let cpu_started_fut =
-        //            cpu_started
-        //                .wait(smp_queues.smp_count())
-        //                .and_then(move |_| {
-        //                    trace!(log_1, "cpu_started");
-        //                    //  _network_stack->initialize().then([this] {
-        //                    //      _start_promise.set_value();
-        //                    //  });
-        //                    Ok(())
-        //                });
-        //
-        //        let mut backend = Core::new().unwrap();
-        //        let handle = backend.handle();
-        //        handle.spawn(cpu_started_fut);
+        let cpu_started_fut =
+            self.cpu_started
+                .wait(self.smp_queues.smp_count())
+                .and_then(move |_| {
+                    trace!(local().log(), "cpu_started");
+                    //  _network_stack->initialize().then([this] {
+                    //      _start_promise.set_value();
+                    //  });
+                    Ok(())
+                });
+        self.backend.handle().spawn(cpu_started_fut);
+
         //        _network_stack_ready_promise.get_future().then([this] (std::unique_ptr<network_stack> stack) {
         //            _network_stack = std::move(stack);
         //            for (unsigned c = 0; c < smp::count; c++) {
@@ -221,8 +222,8 @@ impl Reactor {
         //            return pure_poll_once() || !_pending_tasks.empty() || seastar::thread::try_run_one_yielded_thread();
         //        };
 
-        //        while true {
-        //            backend.turn(None);
+        while true {
+            self.backend.turn(None);
         //            run_tasks(_pending_tasks);
         //            if (_stopped) {
         //                load_timer.cancel();
@@ -275,9 +276,7 @@ impl Reactor {
         //                    check_for_work();
         //                }
         //            }
-        //        }
-        info!(self.log, "seems to work: {}", self.id);
-        info!(self.log, "wohooo");
+        }
         //        })});
         //        // To prevent ordering issues from rising, destroy the I/O queue explicitly at this point.
         //        // This is needed because the reactor is destroyed from the thread_local destructors. If
@@ -285,6 +284,14 @@ impl Reactor {
         //        // instance, collectd), we will not have any way to guarantee who is destroyed first.
         //        my_io_queue.reset(nullptr);
         //        return _return;
+    }
+
+    pub fn id(&'static self) -> usize {
+        self.id
+    }
+
+    pub fn log(&'static self) -> &'static Logger {
+        &self.log
     }
 }
 

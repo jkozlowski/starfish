@@ -126,8 +126,8 @@ impl Smp {
         init.wait();
 
         // engine().configure(configuration);
-        reactor::create_reactor(reactor_id, log.clone(), sleeping.clone(), smp_queue);
-        reactor::local().run();
+        let reactor = reactor::create_reactor(reactor_id, log.clone(), sleeping.clone(), smp_queue);
+        reactor.run();
     }
 }
 
