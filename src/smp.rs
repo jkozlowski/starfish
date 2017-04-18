@@ -1,5 +1,6 @@
 use crossbeam;
 use reactor;
+use reactor::Reactor;
 use sys::imp::reactor_handle::ReactorHandle;
 use smp_message_queue::SmpQueues;
 use smp_message_queue::make_smp_message_queue;
@@ -68,14 +69,16 @@ impl Smp {
 
                 scope.spawn(move || {
                     let mut other_reactor = OtherReactor {};
-                    Smp::configure_single_reactor(log,
-                                                  reactor_id,
-                                                  &mut other_reactor,
-                                                  reactor_registered,
-                                                  smp_queue_constructed,
-                                                  init,
-                                                  reactor_publish,
-                                                  queue_receive)
+                    let reactor = Smp::configure_single_reactor(
+                        log,
+                        reactor_id,
+                        &mut other_reactor,
+                        reactor_registered,
+                        smp_queue_constructed,
+                        init,
+                        reactor_publish,
+                        queue_receive);
+                    reactor.run();
                 });
             }
 
@@ -84,7 +87,7 @@ impl Smp {
                 reactor_receives: &reactor_receives,
                 queue_senders: &queues_publishes,
             };
-            Smp::configure_single_reactor(log,
+            let reactor = Smp::configure_single_reactor(log,
                                           0,
                                           &mut reactor_zero,
                                           &reactors_registered,
@@ -92,6 +95,7 @@ impl Smp {
                                           &inited,
                                           smp_0_reactor_publish,
                                           smp_0_queue_receive);
+            reactor.run();
         });
     }
 
@@ -102,7 +106,7 @@ impl Smp {
                                 smp_queue_constructed: &Barrier,
                                 init: &Barrier,
                                 reactor_publish: Sender<ReactorHandle>,
-                                queue_receive: Receiver<SmpQueues>) {
+                                queue_receive: Receiver<SmpQueues>) -> &'static mut Reactor {
         let log = root.new(o!("reactor_id" => reactor_id));
         trace!(log, "started");
 
@@ -126,8 +130,7 @@ impl Smp {
         init.wait();
 
         // engine().configure(configuration);
-        let reactor = reactor::create_reactor(reactor_id, log.clone(), sleeping.clone(), smp_queue);
-        reactor.run();
+        reactor::create_reactor(reactor_id, log.clone(), sleeping.clone(), smp_queue)
     }
 }
 

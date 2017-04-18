@@ -1,3 +1,4 @@
+use futures;
 use futures::Future;
 use smp_message_queue::SmpQueues;
 use slog::Logger;
@@ -8,6 +9,7 @@ use std::ptr::null;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tokio_core::reactor::Core;
+use tokio_core::reactor::Handle;
 use util::semaphore::Semaphore;
 
 thread_local! {
@@ -18,6 +20,7 @@ pub struct Reactor {
     id: usize,
     //    reactor_backend_epoll _backend;
     backend: Core,
+    handle: Handle,
     //    sigset_t _active_sigmask; // holds sigmask while sleeping with sig disabled
     //    std::vector<pollfn*> _pollers;
     //    std::unique_ptr<io_queue> my_io_queue = {};
@@ -33,8 +36,7 @@ pub struct Reactor {
     //    int _return = 0;
     //    timer_t _steady_clock_timer = {};
     //    timer_t _task_quota_timer = {};
-    //    promise<> _start_promise;
-    //    semaphore _cpu_started;
+    started: Semaphore,
     cpu_started: Semaphore,
 
     //    uint64_t _tasks_processed = 0;
@@ -98,9 +100,13 @@ pub fn local() -> &'static Reactor {
 
 pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_queues: SmpQueues)
     -> &'static mut Reactor {
+    let core = Core::new().unwrap();
+    let handle = core.handle();
     let reactor = Reactor {
         id: id,
-        backend: Core::new().unwrap(),
+        backend: core,
+        handle: handle,
+        started: Semaphore::new(0),
         cpu_started: Semaphore::new(0),
         log: log,
         sleeping: sleeping,
@@ -115,6 +121,7 @@ pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_que
 }
 
 impl Reactor {
+
     pub fn run(&'static mut self) {
         //        auto collectd_metrics = register_collectd_metrics();
         //
@@ -140,22 +147,23 @@ impl Reactor {
             self.cpu_started
                 .wait(self.smp_queues.smp_count())
                 .and_then(move |_| {
-                    trace!(local().log(), "cpu_started");
                     //  _network_stack->initialize().then([this] {
+                            local().started.signal(1);
                     //      _start_promise.set_value();
                     //  });
                     Ok(())
                 });
-        self.backend.handle().spawn(cpu_started_fut);
+        self.spawn(cpu_started_fut);
 
         //        _network_stack_ready_promise.get_future().then([this] (std::unique_ptr<network_stack> stack) {
         //            _network_stack = std::move(stack);
-        //            for (unsigned c = 0; c < smp::count; c++) {
-        //                smp::submit_to(c, [] {
-        //                        engine()._cpu_started.signal();
-        //                });
-        //            }
-        //        });
+
+        for reactor_id in 0..self.smp_queues.smp_count() {
+            self.smp_queues.submit_to(reactor_id, futures::lazy(|| {
+                local().cpu_started.signal(1);
+                Ok(()) as Result<(), ()> // Required for inference
+            }));
+        }
         //
         //        // Register smp queues poller
         //        std::experimental::optional<poller> smp_poller;
@@ -292,6 +300,16 @@ impl Reactor {
 
     pub fn log(&'static self) -> &'static Logger {
         &self.log
+    }
+
+    pub fn when_started(&'static self) -> impl Future<Item = (), Error = ()> {
+        self.started.wait(1)
+    }
+
+    pub fn spawn<F>(&self, f: F)
+        where F: Future<Item=(), Error=()> + 'static
+    {
+        self.handle.spawn(f)
     }
 }
 

@@ -4,6 +4,8 @@ use futures::Future;
 use futures::unsync::oneshot::channel;
 use futures::unsync::oneshot::Sender;
 use futures::unsync::oneshot::Receiver;
+use reactor;
+use reactor::Reactor;
 use std::panic::AssertUnwindSafe;
 use sys::imp::reactor_handle::ReactorHandle;
 
@@ -159,11 +161,20 @@ impl SmpQueues {
               F::Error: Send + 'static
     {
         if reactor_id == self.reactor_id {
-            // TODO: handle this case, although it is slightly annoying
-            unimplemented!();
+            let (sender, rcv) = channel();
+            reactor::local().spawn(f.then(|r| {
+                // TODO: handle failure
+                sender.send(r);
+                Ok(())
+            }));
+            rcv
         } else {
             self.producers[reactor_id].submit(f)
         }
+    }
+
+    pub fn process_incoming(&self, reactor: &Reactor) {
+
     }
 
     //    void start(unsigned cpuid);
