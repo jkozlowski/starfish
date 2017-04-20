@@ -18,11 +18,10 @@ thread_local! {
 
 pub struct Reactor {
     id: usize,
-    //    reactor_backend_epoll _backend;
     backend: Core,
     handle: Handle,
     //    sigset_t _active_sigmask; // holds sigmask while sleeping with sig disabled
-    //    std::vector<pollfn*> _pollers;
+    pollers: Vec<Box<PollFn>>,
     //    std::unique_ptr<io_queue> my_io_queue = {};
     //    shard_id _io_coordinator;
     //    io_queue* _io_queue;
@@ -106,6 +105,7 @@ pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_que
         id: id,
         backend: core,
         handle: handle,
+        pollers: Vec::new(),
         started: Semaphore::new(0),
         cpu_started: Semaphore::new(0),
         log: log,
@@ -232,7 +232,6 @@ impl Reactor {
 
         while true {
             self.backend.turn(None);
-        //            run_tasks(_pending_tasks);
         //            if (_stopped) {
         //                load_timer.cancel();
         //                // Final tasks may include sending the last response to cpu 0, so run them
@@ -249,13 +248,13 @@ impl Reactor {
         //                break;
         //            }
         //
-        //            if (check_for_work()) {
+            if self.check_for_work() {
         //                if (idle) {
         //                    idle_count += (idle_end - idle_start).count();
         //                    idle_start = idle_end;
         //                    idle = false;
         //                }
-        //            } else {
+            } else {
         //                idle_end = steady_clock_type::now();
         //                if (!idle) {
         //                    idle_start = idle_end;
@@ -283,7 +282,7 @@ impl Reactor {
         //                    // any work.
         //                    check_for_work();
         //                }
-        //            }
+            }
         }
         //        })});
         //        // To prevent ordering issues from rising, destroy the I/O queue explicitly at this point.
@@ -294,15 +293,15 @@ impl Reactor {
         //        return _return;
     }
 
-    pub fn id(&'static self) -> usize {
+    pub fn id(&self) -> usize {
         self.id
     }
 
-    pub fn log(&'static self) -> &'static Logger {
+    pub fn log(&self) -> &Logger {
         &self.log
     }
 
-    pub fn when_started(&'static self) -> impl Future<Item = (), Error = ()> {
+    pub fn when_started(&self) -> impl Future<Item = (), Error = ()> {
         self.started.wait(1)
     }
 
@@ -311,15 +310,27 @@ impl Reactor {
     {
         self.handle.spawn(f)
     }
+
+    fn check_for_work(&self) -> bool {
+        self.poll_once()
+    }
+
+    fn poll_once(&self) -> bool {
+        let mut work = false;
+        for poller in &self.pollers {
+            work |= poller.poll();
+        }
+        work
+    }
 }
 
 pub trait PollFn {
     /// Returns true if work was done (false = idle).
-    fn poll() -> bool;
+    fn poll(&self) -> bool;
 
     /// Checks if work needs to be done, but without actually doing any
     /// returns true if works needs to be done (false = idle)
-    fn pure_poll() -> bool;
+    fn pure_poll(&self) -> bool;
 
     /// Tries to enter interrupt mode.
     ///
@@ -328,9 +339,9 @@ pub trait PollFn {
     /// to return to normal polling.
     ///
     /// If it returns false, the sleeping idle loop may not be entered.
-    fn try_enter_interrupt_mode() -> bool {
+    fn try_enter_interrupt_mode(&self) -> bool {
         false
     }
 
-    fn exit_interrupt_mode() {}
+    fn exit_interrupt_mode(&self) {}
 }

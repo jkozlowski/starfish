@@ -173,8 +173,23 @@ impl SmpQueues {
         }
     }
 
-    pub fn process_incoming(&self, reactor: &Reactor) {
+    pub fn poll_queues(&self, reactor: &Reactor) -> bool {
+        let mut got: usize = 0;
+        for i in 0..self.smp_count {
+            if reactor.id() != i {
+                //                auto& rxq = _qs[engine().cpu_id()][i];
+                //                rxq.flush_response_batch();
+                //                got += rxq.has_unflushed_responses();
+                //                got += rxq.process_incoming();
+                //                auto& txq = _qs[i][engine()._id];
+                //                txq.flush_request_batch();
+                //                got += txq.process_completions();
+            }
+        }
+        got != 0
+    }
 
+    fn process_incoming(&self, reactor: &Reactor) {
     }
 
     //    void start(unsigned cpuid);
