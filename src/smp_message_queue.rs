@@ -5,6 +5,7 @@ use futures::unsync::oneshot::channel;
 use futures::unsync::oneshot::Sender;
 use futures::unsync::oneshot::Receiver;
 use reactor;
+use reactor::PollFn;
 use reactor::Reactor;
 use std::panic::AssertUnwindSafe;
 use sys::imp::reactor_handle::ReactorHandle;
@@ -189,6 +190,10 @@ impl SmpQueues {
         got != 0
     }
 
+    pub fn pure_poll_queues(&self, reactor: &Reactor) -> bool {
+        false
+    }
+
     fn process_incoming(&self, reactor: &Reactor) {
     }
 
@@ -207,6 +212,31 @@ impl SmpQueues {
     //    bool has_unflushed_responses() const;
     //    bool pure_poll_rx() const;
     //    bool pure_poll_tx() const;
+}
+
+pub struct SmpPollFn<'a> {
+    smp_queues: &'a SmpQueues,
+    reactor: &'a Reactor
+}
+
+impl<'a> PollFn for SmpPollFn<'a> {
+    fn poll(&self) -> bool {
+        self.smp_queues.poll_queues(self.reactor)
+    }
+
+    fn pure_poll(&self) -> bool {
+        self.smp_queues.pure_poll_queues(self.reactor)
+    }
+}
+
+impl<'a> SmpPollFn<'a> {
+    pub fn new<'b>(smp_queues: &'b SmpQueues,
+                   reactor: &'b Reactor) -> SmpPollFn<'b> {
+        SmpPollFn {
+            smp_queues: smp_queues,
+            reactor: reactor
+        }
+    }
 }
 
 //reactor::smp_pollfn::poll

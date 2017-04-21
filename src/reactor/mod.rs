@@ -1,13 +1,16 @@
 use futures;
 use futures::Future;
 use smp_message_queue::SmpQueues;
+use smp_message_queue::SmpPollFn;
 use slog::Logger;
 use std::cell::UnsafeCell;
+use std::cell::RefCell;
 use std::fmt;
 use std::mem;
 use std::ptr::null;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio_core::reactor::Core;
 use tokio_core::reactor::Handle;
 use util::semaphore::Semaphore;
@@ -18,10 +21,10 @@ thread_local! {
 
 pub struct Reactor {
     id: usize,
-    backend: Core,
+    backend: RefCell<Core>,
     handle: Handle,
     //    sigset_t _active_sigmask; // holds sigmask while sleeping with sig disabled
-    pollers: Vec<Box<PollFn>>,
+    pollers: RefCell<Vec<Box<PollFn>>>,
     //    std::unique_ptr<io_queue> my_io_queue = {};
     //    shard_id _io_coordinator;
     //    io_queue* _io_queue;
@@ -103,9 +106,9 @@ pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_que
     let handle = core.handle();
     let reactor = Reactor {
         id: id,
-        backend: core,
+        backend: RefCell::new(core),
         handle: handle,
-        pollers: Vec::new(),
+        pollers: RefCell::new(Vec::new()),
         started: Semaphore::new(0),
         cpu_started: Semaphore::new(0),
         log: log,
@@ -122,7 +125,7 @@ pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_que
 
 impl Reactor {
 
-    pub fn run(&'static mut self) {
+    pub fn run(&'static self) {
         //        auto collectd_metrics = register_collectd_metrics();
         //
         //    #ifndef HAVE_OSV
@@ -167,9 +170,9 @@ impl Reactor {
         //
         //        // Register smp queues poller
         //        std::experimental::optional<poller> smp_poller;
-        //        if (smp::count > 1) {
-        //            smp_poller = poller(std::make_unique<smp_pollfn>(*this));
-        //        }
+        if self.smp_queues.smp_count() > 1 {
+            self.pollers.borrow_mut().push(Box::new(SmpPollFn::new(self.smp_queues(), self)));
+        }
         //
         //        poller syscall_poller(std::make_unique<syscall_pollfn>(*this));
         //    #ifndef HAVE_OSV
@@ -231,7 +234,7 @@ impl Reactor {
         //        };
 
         while true {
-            self.backend.turn(None);
+            self.backend.borrow_mut().turn(Some(Duration::from_millis(1)));
         //            if (_stopped) {
         //                load_timer.cancel();
         //                // Final tasks may include sending the last response to cpu 0, so run them
@@ -301,6 +304,10 @@ impl Reactor {
         &self.log
     }
 
+    pub fn smp_queues(&self) -> &SmpQueues {
+        &self.smp_queues
+    }
+
     pub fn when_started(&self) -> impl Future<Item = (), Error = ()> {
         self.started.wait(1)
     }
@@ -317,7 +324,7 @@ impl Reactor {
 
     fn poll_once(&self) -> bool {
         let mut work = false;
-        for poller in &self.pollers {
+        for poller in &*self.pollers.borrow() {
             work |= poller.poll();
         }
         work
