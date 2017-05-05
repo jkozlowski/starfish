@@ -7,6 +7,7 @@ use smp_message_queue::Channel;
 use smp_message_queue::make_channel_pair;
 use slog::Logger;
 use std::mem;
+use std::option::Option;
 use std::ptr;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
@@ -157,7 +158,7 @@ impl<'a> ReactorInit for Reactor0<'a> {
         assert!(reactors.len() == self.smp_count);
 
         // REALLY SHADY STUFF HERE
-        let mut all_channels = Vec::with_capacity(self.smp_count);
+        let mut all_channels: Vec<Vec<Option<Channel>>> = Vec::with_capacity(self.smp_count);
         {
             for _ in 0..self.smp_count {
                 let mut channels = Vec::with_capacity(self.smp_count);
@@ -169,12 +170,11 @@ impl<'a> ReactorInit for Reactor0<'a> {
             for i in 0..self.smp_count {
                 for j in 0..self.smp_count {
 
-//                    let not_happened = unsafe {
-//                        let b: *const Channel = all_channels[i].get_unchecked_mut(j);
-//                        b.is_null()
-//                    };
+                    let not_happened = unsafe {
+                        all_channels[i].get_unchecked(j).is_none()
+                    };
 
-//                    if not_happened {
+                    if not_happened {
                         let (c_i, c_j) = {
                             let from = reactors[i].clone();
                             let to = reactors[j].clone();
@@ -183,14 +183,14 @@ impl<'a> ReactorInit for Reactor0<'a> {
 
                         unsafe {
                             let b = all_channels[i].get_unchecked_mut(j);
-                            ptr::write(b, c_i);
+                            mem::replace(b, Some(c_i));
                         }
 
                         unsafe {
                             let b = all_channels[j].get_unchecked_mut(i);
-                            ptr::write(b, c_j);
+                            mem::replace(b, Some(c_j));
                         }
-//                    }
+                    }
                 }
             }
         }
@@ -200,7 +200,8 @@ impl<'a> ReactorInit for Reactor0<'a> {
         for (cs, s, i) in itertools::multizip((all_channels,
                                                self.queue_senders,
                                                0..)) {
-            s.send(SmpQueues::new(i, self.smp_count, cs)).unwrap();
+            let channels = cs.into_iter().map(|x| x.unwrap()).collect();
+            s.send(SmpQueues::new(i, self.smp_count, channels)).unwrap();
         }
     }
 }
