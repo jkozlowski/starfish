@@ -100,8 +100,11 @@ pub fn local() -> &'static Reactor {
     REACTOR.with(|l| unsafe { mem::transmute(*l.get()) })
 }
 
-pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_queues: SmpQueues)
-    -> &'static mut Reactor {
+pub fn create_reactor(id: usize,
+                      log: Logger,
+                      sleeping: Arc<AtomicBool>,
+                      smp_queues: SmpQueues)
+                      -> &'static mut Reactor {
     let core = Core::new().unwrap();
     let handle = core.handle();
     let reactor = Reactor {
@@ -116,15 +119,13 @@ pub fn create_reactor(id: usize, log: Logger, sleeping: Arc<AtomicBool>, smp_que
         smp_queues: smp_queues,
     };
 
-    REACTOR.with(|l|
-    unsafe {
-         *l.get() = Box::into_raw(Box::new(reactor));
-         mem::transmute(*l.get())
-    })
+    REACTOR.with(|l| unsafe {
+                     *l.get() = Box::into_raw(Box::new(reactor));
+                     mem::transmute(*l.get())
+                 })
 }
 
 impl Reactor {
-
     pub fn run(&'static self) {
         //        auto collectd_metrics = register_collectd_metrics();
         //
@@ -147,15 +148,13 @@ impl Reactor {
         //
 
         let cpu_started_fut =
-            self.cpu_started
-                .wait(self.smp_queues.smp_count())
-                .and_then(move |_| {
-                    //  _network_stack->initialize().then([this] {
-                            local().started.signal(1);
-                    //      _start_promise.set_value();
-                    //  });
-                    Ok(())
-                });
+            self.cpu_started.wait(self.smp_queues.smp_count()).and_then(move |_| {
+                //  _network_stack->initialize().then([this] {
+                local().started.signal(1);
+                //      _start_promise.set_value();
+                //  });
+                Ok(())
+            });
         self.spawn(cpu_started_fut);
 
         //        _network_stack_ready_promise.get_future().then([this] (std::unique_ptr<network_stack> stack) {
@@ -167,13 +166,12 @@ impl Reactor {
                 Ok(()) as Result<(), ()> // Required for inference
             }));
         }
-        //
-        //        // Register smp queues poller
-        //        std::experimental::optional<poller> smp_poller;
+
+        // Register smp queues poller
         if self.smp_queues.smp_count() > 1 {
             self.pollers.borrow_mut().push(Box::new(SmpPollFn::new(self.smp_queues(), self)));
         }
-        //
+
         //        poller syscall_poller(std::make_unique<syscall_pollfn>(*this));
         //    #ifndef HAVE_OSV
         //        _signals.handle_signal(alarm_signal(), [this] {
@@ -235,56 +233,56 @@ impl Reactor {
 
         while true {
             self.backend.borrow_mut().turn(Some(Duration::from_millis(1)));
-        //            if (_stopped) {
-        //                load_timer.cancel();
-        //                // Final tasks may include sending the last response to cpu 0, so run them
-        //                while (!_pending_tasks.empty()) {
-        //                    run_tasks(_pending_tasks);
-        //                }
-        //                while (!_at_destroy_tasks.empty()) {
-        //                    run_tasks(_at_destroy_tasks);
-        //                }
-        //                smp::arrive_at_event_loop_end();
-        //                if (_id == 0) {
-        //                    smp::join_all();
-        //                }
-        //                break;
-        //            }
-        //
+            //            if (_stopped) {
+            //                load_timer.cancel();
+            //                // Final tasks may include sending the last response to cpu 0, so run them
+            //                while (!_pending_tasks.empty()) {
+            //                    run_tasks(_pending_tasks);
+            //                }
+            //                while (!_at_destroy_tasks.empty()) {
+            //                    run_tasks(_at_destroy_tasks);
+            //                }
+            //                smp::arrive_at_event_loop_end();
+            //                if (_id == 0) {
+            //                    smp::join_all();
+            //                }
+            //                break;
+            //            }
+            //
             if self.check_for_work() {
-        //                if (idle) {
-        //                    idle_count += (idle_end - idle_start).count();
-        //                    idle_start = idle_end;
-        //                    idle = false;
-        //                }
+                //                if (idle) {
+                //                    idle_count += (idle_end - idle_start).count();
+                //                    idle_start = idle_end;
+                //                    idle = false;
+                //                }
             } else {
-        //                idle_end = steady_clock_type::now();
-        //                if (!idle) {
-        //                    idle_start = idle_end;
-        //                    idle = true;
-        //                }
-        //                bool go_to_sleep = true;
-        //                try {
-        //                    // we can't run check_for_work(), because that can run tasks in the context
-        //                    // of the idle handler which change its state, without the idle handler expecting
-        //                    // it.  So run pure_check_for_work() instead.
-        //                    auto handler_result = _idle_cpu_handler(pure_check_for_work);
-        //                    go_to_sleep = handler_result == idle_cpu_handler_result::no_more_work;
-        //                } catch (...) {
-        //                    report_exception("Exception while running idle cpu handler", std::current_exception());
-        //                }
-        //                if (go_to_sleep) {
-        //                    _mm_pause();
-        //                    if (idle_end - idle_start > _max_poll_time) {
-        //                        sleep();
-        //                        // We may have slept for a while, so freshen idle_end
-        //                        idle_end = steady_clock_type::now();
-        //                    }
-        //                } else {
-        //                    // We previously ran pure_check_for_work(), might not actually have performed
-        //                    // any work.
-        //                    check_for_work();
-        //                }
+                //                idle_end = steady_clock_type::now();
+                //                if (!idle) {
+                //                    idle_start = idle_end;
+                //                    idle = true;
+                //                }
+                //                bool go_to_sleep = true;
+                //                try {
+                //                    // we can't run check_for_work(), because that can run tasks in the context
+                //                    // of the idle handler which change its state, without the idle handler expecting
+                //                    // it.  So run pure_check_for_work() instead.
+                //                    auto handler_result = _idle_cpu_handler(pure_check_for_work);
+                //                    go_to_sleep = handler_result == idle_cpu_handler_result::no_more_work;
+                //                } catch (...) {
+                //                    report_exception("Exception while running idle cpu handler", std::current_exception());
+                //                }
+                //                if (go_to_sleep) {
+                //                    _mm_pause();
+                //                    if (idle_end - idle_start > _max_poll_time) {
+                //                        sleep();
+                //                        // We may have slept for a while, so freshen idle_end
+                //                        idle_end = steady_clock_type::now();
+                //                    }
+                //                } else {
+                //                    // We previously ran pure_check_for_work(), might not actually have performed
+                //                    // any work.
+                //                    check_for_work();
+                //                }
             }
         }
         //        })});
@@ -313,7 +311,7 @@ impl Reactor {
     }
 
     pub fn spawn<F>(&self, f: F)
-        where F: Future<Item=(), Error=()> + 'static
+        where F: Future<Item = (), Error = ()> + 'static
     {
         self.handle.spawn(f)
     }

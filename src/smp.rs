@@ -3,7 +3,8 @@ use reactor;
 use reactor::Reactor;
 use sys::imp::reactor_handle::ReactorHandle;
 use smp_message_queue::SmpQueues;
-use smp_message_queue::make_smp_message_queue;
+use smp_message_queue::Channel;
+use smp_message_queue::make_channel_pair;
 use slog::Logger;
 use std::mem;
 use std::ptr;
@@ -69,15 +70,14 @@ impl Smp {
 
                 scope.spawn(move || {
                     let mut other_reactor = OtherReactor {};
-                    let reactor = Smp::configure_single_reactor(
-                        log,
-                        reactor_id,
-                        &mut other_reactor,
-                        reactor_registered,
-                        smp_queue_constructed,
-                        init,
-                        reactor_publish,
-                        queue_receive);
+                    let reactor = Smp::configure_single_reactor(log,
+                                                                reactor_id,
+                                                                &mut other_reactor,
+                                                                reactor_registered,
+                                                                smp_queue_constructed,
+                                                                init,
+                                                                reactor_publish,
+                                                                queue_receive);
                     reactor.run();
                 });
             }
@@ -88,13 +88,13 @@ impl Smp {
                 queue_senders: &queues_publishes,
             };
             let reactor = Smp::configure_single_reactor(log,
-                                          0,
-                                          &mut reactor_zero,
-                                          &reactors_registered,
-                                          &smp_queues_constructed,
-                                          &inited,
-                                          smp_0_reactor_publish,
-                                          smp_0_queue_receive);
+                                                        0,
+                                                        &mut reactor_zero,
+                                                        &reactors_registered,
+                                                        &smp_queues_constructed,
+                                                        &inited,
+                                                        smp_0_reactor_publish,
+                                                        smp_0_queue_receive);
             reactor.run();
         });
     }
@@ -106,7 +106,8 @@ impl Smp {
                                 smp_queue_constructed: &Barrier,
                                 init: &Barrier,
                                 reactor_publish: Sender<ReactorHandle>,
-                                queue_receive: Receiver<SmpQueues>) -> &'static mut Reactor {
+                                queue_receive: Receiver<SmpQueues>)
+                                -> &'static mut Reactor {
         let log = root.new(o!("reactor_id" => reactor_id));
         trace!(log, "started");
 
@@ -156,50 +157,50 @@ impl<'a> ReactorInit for Reactor0<'a> {
         assert!(reactors.len() == self.smp_count);
 
         // REALLY SHADY STUFF HERE
-        let mut all_producers = Vec::with_capacity(self.smp_count);
-        let mut all_consumers = Vec::with_capacity(self.smp_count);
+        let mut all_channels = Vec::with_capacity(self.smp_count);
         {
             for _ in 0..self.smp_count {
-                let mut pair_producers = Vec::with_capacity(self.smp_count);
-                unsafe { pair_producers.set_len(self.smp_count) }
-                let mut pair_consumers = Vec::with_capacity(self.smp_count);
-                unsafe { pair_consumers.set_len(self.smp_count) }
-
-                assert!(pair_producers.len() == self.smp_count);
-                assert!(pair_consumers.len() == self.smp_count);
-
-                all_producers.push(pair_producers);
-                all_consumers.push(pair_consumers);
+                let mut channels = Vec::with_capacity(self.smp_count);
+                unsafe { channels.set_len(self.smp_count) }
+                all_channels.push(channels);
             }
 
             // Really shady stuff here...
             for i in 0..self.smp_count {
                 for j in 0..self.smp_count {
-                    let (p, c) = {
-                        let from = reactors[i].clone();
-                        let to = reactors[j].clone();
-                        make_smp_message_queue(from, to)
-                    };
-                    unsafe {
-                        let b = all_producers[i].get_unchecked_mut(j);
-                        ptr::write(b, p);
-                    }
-                    unsafe {
-                        let b = all_consumers[j].get_unchecked_mut(i);
-                        ptr::write(b, c);
-                    }
+
+//                    let not_happened = unsafe {
+//                        let b: *const Channel = all_channels[i].get_unchecked_mut(j);
+//                        b.is_null()
+//                    };
+
+//                    if not_happened {
+                        let (c_i, c_j) = {
+                            let from = reactors[i].clone();
+                            let to = reactors[j].clone();
+                            make_channel_pair(from, to)
+                        };
+
+                        unsafe {
+                            let b = all_channels[i].get_unchecked_mut(j);
+                            ptr::write(b, c_i);
+                        }
+
+                        unsafe {
+                            let b = all_channels[j].get_unchecked_mut(i);
+                            ptr::write(b, c_j);
+                        }
+//                    }
                 }
             }
         }
 
-        assert!(all_producers.len() == self.smp_count);
-        assert!(all_consumers.len() == self.smp_count);
+        assert!(all_channels.len() == self.smp_count);
 
-        for (p, c, s, i) in itertools::multizip((all_producers,
-                                                 all_consumers,
-                                                 self.queue_senders,
-                                                 0..)) {
-            s.send(SmpQueues::new(p, c, i, self.smp_count)).unwrap();
+        for (cs, s, i) in itertools::multizip((all_channels,
+                                               self.queue_senders,
+                                               0..)) {
+            s.send(SmpQueues::new(i, self.smp_count, cs)).unwrap();
         }
     }
 }

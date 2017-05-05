@@ -44,16 +44,25 @@ unsafe impl<F, R> Send for AsyncMessage<F, R> {}
 
 impl<R, E, F: Future<Item = R, Error = E> + Send> AsyncItem for AsyncMessage<F, R> {}
 
-pub struct SmpMessageQueueProducer {
-    queue: Producer<Box<AsyncItem>>,
+type BoxMessage = Box<AsyncItem>;
+
+// Producer for posting work items and consumer for getting completions back.
+pub struct RequestQueue {
     remote: ReactorHandle,
+    // To notify when posting items
+    producer: Producer<BoxMessage>,
+    consumer: Consumer<BoxMessage>,
 }
 
-impl SmpMessageQueueProducer {
-    pub fn new(queue: Producer<Box<AsyncItem>>, remote: ReactorHandle) -> SmpMessageQueueProducer {
-        SmpMessageQueueProducer {
-            queue: queue,
+impl RequestQueue {
+    pub fn new(remote: ReactorHandle,
+               producer: Producer<BoxMessage>,
+               consumer: Consumer<BoxMessage>)
+               -> RequestQueue {
+        RequestQueue {
             remote: remote,
+            producer: producer,
+            consumer: consumer,
         }
     }
 
@@ -69,82 +78,92 @@ impl SmpMessageQueueProducer {
             sender: sender,
         };
 
+        // TODO: there should be an intermediate queue
+        // TODO: need to notify consumer
+
         // TODO: This can block, so really we should implement this in the future,
         // TODO: so we can wait.
-        self.queue.push(Box::new(async_message));
-        //        let keep_running_flag = Arc::new(AtomicBool::new(false));
-        //        // AssertUnwindSafe is used here becuase `Send + 'static` is basically
-        //        // an alias for an implementation of the `UnwindSafe` trait but we can't
-        //        // express that in the standard library right now.
-        //        let sender = MySender {
-        //            fut: AssertUnwindSafe(f).catch_unwind(),
-        //            tx: Some(tx),
-        //            keep_running_flag: keep_running_flag.clone(),
-        //        };
-        //        executor::spawn(sender).execute(self.inner.clone());
-        //        CpuFuture { inner: rx , keep_running_flag: keep_running_flag.clone() }
+
+        self.producer.push(Box::new(async_message));
         rcv
     }
-
-    //    futurize_t<std::result_of_t<Func()>> submit(Func&& func) {
-    //        auto wi = new async_work_item<Func>(std::forward<Func>(func));
-    //        auto fut = wi->get_future();
-    //        submit_item(wi);
-    //        return fut;
-    //    }
 }
 
-pub struct SmpMessageQueueConsumer {
-    queue: Consumer<Box<AsyncItem>>,
+// Consumer for getting work items and producer for posting completions back.
+pub struct WorkQueue {
     remote: ReactorHandle,
+    // To notify when posting items
+    consumer: Consumer<BoxMessage>,
+    producer: Producer<BoxMessage>,
 }
 
-impl SmpMessageQueueConsumer {
-    pub fn new(queue: Consumer<Box<AsyncItem>>, remote: ReactorHandle) -> SmpMessageQueueConsumer {
-        SmpMessageQueueConsumer {
-            queue: queue,
+impl WorkQueue {
+    pub fn new(remote: ReactorHandle,
+               consumer: Consumer<BoxMessage>,
+               producer: Producer<BoxMessage>)
+               -> WorkQueue {
+        WorkQueue {
             remote: remote,
+            consumer: consumer,
+            producer: producer,
+        }
+    }
+}
+
+pub struct Channel {
+    // outgoing requests
+    request_queue: RequestQueue,
+    // incoming requests
+    work_queue: WorkQueue,
+}
+
+impl Channel {
+    fn new(request_queue: RequestQueue,
+           work_queue: WorkQueue)
+           -> Channel {
+        Channel {
+            request_queue: request_queue,
+            work_queue: work_queue,
         }
     }
 }
 
 const QUEUE_LENGTH: usize = 128;
 
-pub fn make_smp_message_queue(from: ReactorHandle,
-                              to: ReactorHandle)
-                              -> (SmpMessageQueueProducer, SmpMessageQueueConsumer) {
-    let (p, c) = bounded_spsc_queue::make(QUEUE_LENGTH);
-    let producer = SmpMessageQueueProducer::new(p, to);
-    let consumer = SmpMessageQueueConsumer::new(c, from);
-    (producer, consumer)
+pub fn make_channel_pair(from: ReactorHandle,
+                         to: ReactorHandle)
+                         -> (Channel, Channel) {
+
+    let from_to_requests = bounded_spsc_queue::make(QUEUE_LENGTH);
+    let from_to_completions = bounded_spsc_queue::make(QUEUE_LENGTH);
+    let to_from_requests = bounded_spsc_queue::make(QUEUE_LENGTH);
+    let to_from_completions = bounded_spsc_queue::make(QUEUE_LENGTH);
+
+    let from_requests = RequestQueue::new(to.clone(), from_to_requests.0, from_to_completions.1);
+    let to_work = WorkQueue::new(from.clone(), from_to_requests.1, from_to_completions.0);
+
+    let to_requests = RequestQueue::new(from.clone(), to_from_requests.0, to_from_completions.1);
+    let from_work = WorkQueue::new(to.clone(), to_from_requests.1, to_from_completions.0);
+
+    (Channel::new(from_requests, from_work), Channel::new(to_requests, to_work))
 }
 
 pub struct SmpQueues {
-    producers: Vec<SmpMessageQueueProducer>,
-    consumers: Vec<SmpMessageQueueConsumer>,
     reactor_id: usize,
     smp_count: usize,
+    queues: Vec<Channel>,
 }
 
 impl SmpQueues {
-    pub fn new(producers: Vec<SmpMessageQueueProducer>,
-               consumers: Vec<SmpMessageQueueConsumer>,
-               reactor_id: usize,
-               smp_count: usize)
-               -> SmpQueues {
-        assert!(producers.len() == smp_count,
-                "producers.len: expected {}, found {}",
+    pub fn new(reactor_id: usize, smp_count: usize, queues: Vec<Channel>) -> SmpQueues {
+        assert!(queues.len() == smp_count,
+                "queues.len: expected {}, found {}",
                 smp_count,
-                producers.len());
-        assert!(consumers.len() == smp_count,
-                "consumers.len: expected {}, found {}",
-                smp_count,
-                consumers.len());
+                queues.len());
         SmpQueues {
-            producers: producers,
-            consumers: consumers,
             reactor_id: reactor_id,
             smp_count: smp_count,
+            queues: queues,
         }
     }
 
@@ -164,13 +183,13 @@ impl SmpQueues {
         if reactor_id == self.reactor_id {
             let (sender, rcv) = channel();
             reactor::local().spawn(f.then(|r| {
-                // TODO: handle failure
-                sender.send(r);
-                Ok(())
-            }));
+                                              // TODO: handle failure
+                                              sender.send(r);
+                                              Ok(())
+                                          }));
             rcv
         } else {
-            self.producers[reactor_id].submit(f)
+            self.queues[reactor_id].request_queue.submit(f)
         }
     }
 
@@ -178,7 +197,7 @@ impl SmpQueues {
         let mut got: usize = 0;
         for i in 0..self.smp_count {
             if reactor.id() != i {
-                //                auto& rxq = _qs[engine().cpu_id()][i];
+                //let rxq = self.consumers.get(i);
                 //                rxq.flush_response_batch();
                 //                got += rxq.has_unflushed_responses();
                 //                got += rxq.process_incoming();
@@ -194,8 +213,7 @@ impl SmpQueues {
         false
     }
 
-    fn process_incoming(&self, reactor: &Reactor) {
-    }
+    fn process_incoming(&self, reactor: &Reactor) {}
 
     //    void start(unsigned cpuid);
     //    template<size_t PrefetchCnt, typename Func>
@@ -216,7 +234,7 @@ impl SmpQueues {
 
 pub struct SmpPollFn<'a> {
     smp_queues: &'a SmpQueues,
-    reactor: &'a Reactor
+    reactor: &'a Reactor,
 }
 
 impl<'a> PollFn for SmpPollFn<'a> {
@@ -230,29 +248,10 @@ impl<'a> PollFn for SmpPollFn<'a> {
 }
 
 impl<'a> SmpPollFn<'a> {
-    pub fn new<'b>(smp_queues: &'b SmpQueues,
-                   reactor: &'b Reactor) -> SmpPollFn<'b> {
+    pub fn new<'b>(smp_queues: &'b SmpQueues, reactor: &'b Reactor) -> SmpPollFn<'b> {
         SmpPollFn {
             smp_queues: smp_queues,
-            reactor: reactor
+            reactor: reactor,
         }
     }
 }
-
-//reactor::smp_pollfn::poll
-//-> smp::poll_queues
-//    -> smp_message_queue::flush_response_batch
-//        * go through _completed_fifo and push them into _completed.
-//    -> smp_message_queue::has_unflushed_responses
-//        * check if _completed_fifo is not empty
-//    -> smp_message_queue::process_incoming
-//        * calls smp_message_queue::process_queue on _pending and installs a then future on each work item
-//          that calls smp_message_queue::respond
-//        -> smp_message_queue::process_queue
-//            * uses prefetching to pop values from lf_queue (https://crates.io/crates/prefetch)
-//        -> smp_message_queue::respond
-//            * push the response onto _completed_fifo
-//              and optionally smp_message_queue::flush_response_batch
-//    -> smp_message_queue::flush_request_batch
-//    -> smp_message_queue::process_completions
-//

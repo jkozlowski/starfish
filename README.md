@@ -21,6 +21,8 @@ tokio-file-aio
 Useful
 ------
 
+* https://github.com/Ameobea/tickgrinder
+* https://www.reddit.com/r/rust/comments/68rqry/dst_vecrs_lets_you_store_dynamicallysized_types/
 * https://docs.rs/tk-easyloop/0.1.1/tk_easyloop/
 * https://github.com/tailhook?tab=repositories
 * https://www.clever-cloud.com/blog/engineering/2017/03/28/lapin-new-rust-amqp-library/
