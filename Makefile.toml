@@ -1,0 +1,7 @@
+[env]
+CARGO_MAKE_WORKSPACE_SKIP_MEMBERS = ""
+
+#[tasks.format]
+##install_crate = "rustfmt"
+#command = "cargo"
+#args = ["fmt", "--", "--write-mode=overwrite", "--force"]
