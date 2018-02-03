@@ -11,10 +11,21 @@ pub fn run<F>(log: Logger, f: F)
 mod tests {
     use super::*;
     use smp::*;
-    use slog_scope;
     use test;
+    use slog::*;
+    use slog_term;
+    use std;
 
-    test!(it_works, {
-        run(slog_scope::logger(), || {});
-    });
+    #[test]
+    fn it_works() {
+        let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
+        let log = Logger::root(
+            slog_term::FullFormat::new(plain)
+                .build().fuse(), o!(),
+        );
+        run(log, || {});
+    }
+//    test!(logger, it_works, {
+//        run(logger, || {});
+//    });
 }

@@ -1,4 +1,5 @@
-FROM fnichol/rust:nightly
+#FROM rust:latest
+FROM rustlang/rust:nightly
 
 RUN apt-get -q -y update && \
     apt-get -q -y install libaio-dev \

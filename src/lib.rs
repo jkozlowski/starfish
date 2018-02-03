@@ -22,8 +22,6 @@ extern crate itertools;
 
 #[cfg(test)]
 extern crate slog_term;
-#[cfg(test)]
-extern crate slog_scope;
 
 #[cfg(test)]
 #[macro_use]
@@ -31,33 +29,33 @@ pub mod test {
     use std;
     use slog::*;
     use slog_term;
-    use slog_scope;
     use std::sync::Arc;
 
-    #[macro_export]
-    macro_rules! test {
-        (should_panic, $name:ident, $test:block) => {
-            test!(#[should_panic], $name, $test);
-        };
-        ($(#[$attr:meta])*, $name:ident, $test:block) => {
-            #[test]
-            $( #[$attr] )*
-            fn $name() {
-                let _guard = test::ensure_env_logger_initialized();
-                $test
-            }
-        };
-        ($name:ident, $test:block) => {
-            test!(, $name, $test);
-        };
-    }
-
-    pub fn ensure_env_logger_initialized() -> slog_scope::GlobalLoggerGuard {
-        let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
-        let root = Logger::root(Arc::new(slog_term::FullFormat::new(plain).build().fuse()),
-                                o!());
-        slog_scope::set_global_logger(root.to_erased())
-    }
+//    #[macro_export]
+//    macro_rules! test {
+//        (should_panic, $logger_name: ident, $name:ident, $test:block) => {
+//            test!(#[should_panic], $logger_name, $name, $test);
+//        };
+//        ($(#[$attr:meta])*, $logger_name: ident, $name:ident, $test:block) => {
+//            #[test]
+//            $( #[$attr] )*
+//            fn $name() {
+//                let logger = test::ensure_env_logger_initialized();
+//                $test
+//            }
+//        };
+//        ($logger_name: ident, $name:ident, $test:block) => {
+//            test!(, $logger_name, $name, $test);
+//        };
+//    }
+//
+//    pub fn ensure_env_logger_initialized() -> Logger {
+//        let plain= slog_term::PlainSyncDecorator::new(std::io::stdout());
+//        Logger::root(
+//            slog_term::FullFormat::new(plain)
+//                .build().fuse(), o!(),
+//        )
+//    }
 }
 
 pub mod error;
