@@ -1,10 +1,16 @@
+#[macro_use]
+extern crate error_chain;
+#[macro_use]
+extern crate derive_builder;
+
 extern crate libc;
 
 pub mod hwloc;
 pub mod hwloc_error;
 pub mod nix;
+mod resources;
+mod resources_error;
 
-use error::resources_error;
 use resources::Configuration;
 use std::cmp::Ordering;
 

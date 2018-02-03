@@ -9,5 +9,8 @@ Symmetric multiprocessing for rust.
 
 [dependencies]
 smp-core = { path = "smp-core" }
+smp-resource = { path = "smp-resource" }
 
 [workspace]
+
+# https://sagiegurari.github.io/cargo-make/

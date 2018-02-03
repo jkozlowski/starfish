@@ -231,7 +231,7 @@ impl Reactor {
         //            return pure_poll_once() || !_pending_tasks.empty() || seastar::thread::try_run_one_yielded_thread();
         //        };
 
-        while true {
+        loop {
             self.backend.borrow_mut().turn(Some(Duration::from_millis(1)));
             //            if (_stopped) {
             //                load_timer.cancel();

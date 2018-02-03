@@ -1,7 +1,7 @@
 use std::vec::Vec;
 use std::collections::HashSet;
-use error::resources_error;
-use resource::nix;
+use resources_error;
+use nix;
 
 pub type CpuId = u32;
 

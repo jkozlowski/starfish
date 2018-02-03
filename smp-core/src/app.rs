@@ -8,6 +8,7 @@ pub fn run<F>(log: Logger, f: F)
 }
 
 #[cfg(test)]
+#[macro_use]
 mod tests {
     use super::*;
     use smp::*;

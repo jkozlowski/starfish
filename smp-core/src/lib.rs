@@ -23,6 +23,8 @@ extern crate itertools;
 #[cfg(test)]
 extern crate slog_term;
 
+extern crate smp_resource as resource;
+
 #[cfg(test)]
 #[macro_use]
 pub mod test {
@@ -58,16 +60,13 @@ pub mod test {
 //    }
 }
 
-pub mod error;
 pub mod eventfd;
 pub mod file;
 pub mod reactor;
-pub mod resource;
 pub mod util;
 
 pub mod align;
 pub mod app;
-pub mod resources;
 pub mod smp;
 pub mod smp_message_queue;
 

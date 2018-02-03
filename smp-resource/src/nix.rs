@@ -1,4 +1,4 @@
-use error::resources_error;
+use resources_error;
 use libc::{sysconf, _SC_NPROCESSORS_ONLN};
 use resources::Resources;
 use resources::ResourcesBuilder;
@@ -10,7 +10,7 @@ use resources::MemoryBuilder;
 use resources::IoQueueTopology;
 use resources::IoQueue;
 use resources::IoQueueBuilder;
-use resource::calculate_memory_default_panic_factor;
+use calculate_memory_default_panic_factor;
 use std::cmp::max;
 
 pub fn allocate(c: Configuration) -> resources_error::Result<Resources> {
