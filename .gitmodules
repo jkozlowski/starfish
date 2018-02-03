@@ -1,0 +1,9 @@
+[submodule "futures-rs"]
+	path = futures-rs
+	url = https://github.com/rust-lang-nursery/futures-rs.git
+[submodule "tokio"]
+	path = tokio
+	url = https://github.com/tokio-rs/tokio.git
+[submodule "mio"]
+	path = mio
+	url = https://github.com/carllerche/mio.git
