@@ -1,17 +1,17 @@
 #![recursion_limit = "1024"]
 #![feature(const_fn)]
 #![feature(conservative_impl_trait)]
+extern crate bounded_spsc_queue;
+extern crate crossbeam;
 #[warn(unused_imports)]
 #[macro_use]
 extern crate error_chain;
+extern crate futures_core;
+extern crate itertools;
+extern crate libc;
+extern crate slab;
 #[macro_use]
 pub extern crate slog;
-extern crate libc;
-extern crate futures_core;
-extern crate bounded_spsc_queue;
-extern crate slab;
-extern crate crossbeam;
-extern crate itertools;
 
 #[cfg(test)]
 extern crate slog_term;

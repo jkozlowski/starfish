@@ -71,14 +71,16 @@ impl Smp {
 
                 scope.spawn(move || {
                     let mut other_reactor = OtherReactor {};
-                    let reactor = Smp::configure_single_reactor(log,
-                                                                reactor_id,
-                                                                &mut other_reactor,
-                                                                reactor_registered,
-                                                                smp_queue_constructed,
-                                                                init,
-                                                                reactor_publish,
-                                                                queue_receive);
+                    let reactor = Smp::configure_single_reactor(
+                        log,
+                        reactor_id,
+                        &mut other_reactor,
+                        reactor_registered,
+                        smp_queue_constructed,
+                        init,
+                        reactor_publish,
+                        queue_receive,
+                    );
                     reactor.run();
                 });
             }
@@ -88,32 +90,37 @@ impl Smp {
                 reactor_receives: &reactor_receives,
                 queue_senders: &queues_publishes,
             };
-            let reactor = Smp::configure_single_reactor(log,
-                                                        0,
-                                                        &mut reactor_zero,
-                                                        &reactors_registered,
-                                                        &smp_queues_constructed,
-                                                        &inited,
-                                                        smp_0_reactor_publish,
-                                                        smp_0_queue_receive);
+            let reactor = Smp::configure_single_reactor(
+                log,
+                0,
+                &mut reactor_zero,
+                &reactors_registered,
+                &smp_queues_constructed,
+                &inited,
+                smp_0_reactor_publish,
+                smp_0_queue_receive,
+            );
             reactor.run();
         });
     }
 
-    fn configure_single_reactor(root: Logger,
-                                reactor_id: usize,
-                                reactor_init: &mut ReactorInit,
-                                reactor_registered: &Barrier,
-                                smp_queue_constructed: &Barrier,
-                                init: &Barrier,
-                                reactor_publish: Sender<ReactorHandle>,
-                                queue_receive: Receiver<SmpQueues>)
-                                -> &'static mut Reactor {
+    fn configure_single_reactor(
+        root: Logger,
+        reactor_id: usize,
+        reactor_init: &mut ReactorInit,
+        reactor_registered: &Barrier,
+        smp_queue_constructed: &Barrier,
+        init: &Barrier,
+        reactor_publish: Sender<ReactorHandle>,
+        queue_receive: Receiver<SmpQueues>,
+    ) -> &'static mut Reactor {
         let log = root.new(o!("reactor_id" => reactor_id));
         trace!(log, "started");
 
         let sleeping = Arc::new(AtomicBool::new(false));
-        reactor_publish.send(ReactorHandle::new(sleeping.clone())).unwrap();
+        reactor_publish
+            .send(ReactorHandle::new(sleeping.clone()))
+            .unwrap();
 
         reactor_registered.wait();
         trace!(log, "Reactor registered");
@@ -169,10 +176,7 @@ impl<'a> ReactorInit for Reactor0<'a> {
             // Really shady stuff here...
             for i in 0..self.smp_count {
                 for j in 0..self.smp_count {
-
-                    let not_happened = unsafe {
-                        all_channels[i].get_unchecked(j).is_none()
-                    };
+                    let not_happened = unsafe { all_channels[i].get_unchecked(j).is_none() };
 
                     if not_happened {
                         let (c_i, c_j) = {
@@ -197,9 +201,7 @@ impl<'a> ReactorInit for Reactor0<'a> {
 
         assert!(all_channels.len() == self.smp_count);
 
-        for (cs, s, i) in itertools::multizip((all_channels,
-                                               self.queue_senders,
-                                               0..)) {
+        for (cs, s, i) in itertools::multizip((all_channels, self.queue_senders, 0..)) {
             let channels = cs.into_iter().map(|x| x.unwrap()).collect();
             s.send(SmpQueues::new(i, self.smp_count, channels)).unwrap();
         }

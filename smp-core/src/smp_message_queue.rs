@@ -1,5 +1,5 @@
 use bounded_spsc_queue;
-use bounded_spsc_queue::{Producer, Consumer};
+use bounded_spsc_queue::{Consumer, Producer};
 use reactor;
 use reactor::PollFn;
 use reactor::Reactor;
@@ -31,9 +31,8 @@ struct AsyncMessage<F, R> {
 
     // This is where the remote reactor will write back the value.
     result: Option<R>,
-
     // Should only be touched back on the sending reactor!
-//    sender: Sender<R>,
+    //    sender: Sender<R>,
 }
 
 unsafe impl<F, R> Send for AsyncMessage<F, R> {}
@@ -51,10 +50,11 @@ pub struct RequestQueue {
 }
 
 impl RequestQueue {
-    pub fn new(remote: ReactorHandle,
-               producer: Producer<BoxMessage>,
-               consumer: Consumer<BoxMessage>)
-               -> RequestQueue {
+    pub fn new(
+        remote: ReactorHandle,
+        producer: Producer<BoxMessage>,
+        consumer: Consumer<BoxMessage>,
+    ) -> RequestQueue {
         RequestQueue {
             remote: remote,
             producer: producer,
@@ -62,27 +62,27 @@ impl RequestQueue {
         }
     }
 
-//    pub fn submit<F>(&self, f: F) -> Receiver<Result<F::Item, F::Error>>
-//        where F: Future + Send + 'static,
-//              F::Item: Send + 'static,
-//              F::Error: Send + 'static
-//    {
-//        let (sender, rcv) = channel();
-//        let async_message = AsyncMessage {
-//            fut: AssertUnwindSafe(f).catch_unwind(),
-//            result: None,
-//            sender: sender,
-//        };
-//
-//        // TODO: there should be an intermediate queue
-//        // TODO: need to notify consumer
-//
-//        // TODO: This can block, so really we should implement this in the future,
-//        // TODO: so we can wait.
-//
-//        self.producer.push(Box::new(async_message));
-//        rcv
-//    }
+    //    pub fn submit<F>(&self, f: F) -> Receiver<Result<F::Item, F::Error>>
+    //        where F: Future + Send + 'static,
+    //              F::Item: Send + 'static,
+    //              F::Error: Send + 'static
+    //    {
+    //        let (sender, rcv) = channel();
+    //        let async_message = AsyncMessage {
+    //            fut: AssertUnwindSafe(f).catch_unwind(),
+    //            result: None,
+    //            sender: sender,
+    //        };
+    //
+    //        // TODO: there should be an intermediate queue
+    //        // TODO: need to notify consumer
+    //
+    //        // TODO: This can block, so really we should implement this in the future,
+    //        // TODO: so we can wait.
+    //
+    //        self.producer.push(Box::new(async_message));
+    //        rcv
+    //    }
 }
 
 // Consumer for getting work items and producer for posting completions back.
@@ -94,10 +94,11 @@ pub struct WorkQueue {
 }
 
 impl WorkQueue {
-    pub fn new(remote: ReactorHandle,
-               consumer: Consumer<BoxMessage>,
-               producer: Producer<BoxMessage>)
-               -> WorkQueue {
+    pub fn new(
+        remote: ReactorHandle,
+        consumer: Consumer<BoxMessage>,
+        producer: Producer<BoxMessage>,
+    ) -> WorkQueue {
         WorkQueue {
             remote: remote,
             consumer: consumer,
@@ -114,9 +115,7 @@ pub struct Channel {
 }
 
 impl Channel {
-    fn new(request_queue: RequestQueue,
-           work_queue: WorkQueue)
-           -> Channel {
+    fn new(request_queue: RequestQueue, work_queue: WorkQueue) -> Channel {
         Channel {
             request_queue: request_queue,
             work_queue: work_queue,
@@ -126,10 +125,7 @@ impl Channel {
 
 const QUEUE_LENGTH: usize = 128;
 
-pub fn make_channel_pair(from: ReactorHandle,
-                         to: ReactorHandle)
-                         -> (Channel, Channel) {
-
+pub fn make_channel_pair(from: ReactorHandle, to: ReactorHandle) -> (Channel, Channel) {
     let from_to_requests = bounded_spsc_queue::make(QUEUE_LENGTH);
     let from_to_completions = bounded_spsc_queue::make(QUEUE_LENGTH);
     let to_from_requests = bounded_spsc_queue::make(QUEUE_LENGTH);
@@ -141,7 +137,10 @@ pub fn make_channel_pair(from: ReactorHandle,
     let to_requests = RequestQueue::new(from.clone(), to_from_requests.0, to_from_completions.1);
     let from_work = WorkQueue::new(to.clone(), to_from_requests.1, to_from_completions.0);
 
-    (Channel::new(from_requests, from_work), Channel::new(to_requests, to_work))
+    (
+        Channel::new(from_requests, from_work),
+        Channel::new(to_requests, to_work),
+    )
 }
 
 pub struct SmpQueues {
@@ -152,10 +151,12 @@ pub struct SmpQueues {
 
 impl SmpQueues {
     pub fn new(reactor_id: usize, smp_count: usize, queues: Vec<Channel>) -> SmpQueues {
-        assert!(queues.len() == smp_count,
-                "queues.len: expected {}, found {}",
-                smp_count,
-                queues.len());
+        assert!(
+            queues.len() == smp_count,
+            "queues.len: expected {}, found {}",
+            smp_count,
+            queues.len()
+        );
         SmpQueues {
             reactor_id: reactor_id,
             smp_count: smp_count,
@@ -171,23 +172,23 @@ impl SmpQueues {
         self.smp_count
     }
 
-//    pub fn submit_to<F>(&self, reactor_id: usize, f: F) -> Receiver<Result<F::Item, F::Error>>
-//        where F: Future + Send + 'static,
-//              F::Item: Send + 'static,
-//              F::Error: Send + 'static
-//    {
-//        if reactor_id == self.reactor_id {
-//            let (sender, rcv) = channel();
-//            reactor::local().spawn(f.then(|r| {
-//                                              // TODO: handle failure
-//                                              sender.send(r);
-//                                              Ok(())
-//                                          }));
-//            rcv
-//        } else {
-//            self.queues[reactor_id].request_queue.submit(f)
-//        }
-//    }
+    //    pub fn submit_to<F>(&self, reactor_id: usize, f: F) -> Receiver<Result<F::Item, F::Error>>
+    //        where F: Future + Send + 'static,
+    //              F::Item: Send + 'static,
+    //              F::Error: Send + 'static
+    //    {
+    //        if reactor_id == self.reactor_id {
+    //            let (sender, rcv) = channel();
+    //            reactor::local().spawn(f.then(|r| {
+    //                                              // TODO: handle failure
+    //                                              sender.send(r);
+    //                                              Ok(())
+    //                                          }));
+    //            rcv
+    //        } else {
+    //            self.queues[reactor_id].request_queue.submit(f)
+    //        }
+    //    }
 
     pub fn poll_queues(&self, reactor: &Reactor) -> bool {
         let mut got: usize = 0;
@@ -537,4 +538,3 @@ impl<'a> SmpPollFn<'a> {
 //        }
 //    }
 //}
-

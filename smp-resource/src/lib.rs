@@ -1,7 +1,7 @@
 #[macro_use]
-extern crate error_chain;
-#[macro_use]
 extern crate derive_builder;
+#[macro_use]
+extern crate error_chain;
 
 extern crate libc;
 
@@ -16,16 +16,18 @@ use std::cmp::Ordering;
 
 const DEFAULT_PANIC_FACTOR: f32 = 1.0;
 
-fn calculate_memory_default_panic_factor(c: &Configuration,
-                                         available_memory: usize)
-                                         -> resources_error::Result<usize> {
+fn calculate_memory_default_panic_factor(
+    c: &Configuration,
+    available_memory: usize,
+) -> resources_error::Result<usize> {
     calculate_memory(c, available_memory, DEFAULT_PANIC_FACTOR)
 }
 
-fn calculate_memory(c: &Configuration,
-                    mut available_memory: usize,
-                    panic_factor: f32)
-                    -> resources_error::Result<usize> {
+fn calculate_memory(
+    c: &Configuration,
+    mut available_memory: usize,
+    panic_factor: f32,
+) -> resources_error::Result<usize> {
     //  size_t default_reserve_memory = std::max<size_t>(1 << 30, 0.05 * available_memory) * panic_factor;
     let useable_memory: f32 = 0.05f32 * available_memory as f32;
     let default_reserve_memory: usize = (memory_to_reserve(useable_memory) * panic_factor) as usize;
@@ -51,8 +53,9 @@ fn calculate_memory(c: &Configuration,
     //  if (mem > available_memory) {
     if mem > available_memory {
         //  throw std::runtime_error("insufficient physical memory");
-        return Err(resources_error::ErrorKind::InsufficientPhysicalMemory(mem, available_memory)
-                       .into());
+        return Err(
+            resources_error::ErrorKind::InsufficientPhysicalMemory(mem, available_memory).into(),
+        );
     } else {
         //  return mem;
         return Ok(mem);
@@ -61,7 +64,10 @@ fn calculate_memory(c: &Configuration,
 
 fn memory_to_reserve(useable_memory: f32) -> f32 {
     let min_memory: f32 = 1u32.wrapping_shl(30) as f32;
-    match min_memory.partial_cmp(&useable_memory).unwrap_or(Ordering::Equal) {
+    match min_memory
+        .partial_cmp(&useable_memory)
+        .unwrap_or(Ordering::Equal)
+    {
         Ordering::Equal => min_memory,
         Ordering::Less => useable_memory,
         Ordering::Greater => min_memory,

@@ -61,7 +61,7 @@ pub fn allocate(c: Configuration) -> resources_error::Result<Resources> {
     Ok(ret.build().unwrap())
 }
 
-#[cfg(target_os="macos")]
+#[cfg(target_os = "macos")]
 fn get_available_memory() -> resources_error::Result<usize> {
     let mut mem: uint64_t = 0;
     let pmem: *mut uint64_t = &mut mem as *mut _ as *mut uint64_t;
@@ -74,12 +74,12 @@ fn get_available_memory() -> resources_error::Result<usize> {
     }
 }
 
-#[cfg(target_os="macos")]
+#[cfg(target_os = "macos")]
 extern "C" {
     fn memsize(bytes: *mut uint64_t) -> c_int;
 }
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 fn get_available_memory() -> resources_error::Result<usize> {
     Ok(1)
 }

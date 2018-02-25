@@ -33,11 +33,12 @@ pub fn local() -> &'static Reactor {
     REACTOR.with(|l| unsafe { mem::transmute(*l.get()) })
 }
 
-pub fn create_reactor(id: usize,
-                      log: Logger,
-                      sleeping: Arc<AtomicBool>,
-                      smp_queues: SmpQueues)
-                      -> &'static mut Reactor {
+pub fn create_reactor(
+    id: usize,
+    log: Logger,
+    sleeping: Arc<AtomicBool>,
+    smp_queues: SmpQueues,
+) -> &'static mut Reactor {
     let reactor = Reactor {
         id: id,
         pollers: RefCell::new(Vec::new()),
@@ -47,27 +48,27 @@ pub fn create_reactor(id: usize,
     };
 
     REACTOR.with(|l| unsafe {
-                     *l.get() = Box::into_raw(Box::new(reactor));
-                     mem::transmute(*l.get())
-                 })
+        *l.get() = Box::into_raw(Box::new(reactor));
+        mem::transmute(*l.get())
+    })
 }
 
 impl Reactor {
     pub fn run(&'static self) {
-
-//        for reactor_id in 0..self.smp_queues.smp_count() {
-//            self.smp_queues.submit_to(reactor_id, futures::lazy(|| {
-//                Ok(()) as Result<(), ()>
-//            }));
-//        }
+        //        for reactor_id in 0..self.smp_queues.smp_count() {
+        //            self.smp_queues.submit_to(reactor_id, futures::lazy(|| {
+        //                Ok(()) as Result<(), ()>
+        //            }));
+        //        }
 
         // Register smp queues poller
-//        if self.smp_queues.smp_count() > 1 {
-//            self.pollers.borrow_mut().push(Box::new(SmpPollFn::new(self.smp_queues(), self)));
-//        }
+        //        if self.smp_queues.smp_count() > 1 {
+        //            self.pollers
+        // .borrow_mut()
+        // .push(Box::new(SmpPollFn::new(self.smp_queues(), self)));
+        //        }
 
         loop {
-
             if self.check_for_work() {
 
             } else {
