@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio_core::reactor::Core;
 use tokio_core::reactor::Handle;
-use util::semaphore::Semaphore;
+//use util::semaphore::Semaphore;
 
 thread_local! {
     static REACTOR: UnsafeCell<*const Reactor> = UnsafeCell::new(null());
@@ -23,67 +23,9 @@ pub struct Reactor {
     id: usize,
     backend: RefCell<Core>,
     handle: Handle,
-    //    sigset_t _active_sigmask; // holds sigmask while sleeping with sig disabled
     pollers: RefCell<Vec<Box<PollFn>>>,
-    //    std::unique_ptr<io_queue> my_io_queue = {};
-    //    shard_id _io_coordinator;
-    //    io_queue* _io_queue;
-    //    std::vector<std::function<future<> ()>> _exit_funcs;
-    //    unsigned _id = 0;
-    //    bool _stopping = false;
-    //    bool _stopped = false;
-    //    condition_variable _stop_requested;
-    //    bool _handle_sigint = true;
-    //    promise<std::unique_ptr<network_stack>> _network_stack_ready_promise;
-    //    int _return = 0;
-    //    timer_t _steady_clock_timer = {};
-    //    timer_t _task_quota_timer = {};
-    started: Semaphore,
-    cpu_started: Semaphore,
-
-    //    uint64_t _tasks_processed = 0;
-    //    unsigned _max_task_backlog = 1000;
-    //    seastar::timer_set<timer<>, &timer<>::_link> _timers;
-    //    seastar::timer_set<timer<>, &timer<>::_link>::timer_list_t _expired_timers;
-    //    seastar::timer_set<timer<lowres_clock>, &timer<lowres_clock>::_link> _lowres_timers;
-    //    seastar::timer_set<timer<lowres_clock>, &timer<lowres_clock>::_link>::timer_list_t _expired_lowres_timers;
-    //    io_context_t _io_context;
-    //    std::vector<struct ::iocb> _pending_aio;
-    //    semaphore _io_context_available;
-    //    uint64_t _aio_reads = 0;
-    //    uint64_t _aio_read_bytes = 0;
-    //    uint64_t _aio_writes = 0;
-    //    uint64_t _aio_write_bytes = 0;
-    //    uint64_t _fsyncs = 0;
-    //    uint64_t _cxx_exceptions = 0;
-    //    circular_buffer<std::unique_ptr<task>> _pending_tasks;
-    //    circular_buffer<std::unique_ptr<task>> _at_destroy_tasks;
-    //    std::chrono::duration<double> _task_quota;
-    //    /// Handler that will be called when there is no task to execute on cpu.
-    //    /// It represents a low priority work.
-    //    ///
-    //    /// Handler's return value determines whether handler did any actual work. If no work was done then reactor will go
-    //    /// into sleep.
-    //    ///
-    //    /// Handler's argument is a function that returns true if a task which should be executed on cpu appears or false
-    //    /// otherwise. This function should be used by a handler to return early if a task appears.
-    //    idle_cpu_handler _idle_cpu_handler{ [] (work_waiting_on_reactor) {return idle_cpu_handler_result::no_more_work;} };
-    //    std::unique_ptr<network_stack> _network_stack;
-    //    // _lowres_clock will only be created on cpu 0
-    //    std::unique_ptr<lowres_clock> _lowres_clock;
-    //    lowres_clock::time_point _lowres_next_timeout;
-    //    std::experimental::optional<poller> _epoll_poller;
-    //    std::experimental::optional<pollable_fd> _aio_eventfd;
-    //    const bool _reuseport;
-    //    circular_buffer<double> _loads;
-    //    double _load = 0;
-    //    std::chrono::nanoseconds _max_poll_time = calculate_poll_time();
-    //    circular_buffer<output_stream<char>* > _flush_batching;
-    //    std::atomic<bool> _sleeping alignas(64);
-    //    pthread_t _thread_id alignas(64) = pthread_self();
-    //    bool _strict_o_direct = true;
-    //    signals _signals;
-    //    thread_pool _thread_pool;
+//    started: Semaphore,
+//    cpu_started: Semaphore,
     sleeping: Arc<AtomicBool>,
     log: Logger,
     smp_queues: SmpQueues,
@@ -112,8 +54,8 @@ pub fn create_reactor(id: usize,
         backend: RefCell::new(core),
         handle: handle,
         pollers: RefCell::new(Vec::new()),
-        started: Semaphore::new(0),
-        cpu_started: Semaphore::new(0),
+//        started: Semaphore::new(0),
+//        cpu_started: Semaphore::new(0),
         log: log,
         sleeping: sleeping,
         smp_queues: smp_queues,
@@ -127,42 +69,19 @@ pub fn create_reactor(id: usize,
 
 impl Reactor {
     pub fn run(&'static self) {
-        //        auto collectd_metrics = register_collectd_metrics();
-        //
-        //    #ifndef HAVE_OSV
-        //        poller io_poller(std::make_unique<io_pollfn>(*this));
-        //    #endif
-        //
-        //        poller sig_poller(std::make_unique<signal_pollfn>(*this));
-        //        poller aio_poller(std::make_unique<aio_batch_submit_pollfn>(*this));
-        //        poller batch_flush_poller(std::make_unique<batch_flush_pollfn>(*this));
-        //
-        //        start_aio_eventfd_loop();
-        //
-        //        if (_id == 0) {
-        //           if (_handle_sigint) {
-        //              _signals.handle_signal_once(SIGINT, [this] { stop(); });
-        //           }
-        //           _signals.handle_signal_once(SIGTERM, [this] { stop(); });
-        //        }
-        //
-
-        let cpu_started_fut =
-            self.cpu_started.wait(self.smp_queues.smp_count()).and_then(move |_| {
-                //  _network_stack->initialize().then([this] {
-                local().started.signal(1);
-                //      _start_promise.set_value();
-                //  });
-                Ok(())
-            });
-        self.spawn(cpu_started_fut);
-
-        //        _network_stack_ready_promise.get_future().then([this] (std::unique_ptr<network_stack> stack) {
-        //            _network_stack = std::move(stack);
+//        let cpu_started_fut =
+//            self.cpu_started.wait(self.smp_queues.smp_count()).and_then(move |_| {
+//                //  _network_stack->initialize().then([this] {
+//                local().started.signal(1);
+//                //      _start_promise.set_value();
+//                //  });
+//                Ok(())
+//            });
+//        self.spawn(cpu_started_fut);
 
         for reactor_id in 0..self.smp_queues.smp_count() {
             self.smp_queues.submit_to(reactor_id, futures::lazy(|| {
-                local().cpu_started.signal(1);
+//                local().cpu_started.signal(1);
                 Ok(()) as Result<(), ()> // Required for inference
             }));
         }
@@ -171,65 +90,6 @@ impl Reactor {
         if self.smp_queues.smp_count() > 1 {
             self.pollers.borrow_mut().push(Box::new(SmpPollFn::new(self.smp_queues(), self)));
         }
-
-        //        poller syscall_poller(std::make_unique<syscall_pollfn>(*this));
-        //    #ifndef HAVE_OSV
-        //        _signals.handle_signal(alarm_signal(), [this] {
-        //            complete_timers(_timers, _expired_timers, [this] {
-        //                if (!_timers.empty()) {
-        //                    enable_timer(_timers.get_next_timeout());
-        //                }
-        //            });
-        //        });
-        //    #endif
-        //
-        //        poller drain_cross_cpu_freelist(std::make_unique<drain_cross_cpu_freelist_pollfn>());
-        //
-        //        poller expire_lowres_timers(std::make_unique<lowres_timer_pollfn>(*this));
-        //
-        //        using namespace std::chrono_literals;
-        //        timer<lowres_clock> load_timer;
-        //        steady_clock_type::rep idle_count = 0;
-        //        auto idle_start = steady_clock_type::now(), idle_end = idle_start;
-        //        load_timer.set_callback([this, &idle_count, &idle_start, &idle_end] () mutable {
-        //            auto load = double(idle_count + (idle_end - idle_start).count()) / double(std::chrono::duration_cast<steady_clock_type::duration>(1s).count());
-        //            load = std::min(load, 1.0);
-        //            idle_count = 0;
-        //            idle_start = idle_end;
-        //            _loads.push_front(load);
-        //            if (_loads.size() > 5) {
-        //                auto drop = _loads.back();
-        //                _loads.pop_back();
-        //                _load -= (drop/5);
-        //            }
-        //            _load += (load/5);
-        //        });
-        //        load_timer.arm_periodic(1s);
-        //
-        //        itimerspec its = {};
-        //        auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(_task_quota).count();
-        //        auto tv_nsec = nsec % 1'000'000'000;
-        //        auto tv_sec = nsec / 1'000'000'000;
-        //        its.it_value.tv_nsec = tv_nsec;
-        //        its.it_value.tv_sec = tv_sec;
-        //        its.it_interval = its.it_value;
-        //        auto r = timer_settime(_task_quota_timer, 0, &its, nullptr);
-        //        assert(r == 0);
-        //
-        //        struct sigaction sa_task_quota = {};
-        //        sa_task_quota.sa_handler = &reactor::clear_task_quota;
-        //        sa_task_quota.sa_flags = SA_RESTART;
-        //        r = sigaction(task_quota_signal(), &sa_task_quota, nullptr);
-        //        assert(r == 0);
-        //
-        //        bool idle = false;
-        //
-        //        std::function<bool()> check_for_work = [this] () {
-        //            return poll_once() || !_pending_tasks.empty() || seastar::thread::try_run_one_yielded_thread();
-        //        };
-        //        std::function<bool()> pure_check_for_work = [this] () {
-        //            return pure_poll_once() || !_pending_tasks.empty() || seastar::thread::try_run_one_yielded_thread();
-        //        };
 
         loop {
             self.backend.borrow_mut().turn(Some(Duration::from_millis(1)));
@@ -306,9 +166,9 @@ impl Reactor {
         &self.smp_queues
     }
 
-    pub fn when_started(&self) -> impl Future<Item = (), Error = ()> {
-        self.started.wait(1)
-    }
+//    pub fn when_started(&self) -> impl Future<Item = (), Error = ()> {
+//        self.started.wait(1)
+//    }
 
     pub fn spawn<F>(&self, f: F)
         where F: Future<Item = (), Error = ()> + 'static

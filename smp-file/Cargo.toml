@@ -1,0 +1,10 @@
+[package]
+name = "smp-file"
+version = "0.1.0"
+#build = "build.rs"
+authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
+
+[build-dependencies]
+bindgen = "0.19.0"
+gcc = "0.3.35"
+pkg-config = "0.3.8"

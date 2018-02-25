@@ -60,10 +60,7 @@ pub mod test {
 //    }
 }
 
-pub mod eventfd;
-pub mod file;
 pub mod reactor;
-pub mod util;
 
 pub mod align;
 pub mod app;

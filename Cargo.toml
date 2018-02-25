@@ -15,9 +15,16 @@ smp-resource = { path = "smp-resource" }
 cargo-make = "0.10.0"
 
 [workspace]
+
 members = [
   "smp-resource",
-  "smp-core"
+  "smp-core",
+  "smp-file",
+  "smp-future"
+]
+
+exclude = [
+  "futures-rs"
 ]
 
 # https://sagiegurari.github.io/cargo-make/
