@@ -1,9 +1,5 @@
 use bounded_spsc_queue;
 use bounded_spsc_queue::{Producer, Consumer};
-use futures::Future;
-use futures::unsync::oneshot::channel;
-use futures::unsync::oneshot::Sender;
-use futures::unsync::oneshot::Receiver;
 use reactor;
 use reactor::PollFn;
 use reactor::Reactor;
@@ -37,12 +33,12 @@ struct AsyncMessage<F, R> {
     result: Option<R>,
 
     // Should only be touched back on the sending reactor!
-    sender: Sender<R>,
+//    sender: Sender<R>,
 }
 
 unsafe impl<F, R> Send for AsyncMessage<F, R> {}
 
-impl<R, E, F: Future<Item = R, Error = E> + Send> AsyncItem for AsyncMessage<F, R> {}
+//impl<R, E, F: Future<Item = R, Error = E> + Send> AsyncItem for AsyncMessage<F, R> {}
 
 type BoxMessage = Box<AsyncItem>;
 
@@ -66,27 +62,27 @@ impl RequestQueue {
         }
     }
 
-    pub fn submit<F>(&self, f: F) -> Receiver<Result<F::Item, F::Error>>
-        where F: Future + Send + 'static,
-              F::Item: Send + 'static,
-              F::Error: Send + 'static
-    {
-        let (sender, rcv) = channel();
-        let async_message = AsyncMessage {
-            fut: AssertUnwindSafe(f).catch_unwind(),
-            result: None,
-            sender: sender,
-        };
-
-        // TODO: there should be an intermediate queue
-        // TODO: need to notify consumer
-
-        // TODO: This can block, so really we should implement this in the future,
-        // TODO: so we can wait.
-
-        self.producer.push(Box::new(async_message));
-        rcv
-    }
+//    pub fn submit<F>(&self, f: F) -> Receiver<Result<F::Item, F::Error>>
+//        where F: Future + Send + 'static,
+//              F::Item: Send + 'static,
+//              F::Error: Send + 'static
+//    {
+//        let (sender, rcv) = channel();
+//        let async_message = AsyncMessage {
+//            fut: AssertUnwindSafe(f).catch_unwind(),
+//            result: None,
+//            sender: sender,
+//        };
+//
+//        // TODO: there should be an intermediate queue
+//        // TODO: need to notify consumer
+//
+//        // TODO: This can block, so really we should implement this in the future,
+//        // TODO: so we can wait.
+//
+//        self.producer.push(Box::new(async_message));
+//        rcv
+//    }
 }
 
 // Consumer for getting work items and producer for posting completions back.
@@ -175,23 +171,23 @@ impl SmpQueues {
         self.smp_count
     }
 
-    pub fn submit_to<F>(&self, reactor_id: usize, f: F) -> Receiver<Result<F::Item, F::Error>>
-        where F: Future + Send + 'static,
-              F::Item: Send + 'static,
-              F::Error: Send + 'static
-    {
-        if reactor_id == self.reactor_id {
-            let (sender, rcv) = channel();
-            reactor::local().spawn(f.then(|r| {
-                                              // TODO: handle failure
-                                              sender.send(r);
-                                              Ok(())
-                                          }));
-            rcv
-        } else {
-            self.queues[reactor_id].request_queue.submit(f)
-        }
-    }
+//    pub fn submit_to<F>(&self, reactor_id: usize, f: F) -> Receiver<Result<F::Item, F::Error>>
+//        where F: Future + Send + 'static,
+//              F::Item: Send + 'static,
+//              F::Error: Send + 'static
+//    {
+//        if reactor_id == self.reactor_id {
+//            let (sender, rcv) = channel();
+//            reactor::local().spawn(f.then(|r| {
+//                                              // TODO: handle failure
+//                                              sender.send(r);
+//                                              Ok(())
+//                                          }));
+//            rcv
+//        } else {
+//            self.queues[reactor_id].request_queue.submit(f)
+//        }
+//    }
 
     pub fn poll_queues(&self, reactor: &Reactor) -> bool {
         let mut got: usize = 0;

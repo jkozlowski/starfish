@@ -8,11 +8,25 @@ Symmetric multiprocessing for rust.
 """
 
 [dependencies]
+# Define versions of dependencies
+bounded-spsc-queue = "0.2.0"
+crossbeam = "0.2.10"
+error-chain = "0.5.0"
+itertools = "0.5.9"
+libc = "0.2.11"
+slab = "0.3.0"
+slog = "2.1.1"
+
 smp-core = { path = "smp-core" }
 smp-resource = { path = "smp-resource" }
+smp-file = { path = "smp-file" }
+smp-future = { path = "smp-future" }
 
 [dev-dependencies]
 cargo-make = "0.10.0"
+hamcrest = "0.1.2"
+spectral = "0.6.0"
+slog-term = "2.0.2"
 
 [workspace]
 
@@ -26,5 +40,3 @@ members = [
 exclude = [
   "futures-rs"
 ]
-
-# https://sagiegurari.github.io/cargo-make/
