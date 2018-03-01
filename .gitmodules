@@ -7,3 +7,6 @@
 [submodule "mio"]
 	path = mio
 	url = https://github.com/carllerche/mio.git
+[submodule "futures-await"]
+	path = futures-await
+	url = https://github.com/alexcrichton/futures-await.git
