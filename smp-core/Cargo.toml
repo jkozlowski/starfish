@@ -10,6 +10,8 @@ futures-core = { path = "../futures-rs/futures-core" }
 libc = "*"
 error-chain = "*"
 slog = "*"
+slog_derive = "*"
+
 bounded-spsc-queue = "*"
 slab = "*"
 crossbeam = "*"
@@ -18,4 +20,5 @@ itertools = "*"
 [dev-dependencies]
 hamcrest = "*"
 spectral = "*"
+slog-async = "*"
 slog-term = "*"

@@ -12,6 +12,8 @@ extern crate libc;
 extern crate slab;
 #[macro_use]
 pub extern crate slog;
+#[macro_use]
+pub extern crate slog_derive;
 
 #[cfg(test)]
 extern crate slog_term;
@@ -35,3 +37,11 @@ pub mod smp;
 pub mod smp_message_queue;
 
 mod sys;
+
+#[derive(KV)]
+pub struct Config {
+    width: f64,
+    height: f64,
+    #[slog(skip)]
+    url: String,
+}
