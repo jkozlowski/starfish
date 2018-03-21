@@ -36,10 +36,12 @@ slog-term = "2.0.2"
 [workspace]
 
 members = [
+  "smp-executor",
   "smp-resource",
   "smp-core",
   "smp-file",
-  "smp-future"
+  "smp-future",
+  "smp-net"
 ]
 
 exclude = [
