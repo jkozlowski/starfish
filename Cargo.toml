@@ -9,23 +9,24 @@ Symmetric multiprocessing for rust.
 
 [dependencies]
 # Define versions of dependencies
-bounded-spsc-queue = "0.2.0"
-crossbeam = "0.3.2"
-error-chain = "0.11.0"
-itertools = "0.7.6"
-libc = "0.2.36"
-mempool = "0.3.1"
-pagecache = "0.2.5"
-slab = "0.4.0"
-slog = "2.1.1"
-slog-async = "2.2.0"
-slog_derive = "0.1.0"
-threadpool = "1.7.1"
+#bounded-spsc-queue = "0.2.0"
+#crossbeam = "0.3.2"
+#error-chain = "0.11.0"
+#itertools = "0.7.6"
+#libc = "0.2.36"
+#mempool = "0.3.1"
+#pagecache = "0.2.5"
+#slab = "0.4.0"
+#slog = "2.1.1"
+#slog-async = "2.2.0"
+#slog_derive = "0.1.0"
+#threadpool = "1.7.1"
 
-smp-core = { path = "smp-core" }
-smp-resource = { path = "smp-resource" }
-smp-file = { path = "smp-file" }
-smp-future = { path = "smp-future" }
+#smp-core = { path = "smp-core" }
+smp-executor = { path = "smp-executor" }
+#smp-resource = { path = "smp-resource" }
+#smp-file = { path = "smp-file" }
+#smp-future = { path = "smp-future" }
 
 [dev-dependencies]
 cargo-make = "0.10.0"
@@ -37,11 +38,10 @@ slog-term = "2.0.2"
 
 members = [
   "smp-executor",
-  "smp-resource",
-  "smp-core",
-  "smp-file",
-  "smp-future",
-  "smp-net"
+  #"smp-resource",
+  #"smp-core",
+  #"smp-file",
+  #"smp-future"
 ]
 
 exclude = [
