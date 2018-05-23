@@ -10,3 +10,6 @@
 [submodule "futures-await"]
 	path = futures-await
 	url = https://github.com/alexcrichton/futures-await.git
+[submodule "rust-spdk"]
+	path = rust-spdk
+	url = https://github.com/PumpkinDB/rust-spdk.git
