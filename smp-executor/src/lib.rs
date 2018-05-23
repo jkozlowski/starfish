@@ -40,7 +40,7 @@ impl TaskQueue {
     }
 
     /// Polls the next `TaskHandle` and gets it as a raw pointer from `Rc`.
-    /// The counter is not incrementer, the pointer owns one reference.
+    /// The counter is not incremented, the pointer owns one reference.
     fn poll_task_from_rc(&mut self) -> Option<*const TaskHandle> {
         self.q.pop_front().map(Rc::into_raw)
     }
