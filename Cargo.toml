@@ -8,6 +8,9 @@ Symmetric multiprocessing for rust.
 """
 
 [dependencies]
+futures = "0.2.1"
+futures-core = "0.2.1"
+futures-util = "0.2.1"
 # Define versions of dependencies
 #bounded-spsc-queue = "0.2.0"
 #crossbeam = "0.3.2"
@@ -42,8 +45,4 @@ members = [
   #"smp-core",
   #"smp-file",
   #"smp-future"
-]
-
-exclude = [
-  "futures-rs"
 ]

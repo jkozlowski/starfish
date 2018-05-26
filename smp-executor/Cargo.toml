@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
 
 [dependencies]
-futures-core = { path = "../futures-rs/futures-core" }
-futures-util = { path = "../futures-rs/futures-util" }
+futures-core = "*"
+futures-util = "*"
 
 [dev-dependencies]
-futures = { path = "../futures-rs/futures" }
+futures = "*"
 hamcrest = "*"
