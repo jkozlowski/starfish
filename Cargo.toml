@@ -27,6 +27,7 @@ futures-util = "0.2.1"
 
 #smp-core = { path = "smp-core" }
 smp-executor = { path = "smp-executor" }
+smp-spdk = { path = "smp-spdk" }
 #smp-resource = { path = "smp-resource" }
 #smp-file = { path = "smp-file" }
 #smp-future = { path = "smp-future" }
@@ -37,10 +38,14 @@ hamcrest = "0.1.2"
 spectral = "0.6.0"
 slog-term = "2.0.2"
 
+[build-dependencies]
+bindgen = "0.37.0"
+
 [workspace]
 
 members = [
   "smp-executor",
+  "smp-spdk",
   #"smp-resource",
   #"smp-core",
   #"smp-file",

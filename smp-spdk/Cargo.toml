@@ -1,0 +1,17 @@
+[package]
+name = "smp-spdk"
+version = "0.1.0"
+authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
+build = "build.rs"
+
+[lib]
+doctest = false
+
+#[[example]]
+#name = "hello_world"
+#crate-type = ["staticlib"]
+
+[dependencies]
+
+[build-dependencies]
+bindgen = "*"
