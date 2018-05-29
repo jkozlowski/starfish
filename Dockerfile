@@ -19,9 +19,6 @@ RUN apt-get -q -y update && \
     build-essential && \ 
     # spdk
     ./tmp/pkgdep.sh  && \
-    # gcc g++ make libcunit1-dev libaio-dev libssl-dev \
-    # git astyle pep8 lcov clang \
-    # libibverbs-dev librdmacm-dev && \
     # cleanup
     apt-get -q -y clean && \
     apt-get -q -y clean all && \
