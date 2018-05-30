@@ -4,8 +4,8 @@ use spdk::EnvOpts;
 
 pub fn main() {
     // int rc;
-    let spdk_env_opts = EnvOpts::new();
-
+    //let spdk_env_opts = EnvOpts::new();
+    println!("Hello World!");
     // 	/*
     // 	 * SPDK relies on an abstraction around the local environment
     // 	 * named env that handles memory allocation and PCI device operations.

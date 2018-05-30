@@ -1,10 +1,7 @@
 extern crate bindgen;
 
 use std::env;
-use std::io::{stderr, Write};
-use std::path::Path;
 use std::path::PathBuf;
-use std::process::{exit, Command};
 
 // fn exec(command_name: &str, mut cmd: Command) {
 //     match cmd.output() {
@@ -25,36 +22,40 @@ use std::process::{exit, Command};
 // }
 
 fn main() {
-    // let mut config_spdk = Command::new("./configure");
-    // config_spdk.current_dir(Path::new("spdk"));
-    // exec("spdk config", config_spdk);
+    // println!("cargo:rustc-link-lib=static=spdk_env_dpdk");
+    // println!("cargo:rustc-link-lib=static=spdk_log");
+    // println!("cargo:rustc-link-lib=static=spdk_util");
+    // println!("cargo:rustc-link-lib=static=spdk_nvme");
+    // println!("cargo:rustc-link-search=native=/usr/local/lib");
+    // println!("cargo:rustc-link-search=spdk/build/lib");
+    // println!("cargo:rustc-link-lib=spdk/dpdk");
+    // This directory does not seem to have anything in it
+    // println!("cargo:rustc-link-search=spdk/dpdk/x86_64-native-linuxapp-gcc/lib");
 
-    // let mut make_spdk = Command::new("make");
-    // make_spdk.current_dir(Path::new("spdk"));
-    // exec("spdk make", make_spdk);
-    println!("Path: {:?}", env::var("OUT_DIR"));
-
-    //println!("cargo:rustc-link-lib=static=spdk_env_dpdk");
-    //println!("cargo:rustc-link-lib=static=spdk_log");
-    //println!("cargo:rustc-link-lib=static=spdk_util");
-    //println!("cargo:rustc-link-lib=static=spdk_nvme");
-    println!("cargo:rustc-link-search=native=/usr/local/lib");
-    //println!("cargo:rustc-link-search=spdk/build/lib");
+    println!("cargo:rustc-link-lib=static=spdk_env_dpdk");
+    println!("cargo:rustc-link-lib=static=spdk_log");
+    println!("cargo:rustc-link-lib=static=spdk_util");
+    println!("cargo:rustc-link-lib=static=spdk_nvme");
     //println!("cargo:rustc-link-lib=spdk/dpdk");
-    //println!("cargo:rustc-link-search=spdk/dpdk/x86_64-native-linuxapp-gcc/lib");
+    println!("cargo:rustc-link-search=native=/usr/local/lib");
+    println!("cargo:rustc-link-search=/usr/local/lib");
+
+    // This directory does not seem to have anything in it
+    // println!("cargo:rustc-link-search=spdk/dpdk/x86_64-native-linuxapp-gcc/lib");
 
     let mut codegen_config = bindgen::CodegenConfig::nothing();
     codegen_config.functions = true;
     codegen_config.types = true;
 
     let bindings = bindgen::Builder::default()
-        .header("spdk/include/spdk/nvme.h")
+        .header("/usr/local/include/spdk/nvme.h")
         .derive_default(true)
-        // .whitelisted_type("SomeCoolClass")
         .whitelist_function("spdk_(env|nvme|dma|mempool).*")
         .whitelist_type("spdk_(env|nvme|mempool).*")
         .with_codegen_config(codegen_config)
-        .clang_arg("-Ispdk/include")
+        // .clang_arg("-I/usr/local/include")
+        // Figure out how to make sure the includes are working ok
+        .clang_arg("-I/tmp/spdk/include")
         .generate()
         .expect("Unable to generate bindings");
 
@@ -63,7 +64,4 @@ fn main() {
     bindings
         .write_to_file(out_path.join("spdk_bindings.rs"))
         .expect("Couldn't write bindings!");
-
-    // --with-derive-default --whitelist-function "spdk_(env|nvme|dma|mempool).*" \
-    //     --whitelist-type "spdk_(env|nvme|mempool).*" --generate functions,types  -- -Ispdk/include
 }

@@ -1,10 +1,6 @@
 # tokio-smp
 
 ```
-$ git submodule update --init --recursive
-$ cd smp-spdk/spdk
-$ ./configure
-$ make install
 $ RUST_LOG=debug cargo build -p smp-spdk
 $ RUST_LOG=debug cargo run -p smp-spdk
 ```
