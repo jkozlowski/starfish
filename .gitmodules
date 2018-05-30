@@ -1,3 +1,0 @@
-[submodule "smp-spdk/spdk"]
-	path = smp-spdk/spdk
-	url = https://github.com/spdk/spdk.git
