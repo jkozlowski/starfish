@@ -22,7 +22,8 @@ RUN apt-get -q -y update && \
     ./scripts/pkgdep.sh && \
     ./configure && \
     make install && \
-    cd dpdk && \
+    PCI_WHITELIST="none" ./scripts/setup.sh && \
+    cd /tmp/spdk/dpdk && \
     make install && \
     # cleanup
     apt-get -q -y clean && \
