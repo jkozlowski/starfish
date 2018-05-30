@@ -32,16 +32,30 @@ fn main() {
     // This directory does not seem to have anything in it
     // println!("cargo:rustc-link-search=spdk/dpdk/x86_64-native-linuxapp-gcc/lib");
 
+    println!("cargo:rustc-link-lib=static=rte_eal");
+    println!("cargo:rustc-link-lib=static=rte_pci");
+    println!("cargo:rustc-link-lib=static=rte_bus_pci");
+    println!("cargo:rustc-link-lib=static=rte_bus_vdev");
+    println!("cargo:rustc-link-lib=static=rte_eal");
+    println!("cargo:rustc-link-lib=static=rte_ethdev");
+    println!("cargo:rustc-link-lib=static=rte_mbuf");
+    println!("cargo:rustc-link-lib=static=rte_mempool");
+    println!("cargo:rustc-link-lib=static=rte_mempool_ring");
+    println!("cargo:rustc-link-lib=static=rte_net");
+    println!("cargo:rustc-link-lib=static=rte_pci");
+    println!("cargo:rustc-link-lib=static=rte_ring");
+
     println!("cargo:rustc-link-lib=static=spdk_env_dpdk");
     println!("cargo:rustc-link-lib=static=spdk_log");
     println!("cargo:rustc-link-lib=static=spdk_util");
     println!("cargo:rustc-link-lib=static=spdk_nvme");
-    //println!("cargo:rustc-link-lib=spdk/dpdk");
-    println!("cargo:rustc-link-search=native=/usr/local/lib");
-    println!("cargo:rustc-link-search=/usr/local/lib");
 
-    // This directory does not seem to have anything in it
-    // println!("cargo:rustc-link-search=spdk/dpdk/x86_64-native-linuxapp-gcc/lib");
+    // Hacks
+    println!("cargo:rustc-link-lib=static=numa");
+
+    println!("cargo:rustc-link-search=native=/usr/local/lib");
+    println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
+    println!("cargo:rustc-link-search=/usr/local/lib");
 
     let mut codegen_config = bindgen::CodegenConfig::nothing();
     codegen_config.functions = true;

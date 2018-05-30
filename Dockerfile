@@ -22,6 +22,8 @@ RUN apt-get -q -y update && \
     ./scripts/pkgdep.sh && \
     ./configure && \
     make install && \
+    cd dpdk && \
+    make install && \
     # cleanup
     apt-get -q -y clean && \
     apt-get -q -y clean all && \
