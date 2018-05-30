@@ -34,14 +34,14 @@ fn main() {
     // exec("spdk make", make_spdk);
     println!("Path: {:?}", env::var("OUT_DIR"));
 
-    println!("cargo:rustc-link-lib=static=spdk_env_dpdk");
-    println!("cargo:rustc-link-lib=static=spdk_log");
-    println!("cargo:rustc-link-lib=static=spdk_util");
-    println!("cargo:rustc-link-lib=static=spdk_nvme");
+    //println!("cargo:rustc-link-lib=static=spdk_env_dpdk");
+    //println!("cargo:rustc-link-lib=static=spdk_log");
+    //println!("cargo:rustc-link-lib=static=spdk_util");
+    //println!("cargo:rustc-link-lib=static=spdk_nvme");
     println!("cargo:rustc-link-search=native=/usr/local/lib");
-    println!("cargo:rustc-link-search=spdk/build/lib");
-    println!("cargo:rustc-link-lib=spdk/dpdk");
-    println!("cargo:rustc-link-search=spdk/dpdk/x86_64-native-linuxapp-gcc/lib");
+    //println!("cargo:rustc-link-search=spdk/build/lib");
+    //println!("cargo:rustc-link-lib=spdk/dpdk");
+    //println!("cargo:rustc-link-search=spdk/dpdk/x86_64-native-linuxapp-gcc/lib");
 
     let mut codegen_config = bindgen::CodegenConfig::nothing();
     codegen_config.functions = true;

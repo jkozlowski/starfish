@@ -5,11 +5,13 @@ authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
 build = "build.rs"
 
 [lib]
+name = "smp_spdk"
+path = "src/lib.rs"
 doctest = false
 
-#[[example]]
-#name = "hello_world"
-#crate-type = ["staticlib"]
+[[bin]]
+name = "hello_world"
+path = "src/hello_world.rs"
 
 [dependencies]
 
