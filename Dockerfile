@@ -14,24 +14,30 @@ RUN apt-get -q -y update && \
     libsnappy-dev \
     automake \
     libtool \
-    build-essential && \
-    # spdk
-    git clone https://github.com/spdk/spdk.git /tmp/spdk && \
+    build-essential
+
+# spdk
+RUN git clone https://github.com/spdk/spdk.git /tmp/spdk && \
     cd /tmp/spdk && \
+    git checkout v18.04 && \
     git submodule update --init && \
-    ./scripts/pkgdep.sh && \
+    ./scripts/pkgdep.sh
+
+RUN cd /tmp/spdk && \
     ./configure && \
     make install && \
-    PCI_WHITELIST="none" ./scripts/setup.sh && \
+    # PCI_WHITELIST="none" ./scripts/setup.sh && \
     cd /tmp/spdk/dpdk && \
-    make install && \
-    # cleanup
-    apt-get -q -y clean && \
+    make install
+
+# cleanup
+RUN apt-get -q -y clean && \
     apt-get -q -y clean all && \
     rm -rf \
     /var/lib/apt/lists/* \
     #/tmp/* \
     /var/tmp/*
 
+ENV CARGO_INCREMENTAL "1"
 EXPOSE 8080
 ENTRYPOINT bash

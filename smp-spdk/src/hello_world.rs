@@ -1,372 +1,461 @@
 extern crate smp_spdk as spdk;
 
-use spdk::EnvOpts;
+use spdk::event::AppOpts;
 
-pub fn main() {
-    // int rc;
-    let mut opts = EnvOpts::new();
-
-    /*
-     * SPDK relies on an abstraction around the local environment
-     * named env that handles memory allocation and PCI device operations.
-     * This library must be initialized first.
-     *
-     */
-    opts.name("hello_world");
-    opts.shm_id(0);
-
-    let env = opts.init().expect("Unable to initialize SPDK env");
-
-    println!("Initializing NVMe Controllers");
-
-    // 	/*
-    // 	 * Start the SPDK NVMe enumeration process.  probe_cb will be called
-    // 	 *  for each NVMe controller found, giving our application a choice on
-    // 	 *  whether to attach to each controller.  attach_cb will then be
-    // 	 *  called for each controller after the SPDK NVMe driver has completed
-    // 	 *  initializing the controller we chose to attach.
-    // 	 */
-    // 	rc = spdk_nvme_probe(NULL, NULL, probe_cb, attach_cb, NULL);
-    // 	if (rc != 0) {
-    // 		fprintf(stderr, "spdk_nvme_probe() failed\n");
-    // 		cleanup();
-    // 		return 1;
-    // 	}
-
-    // 	if (g_controllers == NULL) {
-    // 		fprintf(stderr, "no NVMe controllers found\n");
-    // 		cleanup();
-    // 		return 1;
-    // 	}
-
-    // 	printf("Initialization complete.\n");
-    // 	hello_world();
-    // 	cleanup();
-    // 	return 0;
-
-    println!("Hello World!");
+/*
+ * We'll use this struct to gather housekeeping hello_context to pass between
+ * our events and callbacks.
+ */
+// struct hello_context_t {
+struct HelloContext {
+    // 	struct spdk_blob_store *bs;
+    // 	struct spdk_blob *blob;
+    // 	spdk_blob_id blobid;
+    // 	struct spdk_io_channel *channel;
+    // 	uint8_t *read_buff;
+    // 	uint8_t *write_buff;
+    // 	uint64_t page_size;
+    // 	int rc;
 }
 
-// /*-
-//  *   BSD LICENSE
-//  *
-//  *   Copyright (c) Intel Corporation.
-//  *   All rights reserved.
-//  *
-//  *   Redistribution and use in source and binary forms, with or without
-//  *   modification, are permitted provided that the following conditions
-//  *   are met:
-//  *
-//  *     * Redistributions of source code must retain the above copyright
-//  *       notice, this list of conditions and the following disclaimer.
-//  *     * Redistributions in binary form must reproduce the above copyright
-//  *       notice, this list of conditions and the following disclaimer in
-//  *       the documentation and/or other materials provided with the
-//  *       distribution.
-//  *     * Neither the name of Intel Corporation nor the names of its
-//  *       contributors may be used to endorse or promote products derived
-//  *       from this software without specific prior written permission.
-//  *
-//  *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-//  *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-//  *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-//  *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-//  *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-//  *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-//  *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-//  *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-//  *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-//  *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-//  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+impl HelloContext {
+    pub fn new() -> Self {
+        HelloContext {}
+    }
+}
+
+// /*
+//  * Free up memory that we allocated.
 //  */
-
-// #include "spdk/stdinc.h"
-
-// #include "spdk/nvme.h"
-// #include "spdk/env.h"
-
-// struct ctrlr_entry {
-// 	struct spdk_nvme_ctrlr	*ctrlr;
-// 	struct ctrlr_entry	*next;
-// 	char			name[1024];
-// };
-
-// struct ns_entry {
-// 	struct spdk_nvme_ctrlr	*ctrlr;
-// 	struct spdk_nvme_ns	*ns;
-// 	struct ns_entry		*next;
-// 	struct spdk_nvme_qpair	*qpair;
-// };
-
-// static struct ctrlr_entry *g_controllers = NULL;
-// static struct ns_entry *g_namespaces = NULL;
-
 // static void
-// register_ns(struct spdk_nvme_ctrlr *ctrlr, struct spdk_nvme_ns *ns)
+// hello_cleanup(struct hello_context_t *hello_context)
 // {
-// 	struct ns_entry *entry;
-// 	const struct spdk_nvme_ctrlr_data *cdata;
+// 	spdk_dma_free(hello_context->read_buff);
+// 	spdk_dma_free(hello_context->write_buff);
+// 	free(hello_context);
+// }
 
-// 	/*
-// 	 * spdk_nvme_ctrlr is the logical abstraction in SPDK for an NVMe
-// 	 *  controller.  During initialization, the IDENTIFY data for the
-// 	 *  controller is read using an NVMe admin command, and that data
-// 	 *  can be retrieved using spdk_nvme_ctrlr_get_data() to get
-// 	 *  detailed information on the controller.  Refer to the NVMe
-// 	 *  specification for more details on IDENTIFY for NVMe controllers.
-// 	 */
-// 	cdata = spdk_nvme_ctrlr_get_data(ctrlr);
+// /*
+//  * Callback routine for the blobstore unload.
+//  */
+// static void
+// unload_complete(void *cb_arg, int bserrno)
+// {
+// 	struct hello_context_t *hello_context = cb_arg;
 
-// 	if (!spdk_nvme_ns_is_active(ns)) {
-// 		printf("Controller %-20.20s (%-20.20s): Skipping inactive NS %u\n",
-// 		       cdata->mn, cdata->sn,
-// 		       spdk_nvme_ns_get_id(ns));
+// 	SPDK_NOTICELOG("entry\n");
+// 	if (bserrno) {
+// 		SPDK_ERRLOG("Error %d unloading the bobstore\n", bserrno);
+// 		hello_context->rc = bserrno;
+// 	}
+
+// 	spdk_app_stop(hello_context->rc);
+// }
+
+// /*
+//  * Unload the blobstore, cleaning up as needed.
+//  */
+// static void
+// unload_bs(struct hello_context_t *hello_context, char *msg, int bserrno)
+// {
+// 	if (bserrno) {
+// 		SPDK_ERRLOG("%s (err %d)\n", msg, bserrno);
+// 		hello_context->rc = bserrno;
+// 	}
+// 	if (hello_context->bs) {
+// 		if (hello_context->channel) {
+// 			spdk_bs_free_io_channel(hello_context->channel);
+// 		}
+// 		spdk_bs_unload(hello_context->bs, unload_complete, hello_context);
+// 	} else {
+// 		spdk_app_stop(bserrno);
+// 	}
+// }
+
+// /*
+//  * Callback routine for the deletion of a blob.
+//  */
+// static void
+// delete_complete(void *arg1, int bserrno)
+// {
+// 	struct hello_context_t *hello_context = arg1;
+
+// 	SPDK_NOTICELOG("entry\n");
+// 	if (bserrno) {
+// 		unload_bs(hello_context, "Error in delete completion",
+// 			  bserrno);
 // 		return;
 // 	}
 
-// 	entry = malloc(sizeof(struct ns_entry));
-// 	if (entry == NULL) {
-// 		perror("ns_entry malloc");
-// 		exit(1);
+// 	/* We're all done, we can unload the blobstore. */
+// 	unload_bs(hello_context, "", 0);
+// }
+
+// /*
+//  * Function for deleting a blob.
+//  */
+// static void
+// delete_blob(void *arg1, int bserrno)
+// {
+// 	struct hello_context_t *hello_context = arg1;
+
+// 	SPDK_NOTICELOG("entry\n");
+// 	if (bserrno) {
+// 		unload_bs(hello_context, "Error in close completion",
+// 			  bserrno);
+// 		return;
 // 	}
 
-// 	entry->ctrlr = ctrlr;
-// 	entry->ns = ns;
-// 	entry->next = g_namespaces;
-// 	g_namespaces = entry;
-
-// 	printf("  Namespace ID: %d size: %juGB\n", spdk_nvme_ns_get_id(ns),
-// 	       spdk_nvme_ns_get_size(ns) / 1000000000);
+// 	spdk_bs_delete_blob(hello_context->bs, hello_context->blobid,
+// 			    delete_complete, hello_context);
 // }
 
-// struct hello_world_sequence {
-// 	struct ns_entry	*ns_entry;
-// 	char		*buf;
-// 	unsigned        using_cmb_io;
-// 	int		is_completed;
-// };
-
+// /*
+//  * Callback function for reading a blob.
+//  */
 // static void
-// read_complete(void *arg, const struct spdk_nvme_cpl *completion)
+// read_complete(void *arg1, int bserrno)
 // {
-// 	struct hello_world_sequence *sequence = arg;
+// 	struct hello_context_t *hello_context = arg1;
+// 	int match_res = -1;
 
-// 	/*
-// 	 * The read I/O has completed.  Print the contents of the
-// 	 *  buffer, free the buffer, then mark the sequence as
-// 	 *  completed.  This will trigger the hello_world() function
-// 	 *  to exit its polling loop.
-// 	 */
-// 	printf("%s", sequence->buf);
-// 	spdk_dma_free(sequence->buf);
-// 	sequence->is_completed = 1;
-// }
+// 	SPDK_NOTICELOG("entry\n");
+// 	if (bserrno) {
+// 		unload_bs(hello_context, "Error in read completion",
+// 			  bserrno);
+// 		return;
+// 	}
 
-// static void
-// write_complete(void *arg, const struct spdk_nvme_cpl *completion)
-// {
-// 	struct hello_world_sequence	*sequence = arg;
-// 	struct ns_entry			*ns_entry = sequence->ns_entry;
-// 	int				rc;
-
-// 	/*
-// 	 * The write I/O has completed.  Free the buffer associated with
-// 	 *  the write I/O and allocate a new zeroed buffer for reading
-// 	 *  the data back from the NVMe namespace.
-// 	 */
-// 	if (sequence->using_cmb_io) {
-// 		spdk_nvme_ctrlr_free_cmb_io_buffer(ns_entry->ctrlr, sequence->buf, 0x1000);
+// 	/* Now let's make sure things match. */
+// 	match_res = memcmp(hello_context->write_buff, hello_context->read_buff,
+// 			   hello_context->page_size);
+// 	if (match_res) {
+// 		unload_bs(hello_context, "Error in data compare", -1);
+// 		return;
 // 	} else {
-// 		spdk_dma_free(sequence->buf);
+// 		SPDK_NOTICELOG("read SUCCESS and data matches!\n");
 // 	}
-// 	sequence->buf = spdk_dma_zmalloc(0x1000, 0x1000, NULL);
 
-// 	rc = spdk_nvme_ns_cmd_read(ns_entry->ns, ns_entry->qpair, sequence->buf,
-// 				   0, /* LBA start */
-// 				   1, /* number of LBAs */
-// 				   read_complete, (void *)sequence, 0);
-// 	if (rc != 0) {
-// 		fprintf(stderr, "starting read I/O failed\n");
-// 		exit(1);
-// 	}
+// 	/* Now let's close it and delete the blob in the callback. */
+// 	spdk_blob_close(hello_context->blob, delete_blob, hello_context);
 // }
 
+// /*
+//  * Function for reading a blob.
+//  */
 // static void
-// hello_world(void)
+// read_blob(struct hello_context_t *hello_context)
 // {
-// 	struct ns_entry			*ns_entry;
-// 	struct hello_world_sequence	sequence;
-// 	int				rc;
+// 	SPDK_NOTICELOG("entry\n");
 
-// 	ns_entry = g_namespaces;
-// 	while (ns_entry != NULL) {
-// 		/*
-// 		 * Allocate an I/O qpair that we can use to submit read/write requests
-// 		 *  to namespaces on the controller.  NVMe controllers typically support
-// 		 *  many qpairs per controller.  Any I/O qpair allocated for a controller
-// 		 *  can submit I/O to any namespace on that controller.
-// 		 *
-// 		 * The SPDK NVMe driver provides no synchronization for qpair accesses -
-// 		 *  the application must ensure only a single thread submits I/O to a
-// 		 *  qpair, and that same thread must also check for completions on that
-// 		 *  qpair.  This enables extremely efficient I/O processing by making all
-// 		 *  I/O operations completely lockless.
-// 		 */
-// 		ns_entry->qpair = spdk_nvme_ctrlr_alloc_io_qpair(ns_entry->ctrlr, NULL, 0);
-// 		if (ns_entry->qpair == NULL) {
-// 			printf("ERROR: spdk_nvme_ctrlr_alloc_io_qpair() failed\n");
-// 			return;
-// 		}
-
-// 		/*
-// 		 * Use spdk_dma_zmalloc to allocate a 4KB zeroed buffer.  This memory
-// 		 * will be pinned, which is required for data buffers used for SPDK NVMe
-// 		 * I/O operations.
-// 		 */
-// 		sequence.using_cmb_io = 1;
-// 		sequence.buf = spdk_nvme_ctrlr_alloc_cmb_io_buffer(ns_entry->ctrlr, 0x1000);
-// 		if (sequence.buf == NULL) {
-// 			sequence.using_cmb_io = 0;
-// 			sequence.buf = spdk_dma_zmalloc(0x1000, 0x1000, NULL);
-// 		}
-// 		if (sequence.buf == NULL) {
-// 			printf("ERROR: write buffer allocation failed\n");
-// 			return;
-// 		}
-// 		if (sequence.using_cmb_io) {
-// 			printf("INFO: using controller memory buffer for IO\n");
-// 		} else {
-// 			printf("INFO: using host memory buffer for IO\n");
-// 		}
-// 		sequence.is_completed = 0;
-// 		sequence.ns_entry = ns_entry;
-
-// 		/*
-// 		 * Print "Hello world!" to sequence.buf.  We will write this data to LBA
-// 		 *  0 on the namespace, and then later read it back into a separate buffer
-// 		 *  to demonstrate the full I/O path.
-// 		 */
-// 		snprintf(sequence.buf, 0x1000, "%s", "Hello world!\n");
-
-// 		/*
-// 		 * Write the data buffer to LBA 0 of this namespace.  "write_complete" and
-// 		 *  "&sequence" are specified as the completion callback function and
-// 		 *  argument respectively.  write_complete() will be called with the
-// 		 *  value of &sequence as a parameter when the write I/O is completed.
-// 		 *  This allows users to potentially specify different completion
-// 		 *  callback routines for each I/O, as well as pass a unique handle
-// 		 *  as an argument so the application knows which I/O has completed.
-// 		 *
-// 		 * Note that the SPDK NVMe driver will only check for completions
-// 		 *  when the application calls spdk_nvme_qpair_process_completions().
-// 		 *  It is the responsibility of the application to trigger the polling
-// 		 *  process.
-// 		 */
-// 		rc = spdk_nvme_ns_cmd_write(ns_entry->ns, ns_entry->qpair, sequence.buf,
-// 					    0, /* LBA start */
-// 					    1, /* number of LBAs */
-// 					    write_complete, &sequence, 0);
-// 		if (rc != 0) {
-// 			fprintf(stderr, "starting write I/O failed\n");
-// 			exit(1);
-// 		}
-
-// 		/*
-// 		 * Poll for completions.  0 here means process all available completions.
-// 		 *  In certain usage models, the caller may specify a positive integer
-// 		 *  instead of 0 to signify the maximum number of completions it should
-// 		 *  process.  This function will never block - if there are no
-// 		 *  completions pending on the specified qpair, it will return immediately.
-// 		 *
-// 		 * When the write I/O completes, write_complete() will submit a new I/O
-// 		 *  to read LBA 0 into a separate buffer, specifying read_complete() as its
-// 		 *  completion routine.  When the read I/O completes, read_complete() will
-// 		 *  print the buffer contents and set sequence.is_completed = 1.  That will
-// 		 *  break this loop and then exit the program.
-// 		 */
-// 		while (!sequence.is_completed) {
-// 			spdk_nvme_qpair_process_completions(ns_entry->qpair, 0);
-// 		}
-
-// 		/*
-// 		 * Free the I/O qpair.  This typically is done when an application exits.
-// 		 *  But SPDK does support freeing and then reallocating qpairs during
-// 		 *  operation.  It is the responsibility of the caller to ensure all
-// 		 *  pending I/O are completed before trying to free the qpair.
-// 		 */
-// 		spdk_nvme_ctrlr_free_io_qpair(ns_entry->qpair);
-// 		ns_entry = ns_entry->next;
+// 	hello_context->read_buff = spdk_dma_malloc(hello_context->page_size,
+// 				   0x1000, NULL);
+// 	if (hello_context->read_buff == NULL) {
+// 		unload_bs(hello_context, "Error in memory allocation",
+// 			  -ENOMEM);
+// 		return;
 // 	}
+
+// 	/* Issue the read and compare the results in the callback. */
+// 	spdk_blob_io_read(hello_context->blob, hello_context->channel,
+// 			  hello_context->read_buff, 0, 1, read_complete,
+// 			  hello_context);
 // }
 
-// static bool
-// probe_cb(void *cb_ctx, const struct spdk_nvme_transport_id *trid,
-// 	 struct spdk_nvme_ctrlr_opts *opts)
-// {
-// 	printf("Attaching to %s\n", trid->traddr);
-
-// 	return true;
-// }
-
+// /*
+//  * Callback function for writing a blob.
+//  */
 // static void
-// attach_cb(void *cb_ctx, const struct spdk_nvme_transport_id *trid,
-// 	  struct spdk_nvme_ctrlr *ctrlr, const struct spdk_nvme_ctrlr_opts *opts)
+// write_complete(void *arg1, int bserrno)
 // {
-// 	int nsid, num_ns;
-// 	struct ctrlr_entry *entry;
-// 	struct spdk_nvme_ns *ns;
-// 	const struct spdk_nvme_ctrlr_data *cdata = spdk_nvme_ctrlr_get_data(ctrlr);
+// 	struct hello_context_t *hello_context = arg1;
 
-// 	entry = malloc(sizeof(struct ctrlr_entry));
-// 	if (entry == NULL) {
-// 		perror("ctrlr_entry malloc");
-// 		exit(1);
+// 	SPDK_NOTICELOG("entry\n");
+// 	if (bserrno) {
+// 		unload_bs(hello_context, "Error in write completion",
+// 			  bserrno);
+// 		return;
 // 	}
 
-// 	printf("Attached to %s\n", trid->traddr);
+// 	/* Now let's read back what we wrote and make sure it matches. */
+// 	read_blob(hello_context);
+// }
 
-// 	snprintf(entry->name, sizeof(entry->name), "%-20.20s (%-20.20s)", cdata->mn, cdata->sn);
-
-// 	entry->ctrlr = ctrlr;
-// 	entry->next = g_controllers;
-// 	g_controllers = entry;
+// /*
+//  * Function for writing to a blob.
+//  */
+// static void
+// blob_write(struct hello_context_t *hello_context)
+// {
+// 	SPDK_NOTICELOG("entry\n");
 
 // 	/*
-// 	 * Each controller has one or more namespaces.  An NVMe namespace is basically
-// 	 *  equivalent to a SCSI LUN.  The controller's IDENTIFY data tells us how
-// 	 *  many namespaces exist on the controller.  For Intel(R) P3X00 controllers,
-// 	 *  it will just be one namespace.
-// 	 *
-// 	 * Note that in NVMe, namespace IDs start at 1, not 0.
+// 	 * Buffers for data transfer need to be allocated via SPDK. We will
+// 	 * tranfer 1 page of 4K aligned data at offset 0 in the blob.
 // 	 */
-// 	num_ns = spdk_nvme_ctrlr_get_num_ns(ctrlr);
-// 	printf("Using controller %s with %d namespaces.\n", entry->name, num_ns);
-// 	for (nsid = 1; nsid <= num_ns; nsid++) {
-// 		ns = spdk_nvme_ctrlr_get_ns(ctrlr, nsid);
-// 		if (ns == NULL) {
-// 			continue;
-// 		}
-// 		register_ns(ctrlr, ns);
+// 	hello_context->write_buff = spdk_dma_malloc(hello_context->page_size,
+// 				    0x1000, NULL);
+// 	if (hello_context->write_buff == NULL) {
+// 		unload_bs(hello_context, "Error in allocating memory",
+// 			  -ENOMEM);
+// 		return;
 // 	}
+// 	memset(hello_context->write_buff, 0x5a, hello_context->page_size);
+
+// 	/* Now we have to allocate a channel. */
+// 	hello_context->channel = spdk_bs_alloc_io_channel(hello_context->bs);
+// 	if (hello_context->channel == NULL) {
+// 		unload_bs(hello_context, "Error in allocating channel",
+// 			  -ENOMEM);
+// 		return;
+// 	}
+
+// 	/* Let's perform the write, 1 page at offset 0. */
+// 	spdk_blob_io_write(hello_context->blob, hello_context->channel,
+// 			   hello_context->write_buff,
+// 			   0, 1, write_complete, hello_context);
 // }
 
+// /*
+//  * Callback function for sync'ing metadata.
+//  */
 // static void
-// cleanup(void)
+// sync_complete(void *arg1, int bserrno)
 // {
-// 	struct ns_entry *ns_entry = g_namespaces;
-// 	struct ctrlr_entry *ctrlr_entry = g_controllers;
+// 	struct hello_context_t *hello_context = arg1;
 
-// 	while (ns_entry) {
-// 		struct ns_entry *next = ns_entry->next;
-// 		free(ns_entry);
-// 		ns_entry = next;
+// 	SPDK_NOTICELOG("entry\n");
+// 	if (bserrno) {
+// 		unload_bs(hello_context, "Error in sync callback",
+// 			  bserrno);
+// 		return;
 // 	}
 
-// 	while (ctrlr_entry) {
-// 		struct ctrlr_entry *next = ctrlr_entry->next;
-
-// 		spdk_nvme_detach(ctrlr_entry->ctrlr);
-// 		free(ctrlr_entry);
-// 		ctrlr_entry = next;
-// 	}
+// 	/* Blob has been created & sized & MD sync'd, let's write to it. */
+// 	blob_write(hello_context);
 // }
+
+// /*
+//  * Callback function for opening a blob.
+//  */
+// static void
+// open_complete(void *cb_arg, struct spdk_blob *blob, int bserrno)
+// {
+// 	struct hello_context_t *hello_context = cb_arg;
+// 	uint64_t free = 0;
+// 	uint64_t total = 0;
+// 	int rc = 0;
+
+// 	SPDK_NOTICELOG("entry\n");
+// 	if (bserrno) {
+// 		unload_bs(hello_context, "Error in open completion",
+// 			  bserrno);
+// 		return;
+// 	}
+
+// 	hello_context->blob = blob;
+// 	free = spdk_bs_free_cluster_count(hello_context->bs);
+// 	SPDK_NOTICELOG("blobstore has FREE clusters of %" PRIu64 "\n",
+// 		       free);
+
+// 	/*
+// 	 * Before we can use our new blob, we have to resize it
+// 	 * as the initial size is 0. For this example we'll use the
+// 	 * full size of the blobstore but it would be expected that
+// 	 * there'd usually be many blobs of various sizes. The resize
+// 	 * unit is a cluster.
+// 	 */
+// 	rc = spdk_blob_resize(hello_context->blob, free);
+// 	if (rc) {
+// 		unload_bs(hello_context, "Error in blob resize",
+// 			  bserrno);
+// 		return;
+// 	}
+
+// 	total = spdk_blob_get_num_clusters(hello_context->blob);
+// 	SPDK_NOTICELOG("resized blob now has USED clusters of %" PRIu64 "\n",
+// 		       total);
+
+// 	/*
+// 	 * Metadata is stored in volatile memory for performance
+// 	 * reasons and therefore needs to be synchronized with
+// 	 * non-volatile storage to make it persistent. This can be
+// 	 * done manually, as shown here, or if not it will be done
+// 	 * automatically when the blob is closed. It is always a
+// 	 * good idea to sync after making metadata changes unless
+// 	 * it has an unacceptable impact on application performance.
+// 	 */
+// 	spdk_blob_sync_md(hello_context->blob, sync_complete, hello_context);
+// }
+
+// /*
+//  * Callback function for creating a blob.
+//  */
+// static void
+// blob_create_complete(void *arg1, spdk_blob_id blobid, int bserrno)
+// {
+// 	struct hello_context_t *hello_context = arg1;
+
+// 	SPDK_NOTICELOG("entry\n");
+// 	if (bserrno) {
+// 		unload_bs(hello_context, "Error in blob create callback",
+// 			  bserrno);
+// 		return;
+// 	}
+
+// 	hello_context->blobid = blobid;
+// 	SPDK_NOTICELOG("new blob id %" PRIu64 "\n", hello_context->blobid);
+
+// 	/* We have to open the blob before we can do things like resize. */
+// 	spdk_bs_open_blob(hello_context->bs, hello_context->blobid,
+// 			  open_complete, hello_context);
+// }
+
+// /*
+//  * Function for creating a blob.
+//  */
+// static void
+// create_blob(struct hello_context_t *hello_context)
+// {
+// 	SPDK_NOTICELOG("entry\n");
+// 	spdk_bs_create_blob(hello_context->bs, blob_create_complete, hello_context);
+// }
+
+// /*
+//  * Callback function for initializing the blobstore.
+//  */
+// static void
+// bs_init_complete(void *cb_arg, struct spdk_blob_store *bs,
+// 		 int bserrno)
+// {
+// 	struct hello_context_t *hello_context = cb_arg;
+
+// 	SPDK_NOTICELOG("entry\n");
+// 	if (bserrno) {
+// 		unload_bs(hello_context, "Error init'ing the blobstore",
+// 			  bserrno);
+// 		return;
+// 	}
+
+// 	hello_context->bs = bs;
+// 	SPDK_NOTICELOG("blobstore: %p\n", hello_context->bs);
+// 	/*
+// 	 * We will use the page size in allocating buffers, etc., later
+// 	 * so we'll just save it in out context buffer here.
+// 	 */
+// 	hello_context->page_size = spdk_bs_get_page_size(hello_context->bs);
+
+// 	/*
+// 	 * The blostore has been initialized, let's create a blob.
+// 	 * Note that we could allcoate an SPDK event and use
+// 	 * spdk_event_call() to schedule it if we wanted to keep
+// 	 * our events as limited as possible wrt the amount of
+// 	 * work that they do.
+// 	 */
+// 	create_blob(hello_context);
+// }
+
+// /*
+//  * Our initial event that kicks off everything from main().
+//  */
+// static void
+// hello_start(void *arg1, void *arg2)
+// {
+// 	struct hello_context_t *hello_context = arg1;
+// 	struct spdk_bdev *bdev = NULL;
+// 	struct spdk_bs_dev *bs_dev = NULL;
+
+// 	SPDK_NOTICELOG("entry\n");
+// 	/*
+// 	 * Get the bdev. For this example it is our malloc (RAM)
+// 	 * disk configured via hello_blob.conf that was passed
+// 	 * in when we started the SPDK app framework so we can
+// 	 * get it via its name.
+// 	 */
+// 	bdev = spdk_bdev_get_by_name("Malloc0");
+// 	if (bdev == NULL) {
+// 		SPDK_ERRLOG("Could not find a bdev\n");
+// 		spdk_app_stop(-1);
+// 		return;
+// 	}
+
+// 	/*
+// 	 * spdk_bs_init() requires us to fill out the structure
+// 	 * spdk_bs_dev with a set of callbacks. These callbacks
+// 	 * implement read, write, and other operations on the
+// 	 * underlying disks. As a convenience, a utility function
+// 	 * is provided that creates an spdk_bs_dev that implements
+// 	 * all of the callbacks by forwarding the I/O to the
+// 	 * SPDK bdev layer. Other helper functions are also
+// 	 * available in the blob lib in blob_bdev.c that simply
+// 	 * make it easier to layer blobstore on top of a bdev.
+// 	 * However blobstore can be more tightly integrated into
+// 	 * any lower layer, such as NVMe for example.
+// 	 */
+// 	bs_dev = spdk_bdev_create_bs_dev(bdev, NULL, NULL);
+// 	if (bs_dev == NULL) {
+// 		SPDK_ERRLOG("Could not create blob bdev!!\n");
+// 		spdk_app_stop(-1);
+// 		return;
+// 	}
+
+// 	spdk_bs_init(bs_dev, NULL, bs_init_complete, hello_context);
+// }
+
+pub fn main() {
+    // 	SPDK_NOTICELOG("entry\n");
+    println!("entry");
+
+    // 	struct spdk_app_opts opts = {};
+    // 	int rc = 0;
+
+    /* Set default values in opts structure. */
+    // 	spdk_app_opts_init(&opts);
+    let mut opts = AppOpts::new();
+
+    /*
+     * Setup a few specifics before we init, for most SPDK cmd line
+     * apps, the config file will be passed in as an arg but to make
+     * this example super simple we just hardcode it. We also need to
+     * specify a name for the app.
+     */
+    opts.name("hello_blob");
+    opts.config_file("/src/smp-spdk/config/hello_blob.conf");
+
+    /*
+     * Now we'll allocate and intialize the blobstore itself. We
+     * can pass in an spdk_bs_opts if we want something other than
+     * the defaults (cluster size, etc), but here we'll just take the
+     * defaults.  We'll also pass in a struct that we'll use for
+     * callbacks so we've got efficient bookeeping of what we're
+     * creating. This is an async operation and bs_init_complete()
+     * will be called when it is complete.
+     */
+    // 	struct hello_context_t *hello_context = NULL;
+    // hello_context = calloc(1, sizeof(struct hello_context_t));
+    let hello_context = Box::new(HelloContext::new());
+    // 	if (hello_context != NULL) {
+    /*
+     * spdk_app_start() will block running hello_start() until
+     * spdk_app_stop() is called by someone (not simply when
+     * hello_start() returns), or if an error occurs during
+     * spdk_app_start() before hello_start() runs.
+     */
+    //  rc = spdk_app_start(&opts, hello_start, hello_context, NULL);
+    let ret = opts.start();
+
+    // 		if (rc) {
+    // 			SPDK_NOTICELOG("ERROR!\n");
+    // 		} else {
+    // 			SPDK_NOTICELOG("SUCCCESS!\n");
+    // 		}
+    // 		/* Free up memory that we allocated */
+    // 		hello_cleanup(hello_context);
+    // 	} else {
+    // 		SPDK_ERRLOG("Could not alloc hello_context struct!!\n");
+    // 		rc = -ENOMEM;
+    // 	}
+
+    // 	/* Gracefully close out all of the SPDK subsystems. */
+    // 	spdk_app_fini();
+}
