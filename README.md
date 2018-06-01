@@ -14,6 +14,7 @@ $ RUST_LOG=debug cargo run -p smp-spdk
 * spdk_fs_load
 * https://github.com/spdk/spdk/blob/cf9e099862ee973b3a0ac4a75da141263c91014b/doc/concurrency.md
 * https://github.com/spdk/spdk/blob/28589dbbe864bd035916b8b7e52c20e25de91d31/lib/event/app.c
+* https://github.com/spdk/spdk/blob/cc87019ab65be532ad8ae7115c71ce20b6b55824/etc/spdk/vhost.conf.in
 
 ## Useful
 
