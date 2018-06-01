@@ -1,4 +1,4 @@
-extern crate smp_spdk as spdk;
+extern crate rust_spdk as spdk;
 
 use spdk::event::AppOpts;
 
@@ -420,7 +420,7 @@ pub fn main() {
      * specify a name for the app.
      */
     opts.name("hello_blob");
-    opts.config_file("/src/smp-spdk/config/hello_blob.conf");
+    opts.config_file("/src/rust-spdk/config/hello_blob.conf");
 
     /*
      * Now we'll allocate and intialize the blobstore itself. We

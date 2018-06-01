@@ -76,6 +76,9 @@ fn main() {
     println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
     println!("cargo:rustc-link-search=/usr/local/lib");
 
+    // Don't rerun the whole thing every time
+    println!("cargo:rerun-if-changed=./build.rs");
+
     {
         let mut codegen_config = bindgen::CodegenConfig::nothing();
         codegen_config.functions = true;

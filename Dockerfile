@@ -38,6 +38,4 @@ RUN apt-get -q -y clean && \
     #/tmp/* \
     /var/tmp/*
 
-ENV CARGO_INCREMENTAL "1"
-EXPOSE 8080
 ENTRYPOINT bash

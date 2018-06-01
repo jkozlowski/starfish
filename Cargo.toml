@@ -1,10 +1,10 @@
 [package]
-name = "smp"
+name = "starfish"
 version = "0.1.0"
 authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
 license = "MIT/Apache-2.0"
 description = """
-Symmetric multiprocessing for rust.
+Async programming with spdk for rust.
 """
 
 [dependencies]
@@ -25,12 +25,9 @@ futures-util = "0.2.1"
 #slog_derive = "0.1.0"
 #threadpool = "1.7.1"
 
-#smp-core = { path = "smp-core" }
-smp-executor = { path = "smp-executor" }
-smp-spdk = { path = "smp-spdk" }
-#smp-resource = { path = "smp-resource" }
-#smp-file = { path = "smp-file" }
-#smp-future = { path = "smp-future" }
+starfish-executor = { path = "starfish-executor" }
+rust-spdk = { path = "rust-spdk" }
+starfish-future = { path = "starfish-future" }
 
 [dev-dependencies]
 cargo-make = "0.10.0"
@@ -44,10 +41,7 @@ bindgen = "0.37.0"
 [workspace]
 
 members = [
-  "smp-executor",
-  "smp-spdk",
-  #"smp-resource",
-  #"smp-core",
-  #"smp-file",
-  #"smp-future"
+  "starfish-executor",
+  "starfish-future",
+  "rust-spdk",
 ]

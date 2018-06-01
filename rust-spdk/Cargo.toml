@@ -1,11 +1,15 @@
 [package]
-name = "smp-spdk"
+name = "rust-spdk"
 version = "0.1.0"
 authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
+workspace = "../"
 build = "build.rs"
+description = """
+Rust bindings to spdk.
+"""
 
 [lib]
-name = "smp_spdk"
+name = "rust_spdk"
 path = "src/lib.rs"
 doctest = false
 

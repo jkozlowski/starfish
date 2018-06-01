@@ -1,9 +1,14 @@
-# tokio-smp
+# starfish
+
+Async programming with spdk for rust.
+
+## Running
 
 ```
-$ HUGEMEM=1024 ./smp-spdk/scripts/setup.sh
-$ RUST_LOG=debug cargo build -p smp-spdk
-$ RUST_LOG=debug cargo run -p smp-spdk
+$ HUGEMEM=1024 ./rust-spdk/scripts/setup.sh
+$ RUST_LOG=debug cargo build --all-targets
+$ RUST_LOG=debug cargo build -p rust-spdk
+$ RUST_LOG=debug cargo run -p rust-spdk
 ```
 
 ## Spdk examples
