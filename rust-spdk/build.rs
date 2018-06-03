@@ -22,16 +22,8 @@ use std::path::PathBuf;
 // }
 
 fn main() {
-    // println!("cargo:rustc-link-lib=static=spdk_env_dpdk");
-    // println!("cargo:rustc-link-lib=static=spdk_log");
-    // println!("cargo:rustc-link-lib=static=spdk_util");
-    // println!("cargo:rustc-link-lib=static=spdk_nvme");
-    // println!("cargo:rustc-link-search=native=/usr/local/lib");
-    // println!("cargo:rustc-link-search=spdk/build/lib");
-    // println!("cargo:rustc-link-lib=spdk/dpdk");
-    // This directory does not seem to have anything in it
-    // println!("cargo:rustc-link-search=spdk/dpdk/x86_64-native-linuxapp-gcc/lib");
-
+    /*
+    // This is sort of working
     println!("cargo:rustc-link-lib=static=rte_eal");
     println!("cargo:rustc-link-lib=static=rte_pci");
     println!("cargo:rustc-link-lib=static=rte_bus_pci");
@@ -54,14 +46,6 @@ fn main() {
     println!("cargo:rustc-link-lib=static=spdk_blob_bdev");
 
     println!("cargo:rustc-link-lib=static=spdk_event");
-    // println!("cargo:rustc-link-lib=static=spdk_event_bdev");
-    // println!("cargo:rustc-link-lib=static=spdk_event_copy");
-    // println!("cargo:rustc-link-lib=static=spdk_event_iscsi");
-    // println!("cargo:rustc-link-lib=static=spdk_event_nbd");
-    // println!("cargo:rustc-link-lib=static=spdk_event_net");
-    // println!("cargo:rustc-link-lib=static=spdk_event_nvmf");
-    // println!("cargo:rustc-link-lib=static=spdk_event_scsi");
-    // println!("cargo:rustc-link-lib=static=spdk_event_vhost");
 
     println!("cargo:rustc-link-lib=static=spdk_trace");
     println!("cargo:rustc-link-lib=static=spdk_conf");
@@ -71,10 +55,56 @@ fn main() {
 
     // Hacks
     println!("cargo:rustc-link-lib=static=numa");
+    */
+
+    // SPDK_LIB_FILES:
+    println!("cargo:rustc-link-lib=static=spdk_event_bdev");
+    println!("cargo:rustc-link-lib=static=spdk_event_copy");
+    println!("cargo:rustc-link-lib=static=spdk_blobfs");
+    println!("cargo:rustc-link-lib=static=spdk_blob");
+    println!("cargo:rustc-link-lib=static=spdk_bdev");
+    println!("cargo:rustc-link-lib=static=spdk_blob_bdev");
+    println!("cargo:rustc-link-lib=static=spdk_copy");
+    println!("cargo:rustc-link-lib=static=spdk_event");
+    println!("cargo:rustc-link-lib=static=spdk_util");
+    println!("cargo:rustc-link-lib=static=spdk_conf");
+    println!("cargo:rustc-link-lib=static=spdk_trace");
+    println!("cargo:rustc-link-lib=static=spdk_log");
+    println!("cargo:rustc-link-lib=static=spdk_jsonrpc");
+    println!("cargo:rustc-link-lib=static=spdk_json");
+    println!("cargo:rustc-link-lib=static=spdk_rpc");
+    // BLOCKDEV_MODULES_FILES:
+    println!("cargo:rustc-link-lib=static=spdk_vbdev_lvol");
+    println!("cargo:rustc-link-lib=static=spdk_blob");
+    println!("cargo:rustc-link-lib=static=spdk_blob_bdev");
+    println!("cargo:rustc-link-lib=static=spdk_lvol");
+    println!("cargo:rustc-link-lib=static=spdk_bdev_malloc");
+    println!("cargo:rustc-link-lib=static=spdk_bdev_null");
+    println!("cargo:rustc-link-lib=static=spdk_bdev_nvme");
+    println!("cargo:rustc-link-lib=static=spdk_nvme");
+    println!("cargo:rustc-link-lib=static=spdk_vbdev_passthru");
+    println!("cargo:rustc-link-lib=static=spdk_vbdev_error");
+    println!("cargo:rustc-link-lib=static=spdk_vbdev_gpt");
+    println!("cargo:rustc-link-lib=static=spdk_vbdev_split");
+    println!("cargo:rustc-link-lib=static=spdk_bdev_aio");
+    println!("cargo:rustc-link-lib=static=spdk_bdev_virtio");
+    println!("cargo:rustc-link-lib=static=spdk_virtio");
+    //LINKER_MODULES:
+    //ENV_LIBS:
+    println!("cargo:rustc-link-lib=static=spdk_env_dpdk");
+    println!("cargo:rustc-link-lib=static=rte_eal");
+    println!("cargo:rustc-link-lib=static=rte_mempool");
+    println!("cargo:rustc-link-lib=static=rte_ring");
+    println!("cargo:rustc-link-lib=static=rte_mempool_ring");
+    println!("cargo:rustc-link-lib=static=rte_pci");
+    println!("cargo:rustc-link-lib=static=rte_bus_pci");
 
     println!("cargo:rustc-link-search=native=/usr/local/lib");
     println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
     println!("cargo:rustc-link-search=/usr/local/lib");
+
+    // Hacks
+    println!("cargo:rustc-link-lib=static=numa");
 
     // Don't rerun the whole thing every time
     println!("cargo:rerun-if-changed=./build.rs");
