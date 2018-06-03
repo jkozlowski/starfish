@@ -14,17 +14,21 @@ RUN apt-get -q -y update && \
     libsnappy-dev \
     automake \
     libtool \
-    build-essential
+    build-essential \
+    vim \
+    gdbserver
 
 # spdk
 RUN git clone https://github.com/spdk/spdk.git /tmp/spdk && \
+    # DPDK debug mode
+    export EXTRA_CFLAGS='-O0 -g' && \
     cd /tmp/spdk && \
     git checkout v18.04 && \
     git submodule update --init && \
     ./scripts/pkgdep.sh
 
 RUN cd /tmp/spdk && \
-    ./configure && \
+    ./configure --enable-debug && \
     make install && \
     # PCI_WHITELIST="none" ./scripts/setup.sh && \
     cd /tmp/spdk/dpdk && \
@@ -38,4 +42,5 @@ RUN apt-get -q -y clean && \
     #/tmp/* \
     /var/tmp/*
 
+EXPOSE 5801 5801
 ENTRYPOINT bash
