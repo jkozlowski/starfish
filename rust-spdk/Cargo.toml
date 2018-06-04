@@ -8,6 +8,10 @@ description = """
 Rust bindings to spdk.
 """
 
+[features]
+bla = []
+default = ["bla"]
+
 [lib]
 name = "rust_spdk"
 path = "src/lib.rs"

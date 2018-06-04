@@ -9,6 +9,8 @@ $ HUGEMEM=5120 ./rust-spdk/scripts/setup.sh
 $ RUST_LOG=debug cargo build --all-targets
 $ RUST_LOG=debug cargo build -p rust-spdk
 $ RUST_LOG=debug cargo run -p rust-spdk
+# For now need ot run in the directory, for .cargo/config to be picked up
+$ cd rust-spdk; cargo run
 $ ls -la /mnt/huge/spdk_*_*
 $ rm -rf /mnt/huge/spdk_*_*
 $ objdump -g /usr/local/lib/librte_mempool.a
@@ -43,15 +45,71 @@ Lints:
 
 * When starting DPDK, in rte_mempool_opts.c, rte_mempool_ops_table.num_ops is not set to anything,
   so it is not possible to register the created mempool. This is the first failure on the preferred socket. Need to see what the second failure is, but this should succeed on the first try.
-* My code does not work on the big machine.
-* Running the spdk example that my code is based on fails in the same way :(
-* Building the original hello_blob example and running it on a normal machine works:
-  * --Works with spdk ./script/setup.sh and mine--
-  * --Maybe it's the debug build? Unlikely, I first tried running without. On on the normal machine
-    my code is running non-debug build.--
-  * Maybe I am not loading all the required static/dynamic libraries? Maybe I am loading the wrong kind of stuff.
 
-Actually, it fails in a slightly more spectacular manner:
+  * Macro rt in rte_mempool.h is actually registering them.
+    * #define MEMPOOL_REGISTER_OPS(ops)
+  * Ok, so something needs to register "ring_mp_sc" as an op.
+  * That is in rte_mempool_ring.c.
+  * It is part of librte_mempool_ring.a, which I statically link!
+  * Could this be due to some weird ordering?
+  * Or compiler version?
+    ```
+    root@7dbbc383d45d:/tmp/spdk/mk# cat cc.mk
+    CC?=cc
+    CXX?=g++
+    CCAR=ar
+    CC_TYPE=gcc
+    ```
+  * dpdk compile args: `echo "DPDK_CONFIG: spdk-linuxapp-gcc"`
+  * My money is on this puppy:
+    ```
+    ENV_LINKER_ARGS = $(ENV_DPDK_FILE) -Wl,--start-group -Wl,--whole-archive $(DPDK_LIB) -Wl,--end-group -Wl,--no-whole-archive
+    ```
+  * Ok, I either need to get this working through rustflags or somehow force the inclusion of the libraries.
+  * https://github.com/rust-lang/rfcs/issues/1766: https://doc.rust-lang.org/cargo/reference/config.html
+  * https://github.com/alexcrichton/cc-rs
+
+```
+	else if (flags & MEMPOOL_F_SC_GET)
+		ret = rte_mempool_set_ops_byname(mp, "ring_mp_sc", NULL);
+```
+
+C is weird:
+
+```
+if (!strcmp(name,
+				rte_mempool_ops_table.ops[i].name)) {
+```
+
+means, if the two strings are equal, do.
+
+* ~~My code does not work on the big machine.~~
+* ~~Running the spdk example that my code is based on fails in the same way :(~~
+* ~~Building the original hello_blob example and running it on a normal machine works:~~
+  * ~~Works with spdk ./script/setup.sh and mine~~
+  * ~~Maybe it's the debug build? Unlikely, I first tried running without. On on the normal machine
+    my code is running non-debug build.~~
+  * ~~Maybe I am not loading all the required static/dynamic libraries? Maybe I am loading the wrong kind of stuff.~~ Does not look like it: I added some echo statements to the hello_world example and added all the same libraries - still does not run.
+  * Anything else I could have missed?
+
+hello_world.rs
+
+```
+Starting SPDK v18.04 / DPDK 18.02.0 initialization...
+[ DPDK EAL parameters: hello_blob -c 0x1 --file-prefix=spdk_pid26944 ]
+EAL: Detected 2 lcore(s)
+EAL: No free hugepages reported in hugepages-1048576kB
+EAL: Multi-process socket /var/run/.spdk_pid26944_unix
+EAL: Probing VFIO support...
+EAL: NUMA support not available consider that all memory is in socket_id 0
+app.c: 443:spdk_app_start: *NOTICE*: Total cores available: 1
+reactor.c: 650:spdk_reactors_init: *NOTICE*: Occupied cpu socket mask is 0x1
+reactor.c: 671:spdk_reactors_init: *NOTICE*: Event_mempool creation failed on preferred socket 0.
+reactor.c: 692:spdk_reactors_init: *ERROR*: spdk_event_mempool creation failed
+app.c: 451:spdk_app_start: *ERROR*: Invalid reactor mask.
+```
+
+hello_world.c:
 
 ```
 root@7dbbc383d45d:/tmp/spdk/examples/blob/hello_world# ./hello_blob

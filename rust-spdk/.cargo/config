@@ -1,0 +1,37 @@
+#[target.'cfg(bla)']
+[build]
+# Absolutely essential to force dpdk libraries to get linked
+# https://github.com/rust-lang/cargo/issues/3052
+rustflags = [
+    "-C", "link-arg=-Wl,--start-group",
+    "-C", "link-arg=-Wl,--whole-archive", 
+
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_eal.a", 
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_mempool.a", 
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_ring.a", 
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_mempool_ring.a", 
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_pci.a", 
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_bus_pci.a", 
+
+    "-C", "link-arg=-Wl,--end-group", 
+    "-C", "link-arg=-Wl,--no-whole-archive",
+    "-C", "link-arg=-lnuma"
+    
+    # # First argument without -s
+    # "-C" "link-arg='ASSERTIONS=1'"
+
+    # # Rest are repeated like so (with -s):
+    # "-C" "link-arg='-s'" 
+    # "-C" "link-arg='ASSERTIONS=1'"
+    # "-C" "link-arg='-s'"
+# -- 
+# -C link-arg='EXTRA_EXPORTED_RUNTIME_METHODS=["ccall","cwrap"]' 
+# -C link-arg='-s' 
+# -C link-arg='ASSERTIONS=1' 
+# -C link-arg='-s' 
+# -C link-arg='ALLOW_MEMORY_GROWTH=1'
+]
+
+# ENV_LINKER_ARGS: 
+# /tmp/spdk/build/lib/libspdk_env_dpdk.a 
+# -Wl,--start-group -Wl,--whole-archive /tmp/spdk/dpdk/build/lib/librte_eal.a /tmp/spdk/dpdk/build/lib/librte_mempool.a /tmp/spdk/dpdk/build/lib/librte_ring.a /tmp/spdk/dpdk/build/lib/librte_mempool_ring.a /tmp/spdk/dpdk/build/lib/librte_pci.a /tmp/spdk/dpdk/build/lib/librte_bus_pci.a -Wl,--end-group -Wl,--no-whole-archive -lnuma -ldl
