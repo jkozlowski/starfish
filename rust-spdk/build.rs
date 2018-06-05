@@ -7,15 +7,7 @@ fn main() {
     // Hacks
     println!("cargo:rustc-link-lib=static=numa");
 
-    //LINKER_MODULES:
-    //ENV_LIBS:
     println!("cargo:rustc-link-lib=static=spdk_env_dpdk");
-    // println!("cargo:rustc-link-lib=static=rte_eal");
-    // println!("cargo:rustc-link-lib=static=rte_mempool");
-    // println!("cargo:rustc-link-lib=static=rte_ring");
-    // println!("cargo:rustc-link-lib=static=rte_mempool_ring");
-    // println!("cargo:rustc-link-lib=static=rte_pci");
-    // println!("cargo:rustc-link-lib=static=rte_bus_pci");
 
     // SPDK_LIB_FILES:
     println!("cargo:rustc-link-lib=static=spdk_event_bdev");
@@ -33,6 +25,7 @@ fn main() {
     println!("cargo:rustc-link-lib=static=spdk_jsonrpc");
     println!("cargo:rustc-link-lib=static=spdk_json");
     println!("cargo:rustc-link-lib=static=spdk_rpc");
+
     // BLOCKDEV_MODULES_FILES:
     println!("cargo:rustc-link-lib=static=spdk_vbdev_lvol");
     println!("cargo:rustc-link-lib=static=spdk_blob");
@@ -52,7 +45,8 @@ fn main() {
 
     println!("cargo:rustc-link-search=native=/usr/local/lib");
     println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
-    //println!("cargo:rustc-link-search=/usr/local/lib");
+
+    // See .cargo/config for the remaining libraries.
 
     // Don't rerun the whole thing every time
     println!("cargo:rerun-if-changed=./build.rs");
@@ -74,10 +68,7 @@ fn generate(name: &str) {
     let bindings = bindgen::Builder::default()
         .header(format!("/usr/local/include/spdk/{}.h", name))
         .derive_default(true)
-        //.whitelist_function("spdk_(env|nvme|dma|mempool).*")
-        //.whitelist_type("spdk_(env|nvme|mempool).*")
         .with_codegen_config(codegen_config)
-        // Figure out how to make sure the includes are working ok
         .clang_arg("-I/tmp/spdk/include")
         .generate()
         .expect("Unable to generate bindings");
