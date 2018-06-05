@@ -1,4 +1,4 @@
-FROM rust:1.26.0
+FROM rust:1.26.1
 
 RUN apt-get -q -y update && \
     apt-get -q -y install \
@@ -35,12 +35,12 @@ RUN cd /tmp/spdk && \
     make install
 
 # cleanup
-RUN apt-get -q -y clean && \
-    apt-get -q -y clean all && \
-    rm -rf \
-    /var/lib/apt/lists/* \
-    #/tmp/* \
-    /var/tmp/*
+#RUN apt-get -q -y clean && \
+#apt-get -q -y clean all && \
+#rm -rf \
+#/var/lib/apt/lists/* \
+#/tmp/* \
+#/var/tmp/*
 
 EXPOSE 5801 5801
 ENTRYPOINT bash
