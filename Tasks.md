@@ -36,3 +36,11 @@ Plan:
 - Could I create a c wrapper that force-links everything together in the right order?
 
 - Steal from https://crates.io/keywords/ffi and https://crates.io/keywords/bindings.
+
+```
+cargo:warn=CPPFLAGS=""""""
+LDFLAGS="""-Wl,-z,relro,-z,now -Wl,-z,noexecstack -pthread"""
+OBJS=""" """
+LIBS="""-Wl,--whole-archive -lspdk_copy_ioat -lspdk_ioat -Wl,--no-whole-archive  -Wl,--whole-archive -lspdk_vbdev_lvol -lspdk_blob -lspdk_blob_bdev -lspdk_lvol -lspdk_bdev_malloc -lspdk_bdev_null -lspdk_bdev_nvme -lspdk_nvme -lspdk_vbdev_passthru -lspdk_vbdev_error -lspdk_vbdev_gpt -lspdk_vbdev_split -lspdk_bdev_aio -lspdk_bdev_virtio -lspdk_virtio -Wl,--no-whole-archive -laio -L/tmp/spdk/build/lib -Wl,--whole-archive -lspdk_event_bdev -lspdk_event_copy -Wl,--no-whole-archive -lspdk_blobfs -lspdk_blob -lspdk_bdev -lspdk_blob_bdev -lspdk_copy -lspdk_event -lspdk_util -lspdk_conf -lspdk_trace -lspdk_log -lspdk_jsonrpc -lspdk_json -lspdk_rpc /tmp/spdk/build/lib/libspdk_env_dpdk.a -Wl,--start-group -Wl,--whole-archive /tmp/spdk/dpdk/build/lib/librte_eal.a /tmp/spdk/dpdk/build/lib/librte_mempool.a /tmp/spdk/dpdk/build/lib/librte_ring.a /tmp/spdk/dpdk/build/lib/librte_mempool_ring.a /tmp/spdk/dpdk/build/lib/librte_pci.a /tmp/spdk/dpdk/build/lib/librte_bus_pci.a -Wl,--end-group -Wl,--no-whole-archive -lnuma -ldl """
+SYS_LIBS="""-lrt -luuid"""
+```

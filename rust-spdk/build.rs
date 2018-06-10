@@ -4,6 +4,7 @@ extern crate toml;
 
 use make_cmd::gnu_make;
 use std::env;
+use std::fmt::Write;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
@@ -41,11 +42,19 @@ fn main() {
     f.read_to_string(&mut contents)
         .expect("something went wrong reading the file");
 
+    println!("cargo:warn={}", contents);
+
     let value = contents.parse::<Value>().unwrap();
     let libs = value["LIBS"].as_str().unwrap();
 
-    println!("cargo:rustc-env=RUSTFLAGS={}", libs);
-    println!("cargo:rustc-flags={}", libs)
+    let mut output = String::new();
+    for s in libs.split(" ") {
+        write!(&mut output, "\"-C\", \"link-arg={}\",\n", s).unwrap();
+    }
+
+    //println!("cargo:rustc-env=RUSTFLAGS=-C {}", output);
+    //let contents = format!("[build]\n", libs)
+    //println!("cargo:rustc-flags={}", libs);
 
     // // Hacks
     // println!("cargo:rustc-link-lib=static=numa");
