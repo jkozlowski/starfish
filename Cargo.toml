@@ -37,6 +37,8 @@ slog-term = "2.0.2"
 
 [build-dependencies]
 bindgen = "0.37.0"
+make-cmd = "0.1.0"
+toml = "0.4.6"
 
 [workspace]
 

@@ -1,4 +1,4 @@
-FROM rust:1.26.1
+FROM rust:1.26.0
 
 RUN apt-get -q -y update && \
     apt-get -q -y install \
@@ -41,6 +41,9 @@ RUN cd /tmp/spdk && \
 #/var/lib/apt/lists/* \
 #/tmp/* \
 #/var/tmp/*
+
+ENV SPDK_ROOT_DIR=/tmp/spdk 
+ENV DPDK_DIR=/tmp/spdk/dpdk/build
 
 EXPOSE 5801 5801
 ENTRYPOINT bash

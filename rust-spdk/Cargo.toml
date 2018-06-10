@@ -3,6 +3,8 @@ name = "rust-spdk"
 version = "0.1.0"
 authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
 workspace = "../"
+categories = ["external-ffi-bindings"]
+#links = "llvm"
 build = "build.rs"
 description = """
 Rust bindings to spdk.
@@ -21,3 +23,5 @@ path = "src/hello_world.rs"
 
 [build-dependencies]
 bindgen = "*"
+make-cmd = "*"
+toml = "*"
