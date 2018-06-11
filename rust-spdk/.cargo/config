@@ -1,59 +1,81 @@
-# #[target.x86_64-unknown-linux-gnu.rust-spdk]
-# [target.x86_64-unknown-linux-gnu.rust_spdk]
-# rustflags = "-Wl,--whole-archive -lspdk_copy_ioat -lspdk_ioat -Wl,--no-whole-archive  -Wl,--whole-archive -lspdk_vbdev_lvol -lspdk_blob -lspdk_blob_bdev -lspdk_lvol -lspdk_bdev_malloc -lspdk_bdev_null -lspdk_bdev_nvme -lspdk_nvme -lspdk_vbdev_passthru -lspdk_vbdev_error -lspdk_vbdev_gpt -lspdk_vbdev_split -lspdk_bdev_aio -lspdk_bdev_virtio -lspdk_virtio -Wl,--no-whole-archive -laio -L/tmp/spdk/build/lib -Wl,--whole-archive -lspdk_event_bdev -lspdk_event_copy -Wl,--no-whole-archive -lspdk_blobfs -lspdk_blob -lspdk_bdev -lspdk_blob_bdev -lspdk_copy -lspdk_event -lspdk_util -lspdk_conf -lspdk_trace -lspdk_log -lspdk_jsonrpc -lspdk_json -lspdk_rpc /tmp/spdk/build/lib/libspdk_env_dpdk.a -Wl,--start-group -Wl,--whole-archive /tmp/spdk/dpdk/build/lib/librte_eal.a /tmp/spdk/dpdk/build/lib/librte_mempool.a /tmp/spdk/dpdk/build/lib/librte_ring.a /tmp/spdk/dpdk/build/lib/librte_mempool_ring.a /tmp/spdk/dpdk/build/lib/librte_pci.a /tmp/spdk/dpdk/build/lib/librte_bus_pci.a -Wl,--end-group -Wl,--no-whole-archive -lnuma -ldl -lrt -luuid"
-# # rustflags = [
-# #     "-C", "link-arg=-lspdk_copy_ioat",
-# #     "-C", "link-arg=-lspdk_ioat",
-# #     "-C", "link-arg=-Wl,--no-whole-archive",
-# #     "-C", "link-arg=-Wl,--whole-archive",
-# #     "-C", "link-arg=-lspdk_vbdev_lvol",
-# #     "-C", "link-arg=-lspdk_blob",
-# #     "-C", "link-arg=-lspdk_blob_bdev",
-# #     "-C", "link-arg=-lspdk_lvol",
-# #     "-C", "link-arg=-lspdk_bdev_malloc",
-# #     "-C", "link-arg=-lspdk_bdev_null",
-# #     "-C", "link-arg=-lspdk_bdev_nvme",
-# #     "-C", "link-arg=-lspdk_nvme",
-# #     "-C", "link-arg=-lspdk_vbdev_passthru",
-# #     "-C", "link-arg=-lspdk_vbdev_error",
-# #     "-C", "link-arg=-lspdk_vbdev_gpt",
-# #     "-C", "link-arg=-lspdk_vbdev_split",
-# #     "-C", "link-arg=-lspdk_bdev_aio",
-# #     "-C", "link-arg=-lspdk_bdev_virtio",
-# #     "-C", "link-arg=-lspdk_virtio",
-# #     "-C", "link-arg=-Wl,--no-whole-archive",
-# #     "-C", "link-arg=-laio",
-# #     "-C", "link-arg=-L/tmp/spdk/build/lib",
-# #     "-C", "link-arg=-Wl,--whole-archive",
-# #     "-C", "link-arg=-lspdk_event_bdev",
-# #     "-C", "link-arg=-lspdk_event_copy",
-# #     "-C", "link-arg=-Wl,--no-whole-archive",
-# #     "-C", "link-arg=-lspdk_blobfs",
-# #     "-C", "link-arg=-lspdk_blob",
-# #     "-C", "link-arg=-lspdk_bdev",
-# #     "-C", "link-arg=-lspdk_blob_bdev",
-# #     "-C", "link-arg=-lspdk_copy",
-# #     "-C", "link-arg=-lspdk_event",
-# #     "-C", "link-arg=-lspdk_util",
-# #     "-C", "link-arg=-lspdk_conf",
-# #     "-C", "link-arg=-lspdk_trace",
-# #     "-C", "link-arg=-lspdk_log",
-# #     "-C", "link-arg=-lspdk_jsonrpc",
-# #     "-C", "link-arg=-lspdk_json",
-# #     "-C", "link-arg=-lspdk_rpc",
-# #     "-C", "link-arg=/tmp/spdk/build/lib/libspdk_env_dpdk.a",
-# #     "-C", "link-arg=-Wl,--start-group",
-# #     "-C", "link-arg=-Wl,--whole-archive",
-# #     "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_eal.a",
-# #     "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_mempool.a",
-# #     "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_ring.a",
-# #     "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_mempool_ring.a",
-# #     "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_pci.a",
-# #     "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_bus_pci.a",
-# #     "-C", "link-arg=-Wl,--end-group",
-# #     "-C", "link-arg=-Wl,--no-whole-archive",
-# #     "-C", "link-arg=-lnuma",
-# #     "-C", "link-arg=-ldl",
-# #     "-C", "link-arg=-lrt",
-# #     "-C", "link-arg=-luuid"
-# # ]
+#[target.'cfg(feature="linker-flags")']
+# I don't think feature= is supported, see cargo/src/util/cfg.rs#CfgExpr and Parser
+# x86_64-unknown-linux-gnu
+[build]
+rustflags = [
+
+    "-C", "link-arg=-Wl,-z,relro,-z,now",
+    "-C", "link-arg=-Wl,-z,noexecstack",
+    "-C", "link-arg=-pthread",
+
+    # "-C", "link-arg=-Wl,--whole-archive",
+
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_copy_ioat",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_ioat",
+
+    # "-C", "link-arg=-Wl,--no-whole-archive",
+    # "-C", "link-arg=-Wl,--whole-archive",
+
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_vbdev_lvol",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_blob",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_blob_bdev",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_lvol",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_bdev_malloc",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_bdev_null",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_bdev_nvme",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_nvme",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_vbdev_passthru",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_vbdev_error",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_vbdev_gpt",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_vbdev_split",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_bdev_aio",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_bdev_virtio",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_virtio",
+   
+    # "-C", "link-arg=-Wl,--no-whole-archive",
+
+    "-C", "link-arg=-l", "-C", "link-arg=aio",
+    "-C", "link-arg=-L", "-C", "link-arg=/tmp/spdk/build/lib",
+
+    # "-C", "link-arg=-Wl,--whole-archive",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_event_bdev",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_event_copy",
+
+    # "-C", "link-arg=-Wl,--no-whole-archive",
+
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_blobfs",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_blob",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_bdev",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_blob_bdev",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_copy",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_event",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_util",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_conf",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_trace",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_log",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_jsonrpc",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_json",
+    "-C", "link-arg=-l", "-C", "link-arg=spdk_rpc",
+    "-C", "link-arg=/tmp/spdk/build/lib/libspdk_env_dpdk.a",
+
+    # "-C", "link-arg=-Wl,--start-group",
+    # "-C", "link-arg=-Wl,--whole-archive",
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_eal.a",
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_mempool.a",
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_ring.a",
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_mempool_ring.a",
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_pci.a",
+    "-C", "link-arg=/tmp/spdk/dpdk/build/lib/librte_bus_pci.a",
+    # "-C", "link-arg=-Wl,--end-group",
+    # "-C", "link-arg=-Wl,--no-whole-archive",
+    
+    "-C", "link-arg=-lnuma",
+    "-C", "link-arg=-ldl",
+    "-C", "link-arg=-lrt",
+    "-C", "link-arg=-luuid"
+]
+
+# LDFLAGS=-Wl,-z,relro,-z,now -Wl,-z,noexecstack -pthread
+# OBJS= 
+# LIBS=-Wl,--whole-archive -lspdk_copy_ioat -lspdk_ioat -Wl,--no-whole-archive  -Wl,--whole-archive -lspdk_vbdev_lvol -lspdk_blob -lspdk_blob_bdev -lspdk_lvol -lspdk_bdev_malloc -lspdk_bdev_null -lspdk_bdev_nvme -lspdk_nvme -lspdk_vbdev_passthru -lspdk_vbdev_error -lspdk_vbdev_gpt -lspdk_vbdev_split -lspdk_bdev_aio -lspdk_bdev_virtio -lspdk_virtio -Wl,--no-whole-archive -laio -L/tmp/spdk/build/lib -Wl,--whole-archive -lspdk_event_bdev -lspdk_event_copy -Wl,--no-whole-archive -lspdk_blobfs -lspdk_blob -lspdk_bdev -lspdk_blob_bdev -lspdk_copy -lspdk_event -lspdk_util -lspdk_conf -lspdk_trace -lspdk_log -lspdk_jsonrpc -lspdk_json -lspdk_rpc /tmp/spdk/build/lib/libspdk_env_dpdk.a -Wl,--start-group -Wl,--whole-archive /tmp/spdk/dpdk/build/lib/librte_eal.a /tmp/spdk/dpdk/build/lib/librte_mempool.a /tmp/spdk/dpdk/build/lib/librte_ring.a /tmp/spdk/dpdk/build/lib/librte_mempool_ring.a /tmp/spdk/dpdk/build/lib/librte_pci.a /tmp/spdk/dpdk/build/lib/librte_bus_pci.a -Wl,--end-group -Wl,--no-whole-archive -lnuma -ldl 
+# SYS_LIBS=-lrt -luuid

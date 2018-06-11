@@ -52,7 +52,7 @@ fn main() {
         write!(&mut output, "\"-C\", \"link-arg={}\",\n", s).unwrap();
     }
 
-    //println!("cargo:rustc-env=RUSTFLAGS=-C {}", output);
+    println!("cargo:warn={}", output);
     //let contents = format!("[build]\n", libs)
     //println!("cargo:rustc-flags={}", libs);
 
