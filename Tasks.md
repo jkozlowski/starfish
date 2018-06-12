@@ -74,3 +74,6 @@ Now, what is going to happen if I run cargo clean and cargo build -> All deps ge
 /tmp/spdk/dpdk/lib/librte_eal/common/eal_common_options.c:259: undefined reference to `stat' /tmp/spdk/dpdk/lib/librte_eal/common/eal_common_options.c:265: undefined reference to`stat'
 /tmp/spdk/dpdk/build/lib/librte_bus_pci.a(pci_uio.o): In function `pci_mknod_uio_dev': /tmp/spdk/dpdk/drivers/bus/pci/linux/pci_uio.c:108: undefined reference to`mknod'
 collect2: error: ld returned 1 exit status
+
+https://www.redhat.com/archives/pam-list/1999-February/msg00082.html
+https://gcc.gnu.org/ml/gcc-help/1999-11n/msg00456.html

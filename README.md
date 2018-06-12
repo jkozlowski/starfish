@@ -13,7 +13,7 @@ $ RUST_LOG=debug cargo run -p rust-spdk
 $ cd rust-spdk; cargo run
 $ ls -la /mnt/huge/spdk_*_*
 $ rm -rf /mnt/huge/spdk_*_*
-$ cargo build -vv # shows tool args
+$ cargo build -vv --release # shows tool args
 ```
 
 ## SPDK examples
