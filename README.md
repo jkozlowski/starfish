@@ -14,6 +14,8 @@ $ cd rust-spdk; cargo run
 $ ls -la /mnt/huge/spdk_*_*
 $ rm -rf /mnt/huge/spdk_*_*
 $ cargo build -vv --release # shows tool args
+$ sshfs ec2-user@ec2-18-219-231-112.us-east-2.compute.amazonaws.com:/home/ec2-user/code/starfish ~/Programming/starfish-ec2/
+$ sudo umount -f starfish-ec2
 ```
 
 ## SPDK examples
@@ -48,38 +50,3 @@ $ rustc --bin hello_world -- -Z print-link-args
 Lints:
 
 - `https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#non-upper-case-globals`
-
-## Successful run
-
-```
--bash-4.2# ./hello_blob
-hello_blob.c: 449:main: *NOTICE*: entry
-Starting SPDK v18.07-pre / DPDK 18.02.0 initialization...
-[ DPDK EAL parameters: hello_blob -c 0x1 --file-prefix=spdk_pid3422 ]
-EAL: Detected 2 lcore(s)
-EAL: No free hugepages reported in hugepages-1048576kB
-EAL: Multi-process socket /var/run/.spdk_pid3422_unix
-EAL: Probing VFIO support...
-app.c: 521:spdk_app_start: *NOTICE*: Total cores available: 1
-reactor.c: 669:spdk_reactors_init: *NOTICE*: Occupied cpu socket mask is 0x1
-reactor.c: 453:_spdk_reactor_run: *NOTICE*: Reactor started on core 0 on socket 0
-hello_blob.c: 405:hello_start: *NOTICE*: entry
-hello_blob.c: 370:bs_init_complete: *NOTICE*: entry
-hello_blob.c: 378:bs_init_complete: *NOTICE*: blobstore: 0x1612660
-hello_blob.c: 357:create_blob: *NOTICE*: entry
-hello_blob.c: 336:blob_create_complete: *NOTICE*: entry
-hello_blob.c: 344:blob_create_complete: *NOTICE*: new blob id 4294967296
-hello_blob.c: 305:open_complete: *NOTICE*: entry
-hello_blob.c: 316:open_complete: *NOTICE*: blobstore has FREE clusters of 15
-hello_blob.c: 282:resize_complete: *NOTICE*: resized blob now has USED clusters of 15
-hello_blob.c: 258:sync_complete: *NOTICE*: entry
-hello_blob.c: 221:blob_write: *NOTICE*: entry
-hello_blob.c: 204:write_complete: *NOTICE*: entry
-hello_blob.c: 180:read_blob: *NOTICE*: entry
-hello_blob.c: 153:read_complete: *NOTICE*: entry
-hello_blob.c: 167:read_complete: *NOTICE*: read SUCCESS and data matches!
-hello_blob.c: 133:delete_blob: *NOTICE*: entry
-hello_blob.c: 114:delete_complete: *NOTICE*: entry
-hello_blob.c:  77:unload_complete: *NOTICE*: entry
-hello_blob.c: 485:main: *NOTICE*: SUCCCESS!
-```
