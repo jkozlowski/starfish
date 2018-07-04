@@ -15,6 +15,9 @@
 - compiler versions?
 - https://csclub.uwaterloo.ca/~tbelaire/blog/posts/gba-rust-2.html
 - https://blog.filippo.io/rustgo/
+- https://stackoverflow.com/questions/2624238/c-undefined-references-with-static-library
+- https://gist.github.com/gubatron/32f82053596c24b6bec6
+- https://thinkingeek.com/2012/08/08/common-linking-issues-c/
 
 ### Plan
 
