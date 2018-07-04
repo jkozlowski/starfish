@@ -1,13 +1,7 @@
+use generated::spdk_event_bindings::{spdk_app_opts, spdk_app_opts_init, spdk_app_start};
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 use std::ptr;
-
-#[allow(non_upper_case_globals, non_camel_case_types, unused)]
-mod spdk_event {
-    include!(concat!(env!("OUT_DIR"), "/spdk_event_bindings.rs"));
-}
-
-use self::spdk_event::{spdk_app_opts, spdk_app_opts_init, spdk_app_start};
 
 pub struct AppOpts(spdk_app_opts);
 

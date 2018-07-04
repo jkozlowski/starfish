@@ -47,7 +47,7 @@ $ rustc --bin hello_world -- -Z print-link-args
 
 Lints:
 
-- https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#non-upper-case-globals`
+- `https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#non-upper-case-globals`
 
 ## Successful run
 

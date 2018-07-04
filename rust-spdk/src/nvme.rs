@@ -1,10 +1,6 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
-
-#[allow(non_upper_case_globals, non_camel_case_types, unused)]
-mod spdk_nvme_bindings {
-    include!(concat!(env!("OUT_DIR"), "/spdk_nvme_bindings.rs"));
-}
+use generated::spdk_nvme_bindings;
 
 pub struct EnvOpts(spdk_nvme_bindings::spdk_env_opts);
 

@@ -9,13 +9,13 @@ rustflags = [
     "-C", "link-arg=-Wl,-z,relro,-z,now",
     "-C", "link-arg=-Wl,-z,noexecstack",
     
-    # "-C", "link-arg=-Wl,--whole-archive",
+    "-C", "link-arg=-Wl,--whole-archive",
 
     "-C", "link-arg=-l", "-C", "link-arg=spdk_copy_ioat",
     "-C", "link-arg=-l", "-C", "link-arg=spdk_ioat",
 
-    # "-C", "link-arg=-Wl,--no-whole-archive",
-    # "-C", "link-arg=-Wl,--whole-archive",
+    "-C", "link-arg=-Wl,--no-whole-archive",
+    "-C", "link-arg=-Wl,--whole-archive",
 
     "-C", "link-arg=-l", "-C", "link-arg=spdk_vbdev_lvol",
     "-C", "link-arg=-l", "-C", "link-arg=spdk_blob",
@@ -33,16 +33,16 @@ rustflags = [
     "-C", "link-arg=-l", "-C", "link-arg=spdk_bdev_virtio",
     "-C", "link-arg=-l", "-C", "link-arg=spdk_virtio",
    
-    # "-C", "link-arg=-Wl,--no-whole-archive",
+    "-C", "link-arg=-Wl,--no-whole-archive",
 
     "-C", "link-arg=-l", "-C", "link-arg=aio",
     "-C", "link-arg=-L", "-C", "link-arg=/tmp/spdk/build/lib",
 
-    # "-C", "link-arg=-Wl,--whole-archive",
+    "-C", "link-arg=-Wl,--whole-archive",
     "-C", "link-arg=-l", "-C", "link-arg=spdk_event_bdev",
     "-C", "link-arg=-l", "-C", "link-arg=spdk_event_copy",
 
-    #"-C", "link-arg=-Wl,--no-whole-archive",
+    "-C", "link-arg=-Wl,--no-whole-archive",
 
     "-C", "link-arg=-l", "-C", "link-arg=spdk_blobfs",
     "-C", "link-arg=-l", "-C", "link-arg=spdk_blob",
@@ -70,10 +70,9 @@ rustflags = [
     "-C", "link-arg=-Wl,--no-whole-archive",
     "-C", "link-arg=-Wl,--end-group",
     
-    "-C", "link-arg=-lnuma",
-    "-C", "link-arg=-luuid",
-    "-C", "link-arg=-pthread",
-    "-C", "link-arg=-ldl",
-    "-C", "link-arg=-lrt",
-    "-C", "link-arg=-l", "-C", "link-arg=c",
+    "-C", "link-arg=-l", "-C", "link-arg=numa",
+    "-C", "link-arg=-l", "-C", "link-arg=uuid",
+    "-C", "link-arg=-l", "-C", "link-arg=pthread",
+    "-C", "link-arg=-l", "-C", "link-arg=dl",
+    "-C", "link-arg=-l", "-C", "link-arg=rt",
 ]
