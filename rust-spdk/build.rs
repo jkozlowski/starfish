@@ -11,31 +11,31 @@ use std::path::PathBuf;
 use toml::Value;
 
 fn main_run() {
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("spdk_config.properties");
+    // let out_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("spdk_config.properties");
 
-    let make_output = gnu_make()
-        .arg(format!("ENV_PATH={:?}", out_path))
-        .output()
-        .expect("make failed");
+    // let make_output = gnu_make()
+    //     .arg(format!("ENV_PATH={:?}", out_path))
+    //     .output()
+    //     .expect("make failed");
 
-    let mut f = File::open(out_path).expect("file not found");
+    // let mut f = File::open(out_path).expect("file not found");
 
-    let mut contents = String::new();
-    f.read_to_string(&mut contents)
-        .expect("something went wrong reading the file");
+    // let mut contents = String::new();
+    // f.read_to_string(&mut contents)
+    //     .expect("something went wrong reading the file");
 
-    println!("cargo:warn={}", contents);
+    // println!("cargo:warn={}", contents);
 
-    let value = contents.parse::<Value>().unwrap();
-    let libs = value["LIBS"].as_str().unwrap();
+    // let value = contents.parse::<Value>().unwrap();
+    // let libs = value["LIBS"].as_str().unwrap();
 
-    let mut output = String::new();
-    for s in libs.split(" ") {
-        write!(&mut output, "\"-C\", \"link-arg={}\",\n", s).unwrap();
-    }
+    // let mut output = String::new();
+    // for s in libs.split(" ") {
+    //     write!(&mut output, "\"-C\", \"link-arg={}\",\n", s).unwrap();
+    // }
 
-    println!("cargo:warn={}", output);
-    println!("cargo:rerun-if-changed=./build.rs");
+    // println!("cargo:warn={}", output);
+    // println!("cargo:rerun-if-changed=./build.rs");
 
     generate("nvme");
     generate("event");
@@ -54,11 +54,13 @@ fn generate(name: &str) {
     let bindings = bindgen::Builder::default()
         .header(format!("/usr/local/include/spdk/{}.h", name))
         .derive_default(true)
-        //.whitelist_function("spdk_(env|nvme|dma|mempool).*")
-        //.whitelist_type("spdk_(env|nvme|mempool).*")
         .with_codegen_config(codegen_config)
         // Figure out how to make sure the includes are working ok
         .clang_arg("-I/tmp/spdk/include")
+        // If there are linking errors and the generated bindings have weird looking
+        // #link_names (that start with \u{1}), the make sure to flip that to false.
+        .trust_clang_mangling(false)
+        .rustfmt_bindings(true)
         .generate()
         .expect("Unable to generate bindings");
 

@@ -4,8 +4,7 @@ version = "0.1.0"
 authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
 workspace = "../"
 categories = ["external-ffi-bindings"]
-# Uncomment to regenerate bindings.
-# build = "build_file.rs"
+build = "build.rs"
 description = """
 Rust bindings to spdk.
 """
@@ -23,5 +22,6 @@ path = "src/hello_world.rs"
 
 [build-dependencies]
 # Enable when regenerating bindings
-#bindgen = "*"
-#toml = "*"
+bindgen = "*"
+toml = "*"
+make-cmd = "*"
