@@ -39,8 +39,6 @@ impl AppOpts {
             )
         };
 
-        // pub type spdk_event_fn = :: std :: option :: Option < unsafe extern "C" fn ( arg1 : * mut :: std :: os :: raw :: c_void , arg2 : * mut :: std :: os :: raw :: c_void ) > ;
-        // pub fn spdk_app_start ( opts : * mut spdk_app_opts , start_fn : spdk_event_fn , arg1 : * mut :: std :: os :: raw :: c_void , arg2 : * mut :: std :: os :: raw :: c_void ) -> :: std :: os :: raw :: c_int ; }
         Ok(())
     }
 }
