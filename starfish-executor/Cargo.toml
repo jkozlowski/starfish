@@ -8,6 +8,7 @@ Single threaded executor for futures-rs. No Arc in sight.
 """
 
 [dependencies]
+failure = "*"
 futures-core = "*"
 futures-util = "*"
 

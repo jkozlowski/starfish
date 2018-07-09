@@ -19,7 +19,8 @@ name = "hello_world"
 path = "src/hello_world.rs"
 
 [dependencies]
-#failure = "*"
+failure = "*"
+failure_derive = "*"
 
 [build-dependencies]
 # Enable when regenerating bindings
