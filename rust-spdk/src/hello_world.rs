@@ -9,13 +9,13 @@ use spdk::event::AppOpts;
 // struct hello_context_t {
 struct HelloContext {
     // 	struct spdk_blob_store *bs;
-    // 	struct spdk_blob *blob;
-    // 	spdk_blob_id blobid;
-    // 	struct spdk_io_channel *channel;
-    // 	uint8_t *read_buff;
-    // 	uint8_t *write_buff;
-    // 	uint64_t page_size;
-    // 	int rc;
+// 	struct spdk_blob *blob;
+// 	spdk_blob_id blobid;
+// 	struct spdk_io_channel *channel;
+// 	uint8_t *read_buff;
+// 	uint8_t *write_buff;
+// 	uint64_t page_size;
+// 	int rc;
 }
 
 impl HelloContext {
@@ -355,30 +355,6 @@ impl HelloContext {
 // 	create_blob(hello_context);
 // }
 
-// /*
-//  * Our initial event that kicks off everything from main().
-//  */
-// static void
-// hello_start(void *arg1, void *arg2)
-// {
-// 	struct hello_context_t *hello_context = arg1;
-// 	struct spdk_bdev *bdev = NULL;
-// 	struct spdk_bs_dev *bs_dev = NULL;
-
-// 	SPDK_NOTICELOG("entry\n");
-// 	/*
-// 	 * Get the bdev. For this example it is our malloc (RAM)
-// 	 * disk configured via hello_blob.conf that was passed
-// 	 * in when we started the SPDK app framework so we can
-// 	 * get it via its name.
-// 	 */
-// 	bdev = spdk_bdev_get_by_name("Malloc0");
-// 	if (bdev == NULL) {
-// 		SPDK_ERRLOG("Could not find a bdev\n");
-// 		spdk_app_stop(-1);
-// 		return;
-// 	}
-
 // 	/*
 // 	 * spdk_bs_init() requires us to fill out the structure
 // 	 * spdk_bs_dev with a set of callbacks. These callbacks
@@ -442,7 +418,31 @@ pub fn main() {
      * spdk_app_start() before hello_start() runs.
      */
     //  rc = spdk_app_start(&opts, hello_start, hello_context, NULL);
-    let ret = opts.start();
+    let ret = opts.start(|| {
+        // /*
+        //  * Our initial event that kicks off everything from main().
+        //  */
+        // static void
+        // hello_start(void *arg1, void *arg2)
+        // {
+        // 	struct hello_context_t *hello_context = arg1;
+        // 	struct spdk_bdev *bdev = NULL;
+        // 	struct spdk_bs_dev *bs_dev = NULL;
+
+        // 	SPDK_NOTICELOG("entry\n");
+        // 	/*
+        // 	 * Get the bdev. For this example it is our malloc (RAM)
+        // 	 * disk configured via hello_blob.conf that was passed
+        // 	 * in when we started the SPDK app framework so we can
+        // 	 * get it via its name.
+        // 	 */
+        // 	bdev = spdk_bdev_get_by_name("Malloc0");
+        // 	if (bdev == NULL) {
+        // 		SPDK_ERRLOG("Could not find a bdev\n");
+        // 		spdk_app_stop(-1);
+        // 		return;
+        // 	}
+    });
 
     // 		if (rc) {
     // 			SPDK_NOTICELOG("ERROR!\n");
