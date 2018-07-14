@@ -11,26 +11,8 @@ Async programming with spdk for rust.
 # General
 failure = "0.1.1"
 
-# Futures
-futures-core = "0.2.1"
-futures-util = "0.2.1"
-# Define versions of dependencies
-#bounded-spsc-queue = "0.2.0"
-#crossbeam = "0.3.2"
-#error-chain = "0.11.0"
-#itertools = "0.7.6"
-#libc = "0.2.36"
-#mempool = "0.3.1"
-#pagecache = "0.2.5"
-#slab = "0.4.0"
-#slog = "2.1.1"
-#slog-async = "2.2.0"
-#slog_derive = "0.1.0"
-#threadpool = "1.7.1"
-
 rust-spdk = { path = "rust-spdk" }
-#starfish-executor = { path = "starfish-executor" }
-#starfish-future = { path = "starfish-future" }
+starfish-executor = { path = "starfish-executor" }
 
 [dev-dependencies]
 cargo-make = "0.10.0"
@@ -47,6 +29,5 @@ toml = "0.4.6"
 
 members = [
   "starfish-executor",
-  "starfish-future",
   "rust-spdk",
 ]

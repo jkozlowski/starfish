@@ -34,6 +34,7 @@ $ sudo umount -f starfish-ec2
 ## Useful
 
 - https://github.com/japaric/xargo/issues/45
+- https://github.com/hnes/libaco
 
 Pretty print macros:
 

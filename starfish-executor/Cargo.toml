@@ -8,10 +8,9 @@ Single threaded executor for futures-rs. No Arc in sight.
 """
 
 [dependencies]
-failure = "*"
-futures-core = "*"
-futures-util = "*"
+futures-core = { git = "https://github.com/rust-lang-nursery/futures-rs", rev = "cf130ff" }
+#futures-util = "*"
 
 [dev-dependencies]
-futures = "*"
+#futures = "*"
 hamcrest = "*"
