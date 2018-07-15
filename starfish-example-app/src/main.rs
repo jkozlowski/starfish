@@ -1,4 +1,5 @@
 extern crate spdk_sys as spdk;
+extern crate starfish_executor as executor;
 
 use std::env;
 use spdk::event::AppOpts;

@@ -9,3 +9,4 @@ Example app that uses the APIs.
 
 [dependencies]
 spdk-sys = { path = "../spdk-sys" }
+starfish-executor = { path = "../starfish-executor" }
