@@ -1,5 +1,7 @@
 use failure::Error;
-use generated::spdk_event_bindings::{spdk_app_opts, spdk_app_opts_init, spdk_app_start};
+use generated::spdk_event_bindings::{
+    spdk_app_fini, spdk_app_opts, spdk_app_opts_init, spdk_app_start,
+};
 use std::ffi::CString;
 use std::os::raw::c_char;
 use std::os::raw::c_void;
@@ -59,6 +61,10 @@ impl AppOpts {
                 ptr::null_mut(),
             )
         };
+
+        unsafe {
+            spdk_app_fini();
+        }
 
         if ret == 0 {
             Ok(())
