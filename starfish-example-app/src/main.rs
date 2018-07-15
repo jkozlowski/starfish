@@ -1,5 +1,6 @@
 extern crate spdk_sys as spdk;
 extern crate starfish_executor as executor;
+extern crate futures_util as futures;
 
 use std::env;
 use spdk::event::AppOpts;
@@ -13,6 +14,7 @@ pub fn main() {
     opts.config_file(config_file.as_str());
 
     let ret = opts.start(|| {
+        let executor = executor::initialize();
         println!("Running");
     });
 }
