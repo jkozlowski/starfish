@@ -1,5 +1,5 @@
 [package]
-name = "rust-spdk"
+name = "spdk-sys"
 version = "0.1.0"
 authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
 workspace = "../"
@@ -9,21 +9,14 @@ description = """
 Rust bindings to spdk.
 """
 
-[lib]
-name = "rust_spdk"
-path = "src/lib.rs"
-doctest = false
-
-[[bin]]
-name = "hello_world"
-path = "src/hello_world.rs"
+links="spdk"
+crate-type = ["staticlib"]
 
 [dependencies]
 failure = "*"
 failure_derive = "*"
 
 [build-dependencies]
-# Enable when regenerating bindings
 bindgen = "*"
 toml = "*"
 make-cmd = "*"

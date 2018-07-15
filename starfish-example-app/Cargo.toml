@@ -1,0 +1,11 @@
+[package]
+name = "starfish-example-app"
+version = "0.1.0"
+workspace = "../"
+authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
+description = """
+Example app that uses the APIs.
+"""
+
+[dependencies]
+spdk-sys = { path = "../spdk-sys" }

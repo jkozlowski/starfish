@@ -8,11 +8,11 @@ Async programming with spdk for rust.
 """
 
 [dependencies]
-# General
 failure = "0.1.1"
 
-rust-spdk = { path = "rust-spdk" }
+spdk-sys = { path = "spdk-sys" }
 starfish-executor = { path = "starfish-executor" }
+starfish-example-app = { path = "starfish-example-app" }
 
 [dev-dependencies]
 cargo-make = "0.10.0"
@@ -28,6 +28,7 @@ toml = "0.4.6"
 [workspace]
 
 members = [
+  "spdk-sys",
   "starfish-executor",
-  "rust-spdk",
+  "starfish-example-app"
 ]

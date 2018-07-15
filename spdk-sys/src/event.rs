@@ -24,13 +24,13 @@ impl AppOpts {
         AppOpts(opts)
     }
 
-    pub fn name(&mut self, name: &'static str) {
+    pub fn name(&mut self, name: &str) {
         self.0.name = CString::new(name)
             .expect("Couldn't create a string")
             .into_raw()
     }
 
-    pub fn config_file(&mut self, config_file: &'static str) {
+    pub fn config_file(&mut self, config_file: &str) {
         self.0.config_file = CString::new(config_file)
             .expect("Couldn't create a string")
             .into_raw()
