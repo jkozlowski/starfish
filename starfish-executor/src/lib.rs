@@ -309,7 +309,6 @@ mod tests {
     use futures_core::task;
     use futures_core::task::Poll;
     use hamcrest::prelude::*;
-    use std::mem;
 
     struct Controller {
         pollers: VecDeque<Box<Fn(&mut task::Context, &mut Controller) -> Poll<()>>>,
