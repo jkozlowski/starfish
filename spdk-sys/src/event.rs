@@ -3,8 +3,7 @@ use generated::spdk_event_bindings::{
     spdk_app_fini, spdk_app_opts, spdk_app_opts_init, spdk_app_start,
 };
 use std::ffi::CString;
-use std::os::raw::c_char;
-use std::os::raw::c_void;
+use std::os::raw::{ c_char, c_void};
 use std::ptr;
 
 #[derive(Debug, Fail)]
@@ -35,6 +34,11 @@ impl AppOpts {
             .expect("Couldn't create a string")
             .into_raw()
     }
+
+    // TODO: probably need this to properly deallocate pollers :()
+    // pub fn shutdown_cb() {
+    //     //spdk_app_shutdown_cb	
+    // }
 
     pub fn start<F>(mut self, f: F) -> Result<(), Error>
     where

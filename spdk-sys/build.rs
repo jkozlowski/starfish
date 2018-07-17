@@ -44,6 +44,7 @@ fn main_run() {
     generate("blob_bdev");
     generate("blob");
     generate("log");
+    generate("io_channel")
 }
 
 fn generate(name: &str) {
