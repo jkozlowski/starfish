@@ -13,7 +13,7 @@ pub fn poller_register<F>(f: F) where F: Fn() -> bool {
     {
         let opt_closure = closure as *mut F;
         let work_done = unsafe { (*opt_closure)() };
-        if (work_done) {
+        if work_done {
             return 1;
         } else {
             return 0;

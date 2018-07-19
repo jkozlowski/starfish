@@ -60,7 +60,6 @@ impl AppOpts {
             spdk_app_start(
                 opts_ref as *mut spdk_app_opts,
                 Some(start_wrapper::<F>),
-                // For now nothing to pass around
                 user_data,
                 ptr::null_mut(),
             )

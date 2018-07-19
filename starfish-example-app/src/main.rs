@@ -6,6 +6,7 @@ use std::env;
 use std::mem;
 use spdk::io_channel;
 use spdk::event::AppOpts;
+use spdk::bdev;
 
 pub fn main() {
     let args: Vec<String> = env::args().collect();
@@ -21,11 +22,13 @@ pub fn main() {
         // TODO: fixup
         mem::forget(executor);
 
+        // Register the executor poller
         io_channel::poller_register(|| {
             return executor::pure_poll();
         });
 
-        println!("Running");
+        let bdev = bdev::get_by_name("Malloc0").expect("bdev not found");
+        println!("{:?}", bdev)
     });
 }
 
