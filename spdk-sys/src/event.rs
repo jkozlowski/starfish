@@ -1,6 +1,7 @@
 use failure::Error;
 use generated::spdk_event_bindings::{
-    spdk_app_fini, spdk_app_opts, spdk_app_opts_init, spdk_app_start,
+    spdk_app_fini, spdk_app_opts, spdk_app_opts_init, 
+    spdk_app_start, spdk_app_stop
 };
 use std::ffi::CString;
 use std::os::raw::{ c_char, c_void};
@@ -75,6 +76,10 @@ impl AppOpts {
             Err(AppError::StartupError(ret))?
         }
     }
+}
+
+pub fn app_stop(success: bool) {
+    unsafe { spdk_app_stop(if success { 0 } else { -1 } ); };
 }
 
 impl Drop for AppOpts {

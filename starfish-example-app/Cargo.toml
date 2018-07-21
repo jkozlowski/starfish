@@ -8,6 +8,7 @@ Example app that uses the APIs.
 """
 
 [dependencies]
+failure = "*"
 spdk-sys = { path = "../spdk-sys" }
 starfish-executor = { path = "../starfish-executor" }
 futures-preview = "0.3.0-alpha.1"
