@@ -1,6 +1,6 @@
 extern crate spdk_sys as spdk;
 extern crate starfish_executor as executor;
-extern crate futures_util as futures;
+extern crate futures;
 
 use std::env;
 use std::mem;

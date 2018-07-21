@@ -10,4 +10,4 @@ Example app that uses the APIs.
 [dependencies]
 spdk-sys = { path = "../spdk-sys" }
 starfish-executor = { path = "../starfish-executor" }
-futures-util = { git = "https://github.com/rust-lang-nursery/futures-rs", rev = "cf130ff" }
+futures-preview = "*"

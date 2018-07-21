@@ -1,11 +1,11 @@
 #![feature(pin, arbitrary_self_types, futures_api)]
 #[macro_use]
-extern crate futures_core;
+extern crate futures;
 
-use futures_core::future::FutureObj;
-use futures_core::future::{Future, LocalFutureObj};
-use futures_core::task::{Context, Executor, LocalWaker, Poll, UnsafeWake, Waker};
-use futures_core::task::{SpawnErrorKind, SpawnObjError};
+use futures::future::FutureObj;
+use futures::future::{Future, LocalFutureObj};
+use futures::task::{Context, Executor, LocalWaker, Poll, UnsafeWake, Waker};
+use futures::task::{SpawnErrorKind, SpawnObjError};
 use std::boxed::PinBox;
 use std::cell::Cell;
 use std::cell::RefCell;

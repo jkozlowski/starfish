@@ -9,7 +9,9 @@ Async programming with spdk for rust.
 
 [dependencies]
 failure = "0.1.1"
+futures-preview = "0.3.0-alpha.1"
 
+# Workspace dependencies to force building them from root.
 spdk-sys = { path = "spdk-sys" }
 starfish-executor = { path = "starfish-executor" }
 starfish-example-app = { path = "starfish-example-app" }
