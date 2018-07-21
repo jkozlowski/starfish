@@ -46,7 +46,7 @@ impl AppOpts {
     {
         let user_data = &f as *const _ as *mut c_void;
 
-        extern "C" fn start_wrapper<F>(closure: *mut c_void, arg2: *mut c_void)
+        extern "C" fn start_wrapper<F>(closure: *mut c_void, _: *mut c_void)
         where
             F: Fn() -> (),
         {

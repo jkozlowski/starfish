@@ -3,7 +3,6 @@ use generated::spdk_bdev_bindings::{
     spdk_bdev_get_by_name, spdk_bdev   
 };
 use std::ffi::CString;
-use std::os::raw::{ c_char, c_void };
 use std::ptr;
 
 #[derive(Debug, Fail)]
@@ -13,6 +12,7 @@ pub enum BDevError {
 }
 
 /// SPDK block device.
+/// TODO: Implement Drop
 #[derive(Debug)]
 pub struct BDev {
     pub (crate) name: String,

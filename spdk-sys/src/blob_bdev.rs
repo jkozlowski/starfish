@@ -16,6 +16,7 @@ pub enum BlobBDevError {
 /// SPDK blob store block device.
 ///
 /// This is a virtual representation of a block device that is exported by the backend. 
+/// TODO: Implement Drop
 #[derive(Debug)]
 pub struct BlobStoreBDev {
     pub (crate) bs_dev: *mut spdk_bs_dev
@@ -37,5 +38,3 @@ pub fn create_bs_dev(bdev: &mut BDev) -> Result<BlobStoreBDev, Error> {
 	
     return Ok(BlobStoreBDev { bs_dev });
 }
-
-//  pub fn spdk_bdev_create_bs_dev ( bdev : * mut spdk_bdev , remove_cb : spdk_bdev_remove_cb_t , remove_ctx : * mut :: std :: os :: raw :: c_void ) -> * mut spdk_bs_dev ; } extern "C" { 

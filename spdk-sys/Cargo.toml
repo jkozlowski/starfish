@@ -15,6 +15,7 @@ crate-type = ["staticlib"]
 [dependencies]
 failure = "*"
 failure_derive = "*"
+futures-preview = "0.3.0-alpha.1"
 
 [build-dependencies]
 bindgen = "*"
