@@ -15,8 +15,8 @@ pub enum BDevError {
 /// SPDK block device.
 #[derive(Debug)]
 pub struct BDev {
-    name: String,
-    bdev: *mut spdk_bdev
+    pub (crate) name: String,
+    pub (crate) bdev: *mut spdk_bdev
 }
 
 pub fn get_by_name<S>(name: S) -> Result<BDev, Error>

@@ -1,43 +1,41 @@
+use failure::Error;
+use std::ptr;
+
+use bdev::{BDev};
+use generated;
 use generated::spdk_blob_bdev_bindings::{
-    spdk_bdev_create_bs_dev  
+    spdk_bdev_create_bs_dev, spdk_bs_dev  
 };
-// struct BDev {
 
-// }
+#[derive(Debug, Fail)]
+pub enum BlobBDevError {
+    #[fail(display = "Could not create blob bdev!: {}", _0)]
+    FailedToCreate(String),
+}
 
-// pub fn init(bdev_name: S) -> impl Future<()>
-// where S: Into<String> {
-//     unimplemented!("Oops");
-// }
+/// SPDK blob store block device.
+///
+/// This is a virtual representation of a block device that is exported by the backend. 
+#[derive(Debug)]
+pub struct BlobStoreBDev {
+    pub (crate) bs_dev: *mut spdk_bs_dev
+}
 
-// pub fn bdev_get_by_name(bdev_name : S) 
-// where S: Into<String> {
-//     struct hello_context_t *hello_context = arg1;
-// 	struct spdk_bdev *bdev = NULL;
-// 	struct spdk_bs_dev *bs_dev = NULL;
+pub fn create_bs_dev(bdev: &mut BDev) -> Result<BlobStoreBDev, Error> {
 
-// 	SPDK_NOTICELOG("entry\n");
-// 	/*
-// 	 * Get the bdev. For this example it is our malloc (RAM)
-// 	 * disk configured via hello_blob.conf that was passed
-// 	 * in when we started the SPDK app framework so we can
-// 	 * get it via its name.
-// 	 */
-// 	bdev = spdk_bdev_get_by_name("Malloc0");
-// 	if (bdev == NULL) {
-// 	}
+    let bs_dev = unsafe { 
+        spdk_bdev_create_bs_dev(
+            // PITA that bindgen seems to generate the mappings multiple times...
+            bdev.bdev as *mut generated::spdk_blob_bdev_bindings::spdk_bdev, 
+            None, 
+            ptr::null_mut())
+    };
 
-// 	bs_dev = spdk_bdev_create_bs_dev(bdev, NULL, NULL);
-// 	if (bs_dev == NULL) {
-// 	}
+    if bs_dev.is_null() {
+        return Err(BlobBDevError::FailedToCreate(bdev.name.clone().into()))?;
+    }
+	
+    return Ok(BlobStoreBDev { bs_dev });
+}
 
-// 	//spdk_bs_init(bs_dev, NULL, bs_init_complete, hello_context);
-
-//     // spdk_bdev *bdev
-//     // spdk_bs_dev *bs_dev
-//     let bdev_name_cstring = CString::new(bdev_name)
-//         .expect("Couldn't create a string");
-//     unsafe { 
-//         spdk_bdev_get_by_name(bdev_name_cstring) 
-//     }
-// }
+//  pub fn spdk_bdev_create_bs_dev ( bdev : * mut spdk_bdev , remove_cb : spdk_bdev_remove_cb_t , remove_ctx : * mut :: std :: os :: raw :: c_void ) -> * mut spdk_bs_dev ; } extern "C" { 

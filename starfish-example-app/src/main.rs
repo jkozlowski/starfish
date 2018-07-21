@@ -7,6 +7,7 @@ use std::mem;
 use spdk::io_channel;
 use spdk::event::AppOpts;
 use spdk::bdev;
+use spdk::blob_bdev;
 
 pub fn main() {
     let args: Vec<String> = env::args().collect();
@@ -27,8 +28,11 @@ pub fn main() {
             return executor::pure_poll();
         });
 
-        let bdev = bdev::get_by_name("Malloc0").expect("bdev not found");
-        println!("{:?}", bdev)
+        let mut bdev = bdev::get_by_name("Malloc0").expect("bdev not found");
+        println!("{:?}", bdev);
+
+        let bs_dev = blob_bdev::create_bs_dev(&mut bdev).expect("could not create bs_dev");
+        println!("{:?}", bs_dev);
     });
 }
 
