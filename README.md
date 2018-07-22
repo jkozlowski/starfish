@@ -31,6 +31,11 @@ $ sudo umount -f starfish-ec2
 - https://dpdk.org/doc/guides/prog_guide/dev_kit_root_make_help.html
 - https://dpdk.org/doc/guides/linux_gsg/build_dpdk.html
 
+## Futures and async/await
+
+- https://internals.rust-lang.org/t/explicit-future-construction-implicit-await/7344
+- https://internals.rust-lang.org/t/pre-rfc-cps-transform-for-generators/7120
+
 ## Useful
 
 - https://github.com/japaric/xargo/issues/45
