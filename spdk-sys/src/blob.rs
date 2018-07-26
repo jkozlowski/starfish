@@ -11,7 +11,6 @@ use generated::spdk_blob_bindings::{
 use blob_bdev::{ BlobStoreBDev };
 use futures::channel::oneshot;
 use futures::channel::oneshot::{ Sender };
-use std::mem::forget;
 use std::ptr;
 use std::os::raw::{ c_void, c_int };
 
@@ -112,5 +111,5 @@ extern "C" fn complete_callback<T>(sender_ptr: *mut c_void, bs: T, bserrno: c_in
     }
 
     // TODO: figure out what to do if Receiver is gone
-    sender.send(ret);//.expect("Receiver is gone");
+    let _ = sender.send(ret);//.expect("Receiver is gone");
 }

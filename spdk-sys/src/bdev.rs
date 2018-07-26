@@ -3,7 +3,6 @@ use generated::spdk_bdev_bindings::{
     spdk_bdev_get_by_name, spdk_bdev   
 };
 use std::ffi::CString;
-use std::ptr;
 
 #[derive(Debug, Fail)]
 pub enum BDevError {

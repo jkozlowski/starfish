@@ -1,3 +1,5 @@
+cargo-features = ["edition"]
+
 [package]
 name = "starfish"
 version = "0.1.0"
@@ -6,6 +8,7 @@ license = "MIT/Apache-2.0"
 description = """
 Async programming with spdk for rust.
 """
+edition = '2018'
 
 [dependencies]
 failure = "0.1.1"

@@ -1,3 +1,4 @@
+#![warn(rust_2018_idioms)]
 #![feature(async_await, await_macro, futures_api)]
 #[macro_use]
 extern crate futures;
@@ -63,7 +64,7 @@ async fn run_inner() -> Result<(), Error> {
 
     let blob = await!(blob::create_blob(&blobstore))?;
 
-    println!("Blob created: {:?}", blob);
+    println!("Blob created: {:?}", blob);a
     
     event::app_stop(true);
 

@@ -9,8 +9,7 @@ description = """
 Rust bindings to spdk.
 """
 
-links="spdk"
-crate-type = ["staticlib"]
+links = "spdk"
 
 [dependencies]
 failure = "*"
