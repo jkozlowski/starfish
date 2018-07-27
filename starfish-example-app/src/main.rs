@@ -31,6 +31,10 @@ pub fn main() {
         });
 
         executor::spawn(run());
+
+        executor::spawn(async {
+            println!("Hello from spawn");
+        });
     });
 
     println!("Finished: {:?}", ret);
