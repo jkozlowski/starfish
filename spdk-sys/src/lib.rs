@@ -1,11 +1,12 @@
 #![warn(rust_2018_idioms)]
-#![feature(async_await, await_macro, futures_api, extern_prelude)]
+#![feature(async_await, 
+    await_macro, 
+    futures_api, 
+    extern_prelude, 
+    use_extern_macros
+)]
 
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-
-extern crate futures;
+#[macro_use] extern crate failure_derive;
 
 mod generated;
 

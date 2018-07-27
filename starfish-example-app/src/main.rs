@@ -1,21 +1,15 @@
 #![warn(rust_2018_idioms)]
 #![feature(async_await, await_macro, futures_api)]
-#[macro_use]
-extern crate futures;
-
-extern crate failure;
-extern crate spdk_sys as spdk;
-extern crate starfish_executor as executor;
 
 use failure::Error;
-use futures::future;
 use std::env;
 use std::mem;
-use spdk::io_channel;
-use spdk::event;
-use spdk::bdev;
-use spdk::blob_bdev;
-use spdk::blob;
+use spdk_sys::io_channel;
+use spdk_sys::event;
+use spdk_sys::bdev;
+use spdk_sys::blob_bdev;
+use spdk_sys::blob;
+use starfish_executor as executor;
 
 pub fn main() {
     let args: Vec<String> = env::args().collect();
@@ -64,7 +58,7 @@ async fn run_inner() -> Result<(), Error> {
 
     let blob = await!(blob::create_blob(&blobstore))?;
 
-    println!("Blob created: {:?}", blob);a
+    println!("Blob created: {:?}", blob);
     
     event::app_stop(true);
 

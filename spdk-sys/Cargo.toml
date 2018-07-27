@@ -1,3 +1,5 @@
+cargo-features = ["edition"]
+
 [package]
 name = "spdk-sys"
 version = "0.1.0"
@@ -8,6 +10,7 @@ build = "build.rs"
 description = """
 Rust bindings to spdk.
 """
+edition = '2018'
 
 links = "spdk"
 

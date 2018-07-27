@@ -1,5 +1,5 @@
 use failure::Error;
-use generated::spdk_bdev_bindings::{
+use crate::generated::spdk_bdev_bindings::{
     spdk_bdev_get_by_name, spdk_bdev   
 };
 use std::ffi::CString;

@@ -1,9 +1,9 @@
 use failure::Error;
 use std::ptr;
 
-use bdev::{BDev};
-use generated;
-use generated::spdk_blob_bdev_bindings::{
+use crate::bdev::{BDev};
+use crate::generated;
+use crate::generated::spdk_blob_bdev_bindings::{
     spdk_bdev_create_bs_dev, spdk_bs_dev  
 };
 

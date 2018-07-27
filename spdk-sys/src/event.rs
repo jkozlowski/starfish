@@ -1,5 +1,5 @@
 use failure::Error;
-use generated::spdk_event_bindings::{
+use crate::generated::spdk_event_bindings::{
     spdk_app_fini, spdk_app_opts, spdk_app_opts_init, 
     spdk_app_start, spdk_app_stop
 };

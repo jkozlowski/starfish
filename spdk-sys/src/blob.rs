@@ -1,6 +1,6 @@
 use failure::Error;
-use generated;
-use generated::spdk_blob_bindings::{
+use crate::generated;
+use crate::generated::spdk_blob_bindings::{
     spdk_blob_store,
     spdk_blob_id,
 
@@ -8,7 +8,7 @@ use generated::spdk_blob_bindings::{
     spdk_bs_get_page_size,
     spdk_bs_create_blob
 };
-use blob_bdev::{ BlobStoreBDev };
+use crate::blob_bdev::{ BlobStoreBDev };
 use futures::channel::oneshot;
 use futures::channel::oneshot::{ Sender };
 use std::ptr;

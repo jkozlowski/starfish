@@ -1,6 +1,6 @@
 use std::os::raw::{c_int, c_void};
 
-use generated::spdk_io_channel_bindings::{ spdk_poller_register };
+use crate::generated::spdk_io_channel_bindings::{ spdk_poller_register };
 
 /// Registers a poller with spdk.
 /// f: should return true if any work was done
