@@ -1,7 +1,13 @@
 use crate::blob_bdev::BlobStoreBDev;
 use crate::generated;
 use crate::generated::spdk_blob_bindings::{
-    spdk_blob_id, spdk_blob_store, spdk_bs_create_blob, spdk_bs_get_page_size, spdk_bs_init,
+    spdk_bs_init,
+    spdk_blob_id, 
+    spdk_blob_store, 
+    spdk_bs_create_blob, 
+    spdk_bs_get_page_size, 
+    spdk_blob,
+    spdk_bs_open_blob
 };
 use failure::Error;
 use futures::channel::oneshot;
@@ -20,21 +26,29 @@ pub struct Blobstore {
     pub(crate) blob_store: *mut spdk_blob_store,
 }
 
-#[derive(Debug, Fail)]
-pub enum BlobError {
-    #[fail(display = "Failed to create blob: {}", _0)]
-    CreateError(i32),
-}
-
-#[derive(Debug)]
-pub struct Blob {
-    pub(crate) blob_id: spdk_blob_id,
-}
-
 impl Blobstore {
     pub fn get_page_size(&self) -> usize {
         return unsafe { spdk_bs_get_page_size(self.blob_store) } as usize;
     }
+}
+
+#[derive(Debug, Fail)]
+pub enum BlobError {
+    #[fail(display = "Failed to create blob: {}", _0)]
+    CreateError(i32),
+
+    #[fail(display = "Failed to open blob({}): {}", _0, _1)]
+    OpenError(spdk_blob_id, i32),
+}
+
+#[derive(Debug)]
+pub struct BlobId {
+    pub(crate) blob_id: spdk_blob_id,
+}
+
+#[derive(Debug)]
+pub struct Blob {
+    pub(crate) blob: *mut spdk_blob,
 }
 
 // TODO: Implement Drop correctly with a call to spdk_bs_unload:
@@ -65,7 +79,7 @@ pub async fn bs_init(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore, Error> {
     }
 }
 
-pub async fn create_blob(blob_store: &Blobstore) -> Result<Blob, Error> {
+pub async fn create_blob(blob_store: &Blobstore) -> Result<BlobId, Error> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_bs_create_blob(
@@ -77,9 +91,31 @@ pub async fn create_blob(blob_store: &Blobstore) -> Result<Blob, Error> {
     let res = await!(receiver).expect("Cancellation is not supported");
 
     match res {
-        Ok(blob_id) => return Ok(Blob { blob_id }),
+        Ok(blob_id) => return Ok(BlobId { blob_id }),
         Err(bserrno) => {
             return Err(BlobError::CreateError(bserrno))?;
+        }
+    }
+}
+
+pub async fn open_blob<'a>(blob_store: &'a Blobstore, blob_id: &'a BlobId) -> Result<Blob, Error> {
+    unimplemented!();
+
+    let (sender, receiver) = oneshot::channel();
+    unsafe {
+        spdk_bs_open_blob(
+            blob_store.blob_store,
+            blob_id.blob_id,
+            Some(complete_callback::<*mut spdk_blob>),
+            cb_arg(sender),
+        );
+    }
+    let res = await!(receiver).expect("Cancellation is not supported");
+
+    match res {
+        Ok(blob) => return Ok(Blob { blob }),
+        Err(bserrno) => {
+            return Err(BlobError::OpenError(blob_id.blob_id, bserrno))?;
         }
     }
 }
