@@ -44,8 +44,10 @@ $ sudo umount -f starfish-ec2
 ### Format and fix lints
 
 ```
+$ rustup component add rustfmt-preview
+$ rustup component add clippy-preview
 $ cargo clippy --all -- -Dwarnings
-$ cargo +nightly fmt --all
+$ cargo fmt --all
 ```
 
 ### Pretty print macros:
