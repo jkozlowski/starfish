@@ -17,7 +17,7 @@ links = "spdk"
 [dependencies]
 failure = "*"
 failure_derive = "*"
-futures-preview = "0.3.0-alpha.1"
+futures-preview = "0.3.0-alpha.2"
 
 [build-dependencies]
 bindgen = "*"

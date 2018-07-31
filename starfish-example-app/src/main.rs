@@ -2,14 +2,14 @@
 #![feature(async_await, await_macro, futures_api)]
 
 use failure::Error;
+use spdk_sys::bdev;
+use spdk_sys::blob;
+use spdk_sys::blob_bdev;
+use spdk_sys::event;
+use spdk_sys::io_channel;
+use starfish_executor as executor;
 use std::env;
 use std::mem;
-use spdk_sys::io_channel;
-use spdk_sys::event;
-use spdk_sys::bdev;
-use spdk_sys::blob_bdev;
-use spdk_sys::blob;
-use starfish_executor as executor;
 
 pub fn main() {
     let args: Vec<String> = env::args().collect();
@@ -43,7 +43,7 @@ pub fn main() {
 async fn run() {
     match await!(run_inner()) {
         Ok(_) => println!("Successful"),
-        Err(err) => println!("Failure: {:?}", err)
+        Err(err) => println!("Failure: {:?}", err),
     }
 }
 

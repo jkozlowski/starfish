@@ -29,9 +29,9 @@ impl LocalThreadExecutor {
 }
 
 impl Executor for LocalThreadExecutor {
-    fn spawn_obj(&mut self, task: FutureObj<'static, ()>) -> Result<(), SpawnObjError> {
+    fn spawn_obj(&mut self, future: FutureObj<'static, ()>) -> Result<(), SpawnObjError> {
         Err(SpawnObjError {
-            task,
+            future,
             kind: SpawnErrorKind::shutdown(),
         })
     }

@@ -41,18 +41,25 @@ $ sudo umount -f starfish-ec2
 - https://github.com/japaric/xargo/issues/45
 - https://github.com/hnes/libaco
 
-Pretty print macros:
+### Format and fix lints
+
+```
+$ cargo clippy --all -- -Dwarnings
+$ cargo +nightly fmt --all
+```
+
+### Pretty print macros:
 
 ```
 $ cargo rustc -- --pretty=expanded -Z unstable-options
 ```
 
-Print link args:
+### Print link args:
 
 ```
 $ rustc --bin hello_world -- -Z print-link-args
 ```
 
-Lints:
+### Lints
 
 - `https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#non-upper-case-globals`

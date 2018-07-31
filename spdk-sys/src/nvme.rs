@@ -1,6 +1,6 @@
+use crate::generated::spdk_nvme_bindings;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
-use crate::generated::spdk_nvme_bindings;
 
 pub struct EnvOpts(spdk_nvme_bindings::spdk_env_opts);
 

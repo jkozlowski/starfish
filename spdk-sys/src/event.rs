@@ -1,10 +1,9 @@
-use failure::Error;
 use crate::generated::spdk_event_bindings::{
-    spdk_app_fini, spdk_app_opts, spdk_app_opts_init, 
-    spdk_app_start, spdk_app_stop
+    spdk_app_fini, spdk_app_opts, spdk_app_opts_init, spdk_app_start, spdk_app_stop,
 };
+use failure::Error;
 use std::ffi::CString;
-use std::os::raw::{ c_char, c_void};
+use std::os::raw::{c_char, c_void};
 use std::ptr;
 
 #[derive(Debug, Fail)]
@@ -38,7 +37,7 @@ impl AppOpts {
 
     // TODO: probably need this to properly deallocate pollers :()
     // pub fn shutdown_cb() {
-    //     //spdk_app_shutdown_cb	
+    //     //spdk_app_shutdown_cb
     // }
 
     pub fn start<F>(mut self, f: F) -> Result<(), Error>
@@ -79,7 +78,9 @@ impl AppOpts {
 }
 
 pub fn app_stop(success: bool) {
-    unsafe { spdk_app_stop(if success { 0 } else { -1 } ); };
+    unsafe {
+        spdk_app_stop(if success { 0 } else { -1 });
+    };
 }
 
 impl Drop for AppOpts {
