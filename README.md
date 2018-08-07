@@ -18,6 +18,14 @@ $ sshfs ec2-user@ec2-18-219-231-112.us-east-2.compute.amazonaws.com:/home/ec2-us
 $ sudo umount -f starfish-ec2
 ```
 
+## Example apps
+
+* https://github.com/percona/tokudb-engine
+* https://github.com/percona/tokudb-engine/wiki/Write-optimized-fractal-tree-storage
+* https://github.com/Tokutek
+* https://www.percona.com/blog/wp-content/uploads/2011/11/how-fractal-trees-work.pdf
+* 
+
 ## SPDK examples
 
 - https://github.com/spdk/spdk/blob/2c7e3a05e3dd68fa4b2e35515e11a03b3c96dc58/lib/rocksdb/env_spdk.cc
