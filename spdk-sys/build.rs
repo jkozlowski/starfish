@@ -10,6 +10,8 @@ use std::env;
 use std::path::PathBuf;
 //use toml::Value;
 
+static SPDK_PATH: &'static str = "/tmp/spdk/include";
+
 fn main_run() {
     // let out_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("spdk_config.properties");
 
@@ -53,11 +55,11 @@ fn generate(name: &str) {
     codegen_config.types = true;
 
     let bindings = bindgen::Builder::default()
-        .header(format!("/usr/local/include/spdk/{}.h", name))
+        .header(format!("{}/spdk/{}.h", SPDK_PATH, name))
         .derive_default(true)
         .with_codegen_config(codegen_config)
         // Figure out how to make sure the includes are working ok
-        .clang_arg("-I/tmp/spdk/include")
+        .clang_arg(format!("-I{}", SPDK_PATH))
         // If there are linking errors and the generated bindings have weird looking
         // #link_names (that start with \u{1}), the make sure to flip that to false.
         .trust_clang_mangling(false)

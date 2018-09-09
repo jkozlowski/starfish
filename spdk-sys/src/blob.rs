@@ -98,27 +98,27 @@ pub async fn create_blob(blob_store: &Blobstore) -> Result<BlobId, Error> {
     }
 }
 
-pub async fn open_blob<'a>(blob_store: &'a Blobstore, blob_id: &'a BlobId) -> Result<Blob, Error> {
-    unimplemented!();
-
-    let (sender, receiver) = oneshot::channel();
-    unsafe {
-        spdk_bs_open_blob(
-            blob_store.blob_store,
-            blob_id.blob_id,
-            Some(complete_callback::<*mut spdk_blob>),
-            cb_arg(sender),
-        );
-    }
-    let res = await!(receiver).expect("Cancellation is not supported");
-
-    match res {
-        Ok(blob) => return Ok(Blob { blob }),
-        Err(bserrno) => {
-            return Err(BlobError::OpenError(blob_id.blob_id, bserrno))?;
-        }
-    }
-}
+//pub async fn open_blob<'a>(blob_store: &'a Blobstore, blob_id: &'a BlobId) -> Result<Blob, Error> {
+//    unimplemented!();
+//
+//    let (sender, receiver) = oneshot::channel();
+//    unsafe {
+//        spdk_bs_open_blob(
+//            blob_store.blob_store,
+//            blob_id.blob_id,
+//            Some(complete_callback::<*mut spdk_blob>),
+//            cb_arg(sender),
+//        );
+//    }
+//    let res = await!(receiver).expect("Cancellation is not supported");
+//
+//    match res {
+//        Ok(blob) => return Ok(Blob { blob }),
+//        Err(bserrno) => {
+//            return Err(BlobError::OpenError(blob_id.blob_id, bserrno))?;
+//        }
+//    }
+//}
 
 fn cb_arg<T>(sender: Sender<Result<T, i32>>) -> *mut c_void {
     return Box::into_raw(Box::new(sender)) as *const _ as *mut c_void;

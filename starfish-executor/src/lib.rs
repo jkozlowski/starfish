@@ -5,14 +5,14 @@ extern crate futures;
 
 use futures::future::FutureObj;
 use futures::future::{Future, LocalFutureObj};
-use futures::task::{Context, Executor, LocalWaker, Poll, UnsafeWake, Waker};
+use futures::task::{Context, Spawn, LocalWaker, Poll, UnsafeWake, Waker};
 use futures::task::{SpawnErrorKind, SpawnObjError};
-use std::boxed::PinBox;
+use std::pin::PinBox;
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;
-use std::mem::PinMut;
+use std::pin::PinMut;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
@@ -28,7 +28,7 @@ impl LocalThreadExecutor {
     }
 }
 
-impl Executor for LocalThreadExecutor {
+impl Spawn for LocalThreadExecutor {
     fn spawn_obj(&mut self, future: FutureObj<'static, ()>) -> Result<(), SpawnObjError> {
         Err(SpawnObjError {
             future,

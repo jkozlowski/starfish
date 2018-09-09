@@ -14,4 +14,4 @@ edition = '2018'
 failure = "*"
 spdk-sys = { path = "../spdk-sys" }
 starfish-executor = { path = "../starfish-executor" }
-futures-preview = "0.3.0-alpha.2"
+futures-preview = "= 0.3.0-alpha.5"

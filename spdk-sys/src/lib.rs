@@ -3,7 +3,6 @@
     async_await,
     await_macro,
     futures_api,
-    extern_prelude,
     use_extern_macros
 )]
 #![allow(macro_use_extern_crate)]

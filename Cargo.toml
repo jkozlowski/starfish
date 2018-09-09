@@ -12,7 +12,7 @@ edition = '2018'
 
 [dependencies]
 failure = "0.1.1"
-futures-preview = "0.3.0-alpha.2"
+futures-preview = "= 0.3.0-alpha.5"
 
 # Workspace dependencies to force building them from root.
 spdk-sys = { path = "spdk-sys" }
@@ -26,7 +26,7 @@ spectral = "0.6.0"
 slog-term = "2.0.2"
 
 [build-dependencies]
-bindgen = "0.37.4"
+bindgen = "= 0.37.4"
 make-cmd = "0.1.0"
 toml = "0.4.6"
 
