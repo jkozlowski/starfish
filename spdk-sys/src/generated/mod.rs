@@ -69,3 +69,15 @@ pub mod spdk_blob_bdev_bindings {
 pub mod spdk_blob_bindings {
     include!(concat!(env!("OUT_DIR"), "/spdk_blob_bindings.rs"));
 }
+
+#[allow(
+    rust_2018_idioms,
+    non_snake_case,
+    non_upper_case_globals,
+    non_camel_case_types,
+    unused,
+    elided_lifetimes_in_paths
+)]
+pub mod spdk_env_bindings {
+    include!(concat!(env!("OUT_DIR"), "/spdk_env_bindings.rs"));
+}

@@ -2,8 +2,7 @@
 #![feature(
     async_await,
     await_macro,
-    futures_api,
-    use_extern_macros
+    futures_api
 )]
 #![allow(macro_use_extern_crate)]
 #[macro_use]
@@ -16,6 +15,7 @@ pub mod bdev;
 pub mod blob;
 pub mod blob_bdev;
 
+pub mod env;
 pub mod event;
 pub mod io_channel;
 pub mod nvme;

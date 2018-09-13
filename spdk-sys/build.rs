@@ -10,8 +10,6 @@ use std::env;
 use std::path::PathBuf;
 //use toml::Value;
 
-static SPDK_PATH: &'static str = "/tmp/spdk/include";
-
 fn main_run() {
     // let out_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("spdk_config.properties");
 
@@ -39,39 +37,49 @@ fn main_run() {
     // println!("cargo:warn={}", output);
     // println!("cargo:rerun-if-changed=./build.rs");
 
-    generate("nvme");
-    generate("event");
-    generate("bdev");
-    generate("env");
-    generate("blob_bdev");
-    generate("blob");
-    generate("log");
-    generate("io_channel")
+    let spdk_path = env::var("SPDK_DIR").unwrap_or("/tmp/spdk/include".to_string());
+    let output_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let generator = Generator { spdk_path, output_path };
+
+    generator.generate("nvme");
+    generator.generate("event");
+    generator.generate("bdev");
+    generator.generate("env");
+    generator.generate("blob_bdev");
+    generator.generate("blob");
+    generator.generate("log");
+    generator.generate("io_channel")  
 }
 
-fn generate(name: &str) {
-    let mut codegen_config = bindgen::CodegenConfig::nothing();
-    codegen_config.functions = true;
-    codegen_config.types = true;
+struct Generator {
+    spdk_path: String,
+    output_path: PathBuf
+}
 
-    let bindings = bindgen::Builder::default()
-        .header(format!("{}/spdk/{}.h", SPDK_PATH, name))
-        .derive_default(true)
-        .with_codegen_config(codegen_config)
-        // Figure out how to make sure the includes are working ok
-        .clang_arg(format!("-I{}", SPDK_PATH))
-        // If there are linking errors and the generated bindings have weird looking
-        // #link_names (that start with \u{1}), the make sure to flip that to false.
-        .trust_clang_mangling(false)
-        .rustfmt_bindings(true)
-        .generate()
-        .expect("Unable to generate bindings");
+impl Generator {
+    fn generate(&self, name: &str) {
+        let mut codegen_config = bindgen::CodegenConfig::nothing();
+        codegen_config.functions = true;
+        codegen_config.types = true;
 
-    // Write the bindings to the $OUT_DIR/bindings.rs file.
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join(format!("spdk_{}_bindings.rs", name)))
-        .expect("Couldn't write bindings!");
+        let bindings = bindgen::Builder::default()
+            .header(format!("{}/spdk/{}.h", self.spdk_path, name))
+            .derive_default(true)
+            .with_codegen_config(codegen_config)
+            // Figure out how to make sure the includes are working ok
+            .clang_arg(format!("-I{}", self.spdk_path))
+            // If there are linking errors and the generated bindings have weird looking
+            // #link_names (that start with \u{1}), the make sure to flip that to false.
+            .trust_clang_mangling(false)
+            .rustfmt_bindings(true)
+            .generate()
+            .expect("Unable to generate bindings");
+
+        // Write the bindings to the $OUT_DIR/bindings.rs file.
+        bindings
+            .write_to_file(self.output_path.join(format!("spdk_{}_bindings.rs", name)))
+            .expect("Couldn't write bindings!");
+    }
 }
 
 fn main() {

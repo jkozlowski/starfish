@@ -1,5 +1,3 @@
-cargo-features = ["edition"]
-
 [package]
 name = "starfish-example-app"
 version = "0.1.0"
@@ -14,4 +12,4 @@ edition = '2018'
 failure = "*"
 spdk-sys = { path = "../spdk-sys" }
 starfish-executor = { path = "../starfish-executor" }
-futures-preview = "= 0.3.0-alpha.5"
+futures-preview = "= 0.3.0-alpha.6"
