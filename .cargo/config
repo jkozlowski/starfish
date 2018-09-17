@@ -1,6 +1,3 @@
-#[target.'cfg(feature="linker-flags")']
-# I don't think feature= is supported, see cargo/src/util/cfg.rs#CfgExpr and Parser
-# x86_64-unknown-linux-gnu
 [build]
 rustflags = [
     "-C", "link-arg=-Wl,-z,relro,-z,now",
