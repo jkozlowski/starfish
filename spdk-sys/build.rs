@@ -6,7 +6,7 @@ use std::env;
 use std::path::PathBuf;
 
 fn generate_bindings() {
-    let spdk_path = env::var("SPDK_DIR").unwrap_or("/tmp/spdk/include".to_string());
+    let spdk_path = env::var("SPDK_DIR").unwrap_or("/usr/local/include".to_string());
     let output_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     let generator = Generator { spdk_path, output_path };
 

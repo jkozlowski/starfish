@@ -22,5 +22,7 @@ sudo ./scripts/pkgdep.sh
 sudo make install
 ./scripts/setup.sh
 
+sudo ldconfig /usr/local/lib
+
 # Need to run dpdk applications as root :(
  
