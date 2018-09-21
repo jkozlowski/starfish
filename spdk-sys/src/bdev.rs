@@ -1,4 +1,4 @@
-use crate::generated::spdk_bdev_bindings::{spdk_bdev, spdk_bdev_get_by_name};
+use crate::generated::{spdk_bdev, spdk_bdev_get_by_name};
 use failure::Error;
 use std::ffi::CString;
 
@@ -27,8 +27,8 @@ where
         return Err(BDevError::NotFound(name.clone().into()))?;
     }
 
-    return Ok(BDev {
+    Ok(BDev {
         name: name.into(),
         bdev,
-    });
+    })
 }

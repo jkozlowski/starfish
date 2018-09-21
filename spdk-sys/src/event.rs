@@ -1,9 +1,10 @@
-use crate::generated::spdk_event_bindings::{
+use crate::generated::{
     spdk_app_fini, spdk_app_opts, spdk_app_opts_init, spdk_app_start, spdk_app_stop,
 };
 use failure::Error;
+use libc::c_char;
+use libc::c_void;
 use std::ffi::CString;
-use std::os::raw::{c_char, c_void};
 use std::ptr;
 
 #[derive(Debug, Fail)]
@@ -12,6 +13,7 @@ enum AppError {
     StartupError(i32),
 }
 
+#[derive(Default)]
 pub struct AppOpts(spdk_app_opts);
 
 impl AppOpts {

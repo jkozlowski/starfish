@@ -9,24 +9,14 @@ Async programming with spdk for rust.
 edition = '2018'
 
 [dependencies]
-failure = "0.1.1"
+failure = "= 0.1.2"
 futures-preview = "= 0.3.0-alpha.6"
-
-# Workspace dependencies to force building them from root.
-spdk-sys = { path = "spdk-sys" }
-starfish-executor = { path = "starfish-executor" }
-starfish-example-app = { path = "starfish-example-app" }
+libc = "= 0.2.43"
 
 [dev-dependencies]
-cargo-make = "0.10.0"
-hamcrest = "0.1.2"
-spectral = "0.6.0"
-slog-term = "2.0.2"
-
-[build-dependencies]
-bindgen = "= 0.37.4"
-make-cmd = "0.1.0"
-toml = "0.4.6"
+hamcrest = "= 0.1.5"
+spectral = "= 0.6.0"
+slog-term = "=2.0.2"
 
 [workspace]
 

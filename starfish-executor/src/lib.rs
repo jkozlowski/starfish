@@ -5,13 +5,13 @@ extern crate futures;
 
 use futures::future::FutureObj;
 use futures::future::{Future, LocalFutureObj};
-use futures::task::{Context, Spawn, LocalWaker, Poll, UnsafeWake, Waker};
+use futures::task::{Context, LocalWaker, Poll, Spawn, UnsafeWake, Waker};
 use futures::task::{SpawnErrorKind, SpawnObjError};
-use std::pin::PinBox;
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;
+use std::pin::PinBox;
 use std::pin::PinMut;
 use std::ptr::NonNull;
 use std::rc::Rc;
@@ -106,12 +106,11 @@ unsafe impl UnsafeWake for TaskHandle {
 
     unsafe fn wake(&self) {
         if !self.queued.replace(true) {
-            CURRENT_EXECUTOR.with(|current| match *current.borrow() {
-                Some(ref current_thread) => {
+            CURRENT_EXECUTOR.with(|current| {
+                if let Some(ref current_thread) = *current.borrow() {
                     let self_clone = clone_task_handle(self);
                     current_thread.tq.borrow_mut().add_task(self_clone);
                 }
-                _ => { /* Executor is gone :( */ }
             });
         }
     }
@@ -159,7 +158,7 @@ pub fn initialize() -> Enter {
 
         match current.replace(Some(executor)) {
             Some(_) => panic!("Executor already initialized"),
-            _ => return Enter {},
+            _ => Enter {},
         }
     })
 }
@@ -234,19 +233,16 @@ pub fn pure_poll() -> bool {
                     future.poll(&mut cx)
                 };
 
-                match res {
-                    Poll::Pending => {
-                        // We have transferred the reference to the task to Waker
-                        // So need to move it out of Bomb and put back the task
-                        let task_handle = bomb.task_handle.take().unwrap();
+                if let Poll::Pending = res {
+                    // We have transferred the reference to the task to Waker
+                    // So need to move it out of Bomb and put back the task
+                    let task_handle = bomb.task_handle.take().unwrap();
 
-                        *task_handle.task.get() = Some(task);
+                    *task_handle.task.get() = Some(task);
 
-                        // TODO: Figure out if I need to drop the task handle
-                        continue;
-                    }
-                    _ => {}
-                };
+                    // TODO: Figure out if I need to drop the task handle
+                    continue;
+                }
             }
         }
     })
@@ -257,9 +253,7 @@ where
     F: FnOnce(&CurrentThreadExecutor) -> R,
 {
     CURRENT_EXECUTOR.with(|current| match *current.borrow() {
-        Some(ref current_thread) => {
-            return f(current_thread);
-        }
+        Some(ref current_thread) => f(current_thread),
         None => panic!("Executor not set"),
     })
 }
@@ -279,15 +273,13 @@ fn clone_task_handle(task_handle: &TaskHandle) -> Rc<TaskHandle> {
     // since it is STILL referenced by this TaskHandle
     forget_rc(self_as_rc);
 
-    return self_clone;
+    self_clone
 }
 
 fn clone_task_handle_ptr(task_handle: &TaskHandle) -> NonNull<TaskHandle> {
     // TODO: should be fine right?
     unsafe {
-        return NonNull::new_unchecked(
-            Rc::into_raw(clone_task_handle(task_handle)) as *mut TaskHandle
-        );
+        NonNull::new_unchecked(Rc::into_raw(clone_task_handle(task_handle)) as *mut TaskHandle)
     }
 }
 
@@ -300,19 +292,17 @@ fn forget_rc(task_handle: Rc<TaskHandle>) {
 extern crate hamcrest;
 
 #[cfg(test)]
-#[macro_use]
-extern crate futures_core as futures_core_macros;
-
-#[cfg(test)]
 mod tests {
 
     use super::*;
-    use futures_core::task;
-    use futures_core::task::Poll;
+    use futures::task;
+    use futures::task::Poll;
     use hamcrest::prelude::*;
 
+    type PollerFn = dyn Fn(&mut task::Context<'_>, &mut Controller) -> Poll<()>;
+
     struct Controller {
-        pollers: VecDeque<Box<Fn(&mut task::Context, &mut Controller) -> Poll<()>>>,
+        pollers: VecDeque<Box<PollerFn>>,
         poll_count: usize,
         dropped: bool,
         waker: Option<Waker>,
@@ -358,14 +348,12 @@ mod tests {
 
         fn push_pollers<P>(&mut self, poller: P)
         where
-            P: Fn(&mut task::Context, &mut Controller) -> Poll<()> + 'static,
+            P: Fn(&mut task::Context<'_>, &mut Controller) -> Poll<()> + 'static,
         {
             self.pollers.push_back(Box::new(poller))
         }
 
-        fn pop_pollers(
-            &mut self,
-        ) -> Option<Box<Fn(&mut task::Context, &mut Controller) -> Poll<()>>> {
+        fn pop_pollers(&mut self) -> Option<Box<PollerFn>> {
             self.pollers.pop_front()
         }
     }
@@ -375,10 +363,8 @@ mod tests {
     }
 
     impl MockFuture {
-        fn new(controller: Rc<RefCell<Controller>>) -> MockFuture {
-            MockFuture {
-                controller: controller,
-            }
+        fn new(controller: Rc<RefCell<Controller>>) -> Self {
+            MockFuture { controller }
         }
     }
 
@@ -391,14 +377,14 @@ mod tests {
     impl Future for MockFuture {
         type Output = ();
 
-        fn poll(self: PinMut<Self>, ctx: &mut task::Context) -> Poll<()> {
+        fn poll(self: PinMut<'_, Self>, ctx: &mut task::Context<'_>) -> Poll<()> {
             let mut ctrl = self.controller.borrow_mut();
             let poller = match ctrl.pop_pollers() {
                 Some(poller) => poller,
                 None => panic!("Called poll when not expected"),
             };
             ctrl.poll();
-            return poller(ctx, &mut ctrl);
+            poller(ctx, &mut ctrl)
         }
     }
 
