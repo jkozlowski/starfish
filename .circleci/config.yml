@@ -4,10 +4,10 @@ jobs:
     docker:
       - image: rust:1.29.0-stretch
     steps:
+      - checkout
       - run:
           name: Build spdk
           command: sh ./scripts/build_spdk.sh
-      - checkout
       - run:
           name: Greeting
           command: |
