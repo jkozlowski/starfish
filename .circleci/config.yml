@@ -2,12 +2,14 @@ version: 2
 jobs:
   build:
     docker:
-      - image: debian:stretch
+      - image: rust:1.29.0-stretch
     steps:
+      - run:
+          name: Build spdk
+          command: sh ./scripts/build_spdk.sh
       - checkout
       - run:
           name: Greeting
-          command: echo Hello, world.
-      - run:
-          name: Print the Current Time
-          command: date
+          command: |
+            rustup --version
+      
