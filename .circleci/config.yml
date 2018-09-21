@@ -2,12 +2,13 @@ version: 2
 jobs:
   build:
     docker:
-      - image: debian:stretch
+      - image: rust:1.29.0-stretch
     steps:
       - checkout
       - run:
-          name: Greeting
-          command: echo Hello, world.
+          name: Build spdk
+          command: sh .circleci/scripts/build_spdk.sh
       - run:
-          name: Print the Current Time
-          command: date
+          name: Build starfish
+          command: cargo build
+      
