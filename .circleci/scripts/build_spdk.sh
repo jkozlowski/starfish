@@ -7,7 +7,7 @@ cd /tmp/spdk
 git checkout v18.07.1
 git submodule update --init
 
-export DEBIAN_FRONTEND=noninteractive
+echo 'APT::Get::Assume-Yes "true"; APT::Get::force-yes "true";' > /etc/apt/apt.conf.d/99force-yes
 apt-get update
 ./scripts/pkgdep.sh
 
