@@ -7,7 +7,7 @@ jobs:
       - checkout
       - run:
           name: Build spdk
-          command: sh scripts/build_spdk.sh
+          command: sh .circleci/scripts/build_spdk.sh
       - run:
           name: Greeting
           command: |
