@@ -2,41 +2,10 @@ extern crate bindgen;
 extern crate make_cmd;
 extern crate toml;
 
-//use make_cmd::gnu_make;
 use std::env;
-//use std::fmt::Write;
-//use std::fs::File;
-//use std::io::Read;
 use std::path::PathBuf;
-//use toml::Value;
 
-fn main_run() {
-    // let out_path = PathBuf::from(env::var("OUT_DIR").unwrap()).join("spdk_config.properties");
-
-    // let make_output = gnu_make()
-    //     .arg(format!("ENV_PATH={:?}", out_path))
-    //     .output()
-    //     .expect("make failed");
-
-    // let mut f = File::open(out_path).expect("file not found");
-
-    // let mut contents = String::new();
-    // f.read_to_string(&mut contents)
-    //     .expect("something went wrong reading the file");
-
-    // println!("cargo:warn={}", contents);
-
-    // let value = contents.parse::<Value>().unwrap();
-    // let libs = value["LIBS"].as_str().unwrap();
-
-    // let mut output = String::new();
-    // for s in libs.split(" ") {
-    //     write!(&mut output, "\"-C\", \"link-arg={}\",\n", s).unwrap();
-    // }
-
-    // println!("cargo:warn={}", output);
-    // println!("cargo:rerun-if-changed=./build.rs");
-
+fn generate_bindings() {
     let spdk_path = env::var("SPDK_DIR").unwrap_or("/tmp/spdk/include".to_string());
     let output_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     let generator = Generator { spdk_path, output_path };
@@ -84,6 +53,8 @@ impl Generator {
 
 fn main() {
     // Uncomment to regenerate bindings
-    main_run();
+    generate_bindings();
     println!("cargo:rerun-if-changed=./build.rs");
+    println!("cargo:rustc-link-lib=spdk");
+    println!("cargo:rustc-link-search=native=/usr/local/lib");
 }
