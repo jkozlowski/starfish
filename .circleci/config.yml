@@ -9,7 +9,6 @@ jobs:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
       - run:
-          name: Greeting
-          command: |
-            rustup --version
+          name: Build starfish
+          command: cargo build
       
