@@ -1,15 +1,25 @@
-# TODO: Add caching: either build a custom docker image or 
-# try something like https://discuss.circleci.com/t/caching-apt-get-packages/9076
 version: 2
 jobs:
   build:
     docker:
       - image: rust:1.29.0-stretch
     steps:
+      - restore_cache:
+          keys:
+            - source-v1-{{ .Branch }}-{{ .Revision }}
+            - source-v1-{{ .Branch }}-
+            - source-v1-
       - checkout
+      - save_cache:
+          key: source-v1-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ".git"
       - run:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
+      - restore_cache:
+          keys:
+            - rust
       - run:
           name: Run 'cargo fmt'
           command: |
@@ -18,7 +28,6 @@ jobs:
       - run:
           name: Run 'cargo clippy'
           command: |
-
             rustup component add clippy-preview
             # Enabling warnings trips clippy in generated code that has a compiler warning; 
             # See https://github.com/rust-lang-nursery/rust-clippy/issues/702
@@ -29,4 +38,10 @@ jobs:
           command: cargo build --all
       - run:
           name: Run tests
-          command: cargo test --all 
+          command: cargo test --all
+      - save_cache:
+          key: rust
+          paths:
+            - "target/"
+            - "~/.cargo/"
+            - "~/.multirust/"
