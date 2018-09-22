@@ -27,6 +27,8 @@ jobs:
           paths:
             - "/usr/local/include"
             - "/usr/local/lib"
+            - "/usr/lib/"
+            - "/usr/include"
       - restore_cache:
           keys:
             - rust-v1-{{ .Branch }}-{{ .Revision }}
