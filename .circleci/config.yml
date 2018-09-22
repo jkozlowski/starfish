@@ -12,19 +12,19 @@ jobs:
       - run:
           name: Run 'cargo clippy'
           command: |
-            rustup component add clippy-preview;
-            cargo clippy --all --all-targets --all-features; 
+            rustup component add clippy-preview
+            cargo clippy --all --all-targets --all-features
 
        - run:
           name: Run 'cargo fmt'
           command: |
-            rustup component add rustfmt-preview;
-            cargo fmt --all -- --check;
+            rustup component add rustfmt-preview
+            cargo fmt --all -- --check
 
       - run:
           name: Build starfish
           command: cargo build --all
-          
+
       - run:
           name: Run tests
           command: cargo test --all
