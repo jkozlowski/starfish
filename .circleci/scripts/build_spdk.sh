@@ -14,4 +14,6 @@ if [ ! -f "/usr/local/lib/libspdk.so" ]; then
 
     ./configure
     make install
+else
+    echo "spdk already built"
 fi
