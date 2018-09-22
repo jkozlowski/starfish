@@ -6,34 +6,31 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - source-v2-{{ .Branch }}-{{ .Revision }}
-            - source-v2-{{ .Branch }}-
-            - source-v2-
+            - source-v3-{{ .Branch }}-{{ .Revision }}
+            - source-v3-{{ .Branch }}-
+            - source-v3-
       - checkout
       - save_cache:
-          key: source-v2-{{ .Branch }}-{{ .Revision }}
+          key: source-v3-{{ .Branch }}-{{ .Revision }}
           paths:
             - ".git"
       - restore_cache:
           keys:
-            - spdk-v2-{{ .Branch }}-{{ .Revision }}
-            - spdk-v2-{{ .Branch }}-
-            - spdk-v2-
+            - spdk-v3-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+            - spdk-v3-
       - run:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
       - save_cache:
-          key: spdk-v2-{{ .Branch }}-{{ .Revision }}
+          key: spdk-v3-{{ checksum ".circleci/scripts/build_spdk.sh" }}
           paths:
             - "/usr/local/include"
             - "/usr/local/lib"
-            - "/usr/lib/"
-            - "/usr/include"
       - restore_cache:
           keys:
-            - rust-v2-{{ .Branch }}-{{ .Revision }}
-            - rust-v2-{{ .Branch }}-
-            - rust-v2-
+            - rust-v3-{{ .Branch }}-{{ .Revision }}
+            - rust-v3-{{ .Branch }}-
+            - rust-v3-
       - run:
           name: Run 'cargo fmt'
           command: |
@@ -54,7 +51,7 @@ jobs:
           name: Run tests
           command: cargo test --all
       - save_cache:
-          key: rust-v2-{{ .Branch }}-{{ .Revision }}
+          key: rust-v3-{{ .Branch }}-{{ .Revision }}
           paths:
             - "target/"
             - "~/.cargo/"
