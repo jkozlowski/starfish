@@ -4,11 +4,55 @@ jobs:
     docker:
       - image: rust:1.29.0-stretch
     steps:
+      - restore_cache:
+          keys:
+            - source-v3-{{ .Branch }}-{{ .Revision }}
+            - source-v3-{{ .Branch }}-
+            - source-v3-
       - checkout
+      - save_cache:
+          key: source-v3-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ".git"
+      - restore_cache:
+          keys:
+            - spdk-v3-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+            - spdk-v3-
       - run:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
+      - save_cache:
+          key: spdk-v3-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+          paths:
+            - "/usr/local/include"
+            - "/usr/local/lib"
+      - restore_cache:
+          keys:
+            - rust-v3-{{ .Branch }}-{{ .Revision }}
+            - rust-v3-{{ .Branch }}-
+            - rust-v3-
+      - run:
+          name: Run 'cargo fmt'
+          command: |
+            rustup component add rustfmt-preview
+            cargo fmt --all -- --check
+      - run:
+          name: Run 'cargo clippy'
+          command: |
+            rustup component add clippy-preview
+            # Enabling warnings trips clippy in generated code that has a compiler warning; 
+            # See https://github.com/rust-lang-nursery/rust-clippy/issues/702
+            # -- -D warnings
+            cargo clippy --all --all-targets --all-features
       - run:
           name: Build starfish
-          command: cargo build
-      
+          command: cargo build --all
+      - run:
+          name: Run tests
+          command: cargo test --all
+      - save_cache:
+          key: rust-v3-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - "target/"
+            - "~/.cargo/"
+            - "~/.multirust/"

@@ -2,7 +2,6 @@
 name = "spdk-sys"
 version = "0.1.0"
 authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
-workspace = "../"
 categories = ["external-ffi-bindings"]
 build = "build.rs"
 description = """
@@ -13,12 +12,10 @@ edition = '2018'
 links = "spdk"
 
 [dependencies]
-failure = "*"
-failure_derive = "*"
+failure = ""
+failure_derive = ""
 futures-preview = "= 0.3.0-alpha.6"
-libc = "= 0.2.43"
+libc = ""
 
 [build-dependencies]
-bindgen = "0.37.4"
-toml = "*"
-make-cmd = "*"
+bindgen = "= 0.40.0"

@@ -1,58 +1,75 @@
 extern crate bindgen;
-extern crate make_cmd;
-extern crate toml;
 
 use std::env;
+use std::path::Path;
 use std::path::PathBuf;
 
+static SPDK_INCLUDE_DIR: &'static str = "/usr/local/include";
+
 fn generate_bindings() {
-    let spdk_path = env::var("SPDK_DIR").unwrap_or("/usr/local/include".to_string());
-    let output_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let generator = Generator { spdk_path, output_path };
+    let spdk_include_path = env::var("SPDK_INCLUDE").unwrap_or(SPDK_INCLUDE_DIR.to_string());
+    let output_path = env::var("OUT_DIR").unwrap();
+    let generator = Generator {
+        spdk_include_path: Path::new(&spdk_include_path),
+        output_path: Path::new(&output_path),
+    };
 
-    generator.generate("nvme");
-    generator.generate("event");
-    generator.generate("bdev");
-    generator.generate("env");
-    generator.generate("blob_bdev");
-    generator.generate("blob");
-    generator.generate("log");
-    generator.generate("io_channel")  
+    let headers = [
+        "nvme",
+        "event",
+        "bdev",
+        "env",
+        "blob_bdev",
+        "blob",
+        "log",
+        "io_channel",
+    ];
+    generator.generate(&headers)
 }
 
-struct Generator {
-    spdk_path: String,
-    output_path: PathBuf
+struct Generator<'a> {
+    spdk_include_path: &'a Path,
+    output_path: &'a Path,
 }
 
-impl Generator {
-    fn generate(&self, name: &str) {
-        let mut codegen_config = bindgen::CodegenConfig::nothing();
-        codegen_config.functions = true;
-        codegen_config.types = true;
+impl<'a> Generator<'a> {
+    fn generate(&self, names: &[&str]) {
+        let mut codegen_config = bindgen::CodegenConfig::empty();
+        codegen_config.set(bindgen::CodegenConfig::FUNCTIONS, true);
+        codegen_config.set(bindgen::CodegenConfig::TYPES, true);
 
-        let bindings = bindgen::Builder::default()
-            .header(format!("{}/spdk/{}.h", self.spdk_path, name))
+        let mut builder = bindgen::builder();
+
+        for name in names {
+            let header_path = self.spdk_include_path.join(
+                PathBuf::from("spdk/header.h")
+                    .with_file_name(name)
+                    .with_extension("h"),
+            );
+            builder = builder.header(format!("{}", header_path.display()));
+        }
+
+        let bindings = builder
             .derive_default(true)
             .with_codegen_config(codegen_config)
-            // Figure out how to make sure the includes are working ok
-            .clang_arg(format!("-I{}", self.spdk_path))
+            .generate_inline_functions(false)
             // If there are linking errors and the generated bindings have weird looking
             // #link_names (that start with \u{1}), the make sure to flip that to false.
             .trust_clang_mangling(false)
             .rustfmt_bindings(true)
+            .rustfmt_configuration_file(Some(PathBuf::from("../rustfmt.toml")))
+            .layout_tests(false)
+            .ctypes_prefix("libc")
             .generate()
             .expect("Unable to generate bindings");
 
-        // Write the bindings to the $OUT_DIR/bindings.rs file.
         bindings
-            .write_to_file(self.output_path.join(format!("spdk_{}_bindings.rs", name)))
+            .write_to_file(self.output_path.join("spdk_bindings.rs"))
             .expect("Couldn't write bindings!");
     }
 }
 
 fn main() {
-    // Uncomment to regenerate bindings
     generate_bindings();
     println!("cargo:rerun-if-changed=./build.rs");
     println!("cargo:rustc-link-lib=spdk");

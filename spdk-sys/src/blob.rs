@@ -1,29 +1,18 @@
 use crate::blob_bdev::BlobStoreBDev;
-use crate::generated;
-use crate::generated::spdk_blob_bindings::{
-    spdk_bs_init,
-    spdk_blob_id, 
-    spdk_blob_store, 
-    spdk_bs_create_blob, 
-    spdk_bs_get_page_size,
-    spdk_bs_free_cluster_count,
-    spdk_blob,
-    spdk_bs_open_blob,
-    spdk_blob_resize,
-    spdk_blob_get_id,
-    spdk_blob_get_num_clusters,
-    spdk_blob_sync_md,
-    spdk_io_channel,
-    spdk_bs_alloc_io_channel,
-    spdk_blob_io_write,
-    spdk_blob_io_read
-};
 use crate::env::Buf;
+use crate::generated::{
+    spdk_blob, spdk_blob_get_id, spdk_blob_get_num_clusters, spdk_blob_id, spdk_blob_io_read,
+    spdk_blob_io_write, spdk_blob_resize, spdk_blob_store, spdk_blob_sync_md,
+    spdk_bs_alloc_io_channel, spdk_bs_create_blob, spdk_bs_free_cluster_count,
+    spdk_bs_get_page_size, spdk_bs_init, spdk_bs_open_blob, spdk_io_channel,
+};
 use failure::Error;
 use futures::channel::oneshot;
 use futures::channel::oneshot::Sender;
+use libc::c_int;
+use libc::c_void;
 use std::fmt;
-use std::os::raw::{c_int, c_void};
+use std::fmt::Debug;
 use std::ptr;
 
 #[derive(Debug, Fail)]
@@ -42,21 +31,19 @@ pub struct Blobstore {
 
 impl Blobstore {
     pub fn get_page_size(&self) -> u64 {
-        return unsafe { spdk_bs_get_page_size(self.blob_store) };
+        unsafe { spdk_bs_get_page_size(self.blob_store) }
     }
 
     pub fn get_free_cluster_count(&self) -> u64 {
-        return unsafe { spdk_bs_free_cluster_count(self.blob_store) };
+        unsafe { spdk_bs_free_cluster_count(self.blob_store) }
     }
 
     pub fn alloc_io_channel(&mut self) -> Result<IoChannel, Error> {
-        let io_channel = unsafe {
-            spdk_bs_alloc_io_channel(self.blob_store)
-        };
+        let io_channel = unsafe { spdk_bs_alloc_io_channel(self.blob_store) };
         if io_channel.is_null() {
             return Err(BlobstoreError::IoChannelAllocateError)?;
         }
-        return Ok(IoChannel { io_channel });
+        Ok(IoChannel { io_channel })
     }
 }
 
@@ -74,10 +61,22 @@ pub enum BlobError {
     #[fail(display = "Failed to sync metadata for blob({}): {}", _0, _1)]
     SyncError(BlobId, i32),
 
-    #[fail(display = "Error in write completion({}): {}, offset: {}, length: {}", _0, _1, _2, _3)]
+    #[fail(
+        display = "Error in write completion({}): {}, offset: {}, length: {}",
+        _0,
+        _1,
+        _2,
+        _3
+    )]
     WriteError(BlobId, i32, u64, u64),
 
-    #[fail(display = "Error in read completion({}): {}, offset: {}, length: {}", _0, _1, _2, _3)]
+    #[fail(
+        display = "Error in read completion({}): {}, offset: {}, length: {}",
+        _0,
+        _1,
+        _2,
+        _3
+    )]
     ReadError(BlobId, i32, u64, u64),
 }
 
@@ -99,21 +98,19 @@ pub struct Blob {
 
 impl Blob {
     pub fn get_num_clusters(&self) -> u64 {
-        return unsafe { spdk_blob_get_num_clusters(self.blob) };
+        unsafe { spdk_blob_get_num_clusters(self.blob) }
     }
 
     pub fn get_blob_id(&self) -> BlobId {
-        let blob_id = unsafe { 
-            spdk_blob_get_id(self.blob)
-        };
-        return BlobId { blob_id };
+        let blob_id = unsafe { spdk_blob_get_id(self.blob) };
+        BlobId { blob_id }
     }
 }
 
 // TODO: Drop for Blob
 
 pub struct IoChannel {
-    pub (crate) io_channel: *mut spdk_io_channel
+    pub(crate) io_channel: *mut spdk_io_channel,
 }
 
 // TODO: Implement Drop correctly with a call to spdk_bs_unload:
@@ -126,8 +123,7 @@ pub async fn bs_init(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore, Error> {
 
     unsafe {
         spdk_bs_init(
-            // PITA that bindgen seems to generate the mappings multiple times...
-            bs_dev.bs_dev as *mut generated::spdk_blob_bindings::spdk_bs_dev,
+            bs_dev.bs_dev,
             ptr::null_mut(),
             Some(complete_callback_1::<*mut spdk_blob_store>),
             cb_arg(sender),
@@ -137,10 +133,8 @@ pub async fn bs_init(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore, Error> {
     let res = await!(receiver).expect("Cancellation is not supported");
 
     match res {
-        Ok(blob_store) => return Ok(Blobstore { blob_store }),
-        Err(bserrno) => {
-            return Err(BlobstoreError::InitError(bserrno))?;
-        }
+        Ok(blob_store) => Ok(Blobstore { blob_store }),
+        Err(bserrno) => Err(BlobstoreError::InitError(bserrno))?,
     }
 }
 
@@ -156,15 +150,12 @@ pub async fn create(blob_store: &Blobstore) -> Result<BlobId, Error> {
     let res = await!(receiver).expect("Cancellation is not supported");
 
     match res {
-        Ok(blob_id) => return Ok(BlobId { blob_id }),
-        Err(bserrno) => {
-            return Err(BlobError::CreateError(bserrno))?;
-        }
+        Ok(blob_id) => Ok(BlobId { blob_id }),
+        Err(bserrno) => Err(BlobError::CreateError(bserrno))?,
     }
 }
 
 pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: &'a BlobId) -> Result<Blob, Error> {
-
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_bs_open_blob(
@@ -177,15 +168,12 @@ pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: &'a BlobId) -> Result<
     let res = await!(receiver).expect("Cancellation is not supported");
 
     match res {
-        Ok(blob) => return Ok(Blob { blob }),
-        Err(bserrno) => {
-            return Err(BlobError::OpenError(blob_id.clone(), bserrno))?;
-        }
+        Ok(blob) => Ok(Blob { blob }),
+        Err(bserrno) => Err(BlobError::OpenError(blob_id.clone(), bserrno))?,
     }
 }
 
 pub async fn resize<'a>(blob: &'a Blob, required_size: u64) -> Result<(), Error> {
-
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_blob_resize(
@@ -198,10 +186,8 @@ pub async fn resize<'a>(blob: &'a Blob, required_size: u64) -> Result<(), Error>
     let res = await!(receiver).expect("Cancellation is not supported");
 
     match res {
-        Ok(()) => return Ok(()),
-        Err(bserrno) => {
-            return Err(BlobError::ResizeError(blob.get_blob_id(), bserrno))?;
-        }
+        Ok(()) => Ok(()),
+        Err(bserrno) => Err(BlobError::ResizeError(blob.get_blob_id(), bserrno))?,
     }
 }
 
@@ -225,19 +211,13 @@ pub async fn resize<'a>(blob: &'a Blob, required_size: u64) -> Result<(), Error>
 pub async fn sync_metadata<'a>(blob: &'a Blob) -> Result<(), Error> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
-        spdk_blob_sync_md(
-            blob.blob,
-            Some(complete_callback_0),
-            cb_arg::<()>(sender),
-        );
+        spdk_blob_sync_md(blob.blob, Some(complete_callback_0), cb_arg::<()>(sender));
     }
     let res = await!(receiver).expect("Cancellation is not supported");
 
     match res {
-        Ok(()) => return Ok(()),
-        Err(bserrno) => {
-            return Err(BlobError::SyncError(blob.get_blob_id(), bserrno))?;
-        }
+        Ok(()) => Ok(()),
+        Err(bserrno) => Err(BlobError::SyncError(blob.get_blob_id(), bserrno))?,
     }
 }
 
@@ -249,19 +229,18 @@ pub async fn sync_metadata<'a>(blob: &'a Blob) -> Result<(), Error> {
 /// \param offset Offset is in pages from the beginning of the blob.
 /// \param length Size of data in pages.
 /// \param cb_fn Called when the operation is complete.
-/// \param cb_arg Argument passed to function cb_fn. 
-/// TODO: the interface here is funky as is, needs work; 
+/// \param cb_arg Argument passed to function cb_fn.
+/// TODO: the interface here is funky as is, needs work;
 /// Specifically writes need to happen in pages, so the buf abstraction should probably enforce that.
-/// Similarly, spdk_blob_io_writev is probably the more interesting case if we don't want to 
+/// Similarly, spdk_blob_io_writev is probably the more interesting case if we don't want to
 /// have to do copies.
 pub async fn write<'a>(
     blob: &'a Blob,
     io_channel: &'a IoChannel,
     buf: &'a Buf,
-    offset: u64, 
-    length: u64) 
--> Result<(), Error> {
-
+    offset: u64,
+    length: u64,
+) -> Result<(), Error> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_blob_io_write(
@@ -277,10 +256,13 @@ pub async fn write<'a>(
     let res = await!(receiver).expect("Cancellation is not supported");
 
     match res {
-        Ok(()) => return Ok(()),
-        Err(bserrno) => {
-            return Err(BlobError::WriteError(blob.get_blob_id(), bserrno, offset, length))?;
-        }
+        Ok(()) => Ok(()),
+        Err(bserrno) => Err(BlobError::WriteError(
+            blob.get_blob_id(),
+            bserrno,
+            offset,
+            length,
+        ))?,
     }
 }
 
@@ -288,9 +270,9 @@ pub async fn read<'a>(
     blob: &'a Blob,
     io_channel: &'a IoChannel,
     buf: &'a Buf,
-    offset: u64, 
-    length: u64) 
--> Result<(), Error> {
+    offset: u64,
+    length: u64,
+) -> Result<(), Error> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_blob_io_read(
@@ -306,41 +288,31 @@ pub async fn read<'a>(
     let res = await!(receiver).expect("Cancellation is not supported");
 
     match res {
-        Ok(()) => return Ok(()),
-        Err(bserrno) => {
-            return Err(BlobError::ReadError(blob.get_blob_id(), bserrno, offset, length))?;
-        }
+        Ok(()) => Ok(()),
+        Err(bserrno) => Err(BlobError::ReadError(
+            blob.get_blob_id(),
+            bserrno,
+            offset,
+            length,
+        ))?,
     }
 }
 
 fn cb_arg<T>(sender: Sender<Result<T, i32>>) -> *mut c_void {
-    return Box::into_raw(Box::new(sender)) as *const _ as *mut c_void;
+    Box::into_raw(Box::new(sender)) as *const _ as *mut c_void
 }
 
 extern "C" fn complete_callback_0(sender_ptr: *mut c_void, bserrno: c_int) {
     let sender = unsafe { Box::from_raw(sender_ptr as *mut Sender<Result<(), i32>>) };
-
-    let ret;
-    if bserrno != 0 {
-        ret = Err(bserrno);
-    } else {
-        ret = Ok(());
-    }
-
-    // TODO: figure out what to do if Receiver is gone
-    let _ = sender.send(ret); //.expect("Receiver is gone");
+    let ret = if bserrno != 0 { Err(bserrno) } else { Ok(()) };
+    sender.send(ret).expect("Receiver is gone");
 }
 
-extern "C" fn complete_callback_1<T>(sender_ptr: *mut c_void, bs: T, bserrno: c_int) {
+extern "C" fn complete_callback_1<T>(sender_ptr: *mut c_void, bs: T, bserrno: c_int)
+where
+    T: Debug,
+{
     let sender = unsafe { Box::from_raw(sender_ptr as *mut Sender<Result<T, i32>>) };
-
-    let ret;
-    if bserrno != 0 {
-        ret = Err(bserrno);
-    } else {
-        ret = Ok(bs);
-    }
-
-    // TODO: figure out what to do if Receiver is gone
-    let _ = sender.send(ret); //.expect("Receiver is gone");
+    let ret = if bserrno != 0 { Err(bserrno) } else { Ok(bs) };
+    sender.send(ret).expect("Receiver is gone");
 }

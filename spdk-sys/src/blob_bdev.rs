@@ -2,8 +2,7 @@ use failure::Error;
 use std::ptr;
 
 use crate::bdev::BDev;
-use crate::generated;
-use crate::generated::spdk_blob_bdev_bindings::{spdk_bdev_create_bs_dev, spdk_bs_dev};
+use crate::generated::{spdk_bdev_create_bs_dev, spdk_bs_dev};
 
 #[derive(Debug, Fail)]
 pub enum BlobBDevError {
@@ -21,18 +20,11 @@ pub struct BlobStoreBDev {
 }
 
 pub fn create_bs_dev(bdev: &mut BDev) -> Result<BlobStoreBDev, Error> {
-    let bs_dev = unsafe {
-        spdk_bdev_create_bs_dev(
-            // PITA that bindgen seems to generate the mappings multiple times...
-            bdev.bdev as *mut generated::spdk_blob_bdev_bindings::spdk_bdev,
-            None,
-            ptr::null_mut(),
-        )
-    };
+    let bs_dev = unsafe { spdk_bdev_create_bs_dev(bdev.bdev, None, ptr::null_mut()) };
 
     if bs_dev.is_null() {
-        return Err(BlobBDevError::FailedToCreate(bdev.name.clone().into()))?;
+        return Err(BlobBDevError::FailedToCreate(bdev.name.clone()))?;
     }
 
-    return Ok(BlobStoreBDev { bs_dev });
+    Ok(BlobStoreBDev { bs_dev })
 }
