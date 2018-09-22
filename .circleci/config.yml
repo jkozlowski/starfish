@@ -14,7 +14,8 @@ jobs:
             rustup component add clippy-preview;
             # Enabling warnings trips clippy in generated code that has a compiler warning; 
             # see https://github.com/rust-lang-nursery/rust-clippy/issues/702
-            cargo clippy --all --all-targets --all-features # -- -D warnings
+            # -- -D warnings
+            cargo clippy --all --all-targets --all-features 
        run:
           name: Run 'cargo fmt'
           command: |
