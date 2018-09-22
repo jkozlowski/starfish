@@ -1,5 +1,7 @@
 # starfish
 
+[![CircleCI](https://circleci.com/gh/jkozlowski/starfish.svg?style=svg)](https://circleci.com/gh/jkozlowski/starfish)
+
 Async programming with spdk for rust.
 
 ## Running
