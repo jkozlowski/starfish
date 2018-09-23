@@ -1,10 +1,11 @@
 use crate::blob_bdev::BlobStoreBDev;
 use crate::env::Buf;
 use crate::generated::{
-    spdk_blob, spdk_blob_get_id, spdk_blob_get_num_clusters, spdk_blob_id, spdk_blob_io_read,
-    spdk_blob_io_write, spdk_blob_resize, spdk_blob_store, spdk_blob_sync_md,
-    spdk_bs_alloc_io_channel, spdk_bs_create_blob, spdk_bs_free_cluster_count,
-    spdk_bs_get_page_size, spdk_bs_init, spdk_bs_open_blob, spdk_io_channel,
+    spdk_blob, spdk_blob_close, spdk_blob_get_id, spdk_blob_get_num_clusters, spdk_blob_id,
+    spdk_blob_io_read, spdk_blob_io_write, spdk_blob_resize, spdk_blob_store, spdk_blob_sync_md,
+    spdk_bs_alloc_io_channel, spdk_bs_create_blob, spdk_bs_delete_blob, spdk_bs_free_cluster_count,
+    spdk_bs_free_io_channel, spdk_bs_get_page_size, spdk_bs_init, spdk_bs_open_blob,
+    spdk_bs_unload, spdk_io_channel,
 };
 use failure::Error;
 use futures::channel::oneshot;
@@ -22,6 +23,9 @@ pub enum BlobstoreError {
 
     #[fail(display = "Failed to allocate io channel")]
     IoChannelAllocateError,
+
+    #[fail(display = "Failed to unload blob store: {}", _0)]
+    UnloadError(i32),
 }
 
 #[derive(Debug)]
@@ -78,9 +82,15 @@ pub enum BlobError {
         _3
     )]
     ReadError(BlobId, i32, u64, u64),
+
+    #[fail(display = "Failed to close blob: {}", _0)]
+    CloseError(i32),
+
+    #[fail(display = "Failed to delete blob({}): {}", _0, _1)]
+    DeleteError(BlobId, i32),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BlobId {
     pub(crate) blob_id: spdk_blob_id,
 }
@@ -113,6 +123,12 @@ pub struct IoChannel {
     pub(crate) io_channel: *mut spdk_io_channel,
 }
 
+impl Drop for IoChannel {
+    fn drop(&mut self) {
+        unsafe { spdk_bs_free_io_channel(self.io_channel) };
+    }
+}
+
 // TODO: Implement Drop correctly with a call to spdk_bs_unload:
 // Funny thing is that this is async, so will be interesting to see how to do that?
 // I can't block
@@ -138,6 +154,23 @@ pub async fn bs_init(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore, Error> {
     }
 }
 
+pub async fn bs_unload(blob_store: Blobstore) -> Result<(), Error> {
+    let (sender, receiver) = oneshot::channel();
+    unsafe {
+        spdk_bs_unload(
+            blob_store.blob_store,
+            Some(complete_callback_0),
+            cb_arg::<()>(sender),
+        );
+    }
+    let res = await!(receiver).expect("Cancellation is not supported");
+
+    match res {
+        Ok(()) => Ok(()),
+        Err(bserrno) => Err(BlobstoreError::UnloadError(bserrno))?,
+    }
+}
+
 pub async fn create(blob_store: &Blobstore) -> Result<BlobId, Error> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
@@ -155,7 +188,7 @@ pub async fn create(blob_store: &Blobstore) -> Result<BlobId, Error> {
     }
 }
 
-pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: &'a BlobId) -> Result<Blob, Error> {
+pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<Blob, Error> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_bs_open_blob(
@@ -295,6 +328,37 @@ pub async fn read<'a>(
             offset,
             length,
         ))?,
+    }
+}
+
+pub async fn close(blob: Blob) -> Result<(), Error> {
+    let (sender, receiver) = oneshot::channel();
+    unsafe {
+        spdk_blob_close(blob.blob, Some(complete_callback_0), cb_arg::<()>(sender));
+    }
+    let res = await!(receiver).expect("Cancellation is not supported");
+
+    match res {
+        Ok(()) => Ok(()),
+        Err(bserrno) => Err(BlobError::CloseError(bserrno))?,
+    }
+}
+
+pub async fn delete<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<(), Error> {
+    let (sender, receiver) = oneshot::channel();
+    unsafe {
+        spdk_bs_delete_blob(
+            blob_store.blob_store,
+            blob_id.blob_id,
+            Some(complete_callback_0),
+            cb_arg::<()>(sender),
+        );
+    }
+    let res = await!(receiver).expect("Cancellation is not supported");
+
+    match res {
+        Ok(()) => Ok(()),
+        Err(bserrno) => Err(BlobError::DeleteError(blob_id, bserrno))?,
     }
 }
 

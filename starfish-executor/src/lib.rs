@@ -1,5 +1,5 @@
 #![warn(rust_2018_idioms)]
-#![feature(pin, arbitrary_self_types, futures_api,)]
+#![feature(pin, arbitrary_self_types, futures_api, nll)]
 
 extern crate futures;
 

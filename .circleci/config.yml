@@ -49,7 +49,10 @@ jobs:
           command: cargo build --all
       - run:
           name: Run tests
-          command: cargo test --all
+          command: |
+            dd if=/dev/zero of=/tmp/aiofile bs=2048 count=5000
+            /tmp/spdk/scripts/setup.sh
+            cargo test --all
       - save_cache:
           key: rust-v3-{{ .Branch }}-{{ .Revision }}
           paths:

@@ -8,8 +8,9 @@ target/
 Cargo.lock
 #/.cargo/
 
-# IntelliJ directory
+# IDE directories
 /.idea/
+/.vscode/
 
-#
-ticks/notes.rs
+# Generated code
+spdk-sys/src/generated/spdk_bindings.rs

@@ -8,6 +8,7 @@ use spdk_sys::blob_bdev;
 use spdk_sys::env as spdk_env;
 use spdk_sys::event;
 use spdk_sys::io_channel;
+use spdk_sys::io_channel::PollerHandle;
 use starfish_executor as executor;
 use std::env;
 use std::mem;
@@ -27,29 +28,42 @@ pub fn main() {
         mem::forget(executor);
 
         // Register the executor poller
-        io_channel::poller_register(executor::pure_poll);
+        let poller = io_channel::poller_register(executor::pure_poll);
 
-        executor::spawn(run());
+        executor::spawn(run(poller));
     });
 
     println!("Finished: {:?}", ret);
 }
 
-async fn run() {
+async fn run(poller: PollerHandle) {
     match await!(run_inner()) {
         Ok(_) => println!("Successful"),
         Err(err) => println!("Failure: {:?}", err),
     }
+
+    drop(poller);
+
+    event::app_stop(true);
 }
 
 async fn run_inner() -> Result<(), Error> {
-    let mut bdev = bdev::get_by_name("Malloc0")?;
+    let mut bdev = bdev::get_by_name("AIO1")?;
     println!("{:?}", bdev);
 
     let mut bs_dev = blob_bdev::create_bs_dev(&mut bdev)?;
     println!("{:?}", bs_dev);
 
     let mut blobstore = await!(blob::bs_init(&mut bs_dev))?;
+
+    await!(run_with_blob_store(&mut blobstore))?;
+
+    await!(blob::bs_unload(blobstore))?;
+
+    Ok(())
+}
+
+async fn run_with_blob_store(blobstore: &mut blob::Blobstore) -> Result<(), Error> {
     let page_size = blobstore.get_page_size();
 
     println!("Page size: {:?}", page_size);
@@ -58,7 +72,7 @@ async fn run_inner() -> Result<(), Error> {
 
     println!("Blob created: {:?}", blob_id);
 
-    let blob = await!(blob::open(&blobstore, &blob_id))?;
+    let blob = await!(blob::open(&blobstore, blob_id))?;
 
     println!("Opened blob");
 
@@ -106,9 +120,12 @@ async fn run_inner() -> Result<(), Error> {
     }
 
     /* Now let's close it and delete the blob in the callback. */
-    //spdk_blob_close(hello_context->blob, delete_blob, hello_context);
+    await!(blob::close(blob))?;
+    println!("Closed");
 
-    event::app_stop(true);
+    await!(blob::delete(&blobstore, blob_id))?;
+
+    println!("Deleted");
 
     Ok(())
 }
