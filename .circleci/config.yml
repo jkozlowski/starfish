@@ -1,8 +1,8 @@
 version: 2
 jobs:
   build:
-    docker:
-      - image: rust:1.29.0-stretch
+    machine:
+      image: circleci/classic:latest
     steps:
       - restore_cache:
           keys:
@@ -28,9 +28,13 @@ jobs:
             - "/usr/local/lib"
       - restore_cache:
           keys:
-            - rust-v3-{{ .Branch }}-{{ .Revision }}
-            - rust-v3-{{ .Branch }}-
-            - rust-v3-
+            - rust-v4-{{ .Branch }}-{{ .Revision }}
+            - rust-v4-{{ .Branch }}-
+            - rust-v4-
+      - run:
+          name: Install rustup
+          command: |
+            curl https://sh.rustup.rs -sSf | sh  
       - run:
           name: Run 'cargo fmt'
           command: |
@@ -54,7 +58,7 @@ jobs:
             /tmp/spdk/scripts/setup.sh
             cargo test --all
       - save_cache:
-          key: rust-v3-{{ .Branch }}-{{ .Revision }}
+          key: rust-v4-{{ .Branch }}-{{ .Revision }}
           paths:
             - "target/"
             - "~/.cargo/"
