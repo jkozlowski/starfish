@@ -15,7 +15,7 @@ sudo apt-get install -y module-init-tools
 
 if [ ! -f "/usr/local/lib/libspdk.so" ]; then
     ./configure
-    make install
+    sudo make install
 else
     echo "spdk already built"
 fi
