@@ -20,6 +20,9 @@ $ ./configure
 $ sudo make install
 $ ./scripts/setup.sh
 
+# Used for aio backed testing
+$ dd if=/dev/zero of=/tmp/aiofile bs=2048 count=5000
+
 $ sudo ldconfig /usr/local/lib
 
 # Need to run dpdk applications as root :(

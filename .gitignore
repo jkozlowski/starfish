@@ -8,8 +8,6 @@ target/
 Cargo.lock
 #/.cargo/
 
-# IntelliJ directory
+# IDE directories
 /.idea/
-
-#
-ticks/notes.rs
+/.vscode/

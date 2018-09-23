@@ -1,58 +1,63 @@
 version: 2
 jobs:
   build:
-    docker:
-      - image: rust:1.29.0-stretch
+    machine:
+      image: circleci/classic:latest
     steps:
       - restore_cache:
           keys:
-            - source-v3-{{ .Branch }}-{{ .Revision }}
-            - source-v3-{{ .Branch }}-
-            - source-v3-
+            - source-v5-{{ .Branch }}-{{ .Revision }}
+            - source-v5-{{ .Branch }}-
+            - source-v5-
       - checkout
       - save_cache:
-          key: source-v3-{{ .Branch }}-{{ .Revision }}
+          key: source-v5-{{ .Branch }}-{{ .Revision }}
           paths:
             - ".git"
       - restore_cache:
           keys:
-            - spdk-v3-{{ checksum ".circleci/scripts/build_spdk.sh" }}
-            - spdk-v3-
+            - spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+            - spdk-v5-
       - run:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
-      - save_cache:
-          key: spdk-v3-{{ checksum ".circleci/scripts/build_spdk.sh" }}
-          paths:
-            - "/usr/local/include"
-            - "/usr/local/lib"
-      - restore_cache:
-          keys:
-            - rust-v3-{{ .Branch }}-{{ .Revision }}
-            - rust-v3-{{ .Branch }}-
-            - rust-v3-
+      # TODO: restore cache by installing to another directory
+      # - save_cache:
+      #     key: spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+      #     paths:
+      #       - "/usr/local/include"
+      #       - "/usr/local/lib"
+      # - restore_cache:
+      #     keys:
+      #       - rust-v5-{{ .Branch }}-{{ .Revision }}
+      #       - rust-v5-{{ .Branch }}-
+      #       - rust-v5-
+      - run:
+          name: Install rustup
+          command: |
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
       - run:
           name: Run 'cargo fmt'
           command: |
+            source $HOME/.cargo/env
             rustup component add rustfmt-preview
             cargo fmt --all -- --check
       - run:
           name: Run 'cargo clippy'
           command: |
+            source $HOME/.cargo/env
             rustup component add clippy-preview
             # Enabling warnings trips clippy in generated code that has a compiler warning; 
             # See https://github.com/rust-lang-nursery/rust-clippy/issues/702
             # -- -D warnings
             cargo clippy --all --all-targets --all-features
       - run:
-          name: Build starfish
-          command: cargo build --all
-      - run:
           name: Run tests
-          command: cargo test --all
-      - save_cache:
-          key: rust-v3-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - "target/"
-            - "~/.cargo/"
-            - "~/.multirust/"
+          command: |
+            sudo bash .circleci/scripts/run_test.sh 
+      # - save_cache:
+      #     key: rust-v5-{{ .Branch }}-{{ .Revision }}
+      #     paths:
+      #       - "target/"
+      #       - "~/.cargo/"
+      #       - "~/.multirust/"

@@ -14,7 +14,6 @@ futures-preview = "= 0.3.0-alpha.6"
 libc = "= 0.2.43"
 
 [dev-dependencies]
-hamcrest = "= 0.1.5"
 spectral = "= 0.6.0"
 slog-term = "=2.0.2"
 
