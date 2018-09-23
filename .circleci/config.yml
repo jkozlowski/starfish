@@ -4,10 +4,6 @@ jobs:
     machine:
       image: circleci/classic:latest
     steps:
-      - run:
-          name: Test
-          command: |
-            sudo 
       - restore_cache:
           keys:
             - source-v5-{{ .Branch }}-{{ .Revision }}
