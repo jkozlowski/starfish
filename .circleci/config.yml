@@ -21,16 +21,16 @@ jobs:
       - run:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
-      - save_cache:
-          key: spdk-v4-{{ checksum ".circleci/scripts/build_spdk.sh" }}
-          paths:
-            - "/usr/local/include"
-            - "/usr/local/lib"
-      - restore_cache:
-          keys:
-            - rust-v4-{{ .Branch }}-{{ .Revision }}
-            - rust-v4-{{ .Branch }}-
-            - rust-v4-
+      # - save_cache:
+      #     key: spdk-v4-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+      #     paths:
+      #       - "/usr/local/include"
+      #       - "/usr/local/lib"
+      # - restore_cache:
+      #     keys:
+      #       - rust-v4-{{ .Branch }}-{{ .Revision }}
+      #       - rust-v4-{{ .Branch }}-
+      #       - rust-v4-
       - run:
           name: Install rustup
           command: |
@@ -57,9 +57,9 @@ jobs:
             dd if=/dev/zero of=/tmp/aiofile bs=2048 count=5000
             sudo /tmp/spdk/scripts/setup.sh
             cargo test --all
-      - save_cache:
-          key: rust-v4-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - "target/"
-            - "~/.cargo/"
-            - "~/.multirust/"
+      # - save_cache:
+      #     key: rust-v4-{{ .Branch }}-{{ .Revision }}
+      #     paths:
+      #       - "target/"
+      #       - "~/.cargo/"
+      #       - "~/.multirust/"
