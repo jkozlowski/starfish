@@ -6,23 +6,23 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - source-v3-{{ .Branch }}-{{ .Revision }}
-            - source-v3-{{ .Branch }}-
-            - source-v3-
+            - source-v4-{{ .Branch }}-{{ .Revision }}
+            - source-v4-{{ .Branch }}-
+            - source-v4-
       - checkout
       - save_cache:
-          key: source-v3-{{ .Branch }}-{{ .Revision }}
+          key: source-v4-{{ .Branch }}-{{ .Revision }}
           paths:
             - ".git"
       - restore_cache:
           keys:
-            - spdk-v3-{{ checksum ".circleci/scripts/build_spdk.sh" }}
-            - spdk-v3-
+            - spdk-v4-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+            - spdk-v4-
       - run:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
       - save_cache:
-          key: spdk-v3-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+          key: spdk-v4-{{ checksum ".circleci/scripts/build_spdk.sh" }}
           paths:
             - "/usr/local/include"
             - "/usr/local/lib"
