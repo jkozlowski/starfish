@@ -19,3 +19,7 @@ libc = ""
 
 [build-dependencies]
 bindgen = "= 0.40.0"
+
+[dev-dependencies]
+hamcrest2 = "*"
+starfish-executor = { path = "../starfish-executor" }
