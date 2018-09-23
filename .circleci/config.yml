@@ -6,31 +6,31 @@ jobs:
     steps:
       - restore_cache:
           keys:
-            - source-v4-{{ .Branch }}-{{ .Revision }}
-            - source-v4-{{ .Branch }}-
-            - source-v4-
+            - source-v5-{{ .Branch }}-{{ .Revision }}
+            - source-v5-{{ .Branch }}-
+            - source-v5-
       - checkout
       - save_cache:
-          key: source-v4-{{ .Branch }}-{{ .Revision }}
+          key: source-v5-{{ .Branch }}-{{ .Revision }}
           paths:
             - ".git"
       - restore_cache:
           keys:
-            - spdk-v4-{{ checksum ".circleci/scripts/build_spdk.sh" }}
-            - spdk-v4-
+            - spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+            - spdk-v5-
       - run:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
       # - save_cache:
-      #     key: spdk-v4-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+      #     key: spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
       #     paths:
       #       - "/usr/local/include"
       #       - "/usr/local/lib"
       # - restore_cache:
       #     keys:
-      #       - rust-v4-{{ .Branch }}-{{ .Revision }}
-      #       - rust-v4-{{ .Branch }}-
-      #       - rust-v4-
+      #       - rust-v5-{{ .Branch }}-{{ .Revision }}
+      #       - rust-v5-{{ .Branch }}-
+      #       - rust-v5-
       - run:
           name: Install rustup
           command: |
@@ -58,7 +58,7 @@ jobs:
             sudo /tmp/spdk/scripts/setup.sh
             cargo test --all
       # - save_cache:
-      #     key: rust-v4-{{ .Branch }}-{{ .Revision }}
+      #     key: rust-v5-{{ .Branch }}-{{ .Revision }}
       #     paths:
       #       - "target/"
       #       - "~/.cargo/"
