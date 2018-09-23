@@ -10,6 +10,7 @@ pub struct PollerHandle {
 }
 
 impl Drop for PollerHandle {
+    #[allow(clippy::cast_ptr_alignment)]
     fn drop(&mut self) {
         let tmp_poller = self.poller;
         // This is rather dogdy, spdk_poller_unregister will write NULL to self.poller,

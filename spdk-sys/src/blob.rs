@@ -202,7 +202,7 @@ pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<Blob
 
     match res {
         Ok(blob) => Ok(Blob { blob }),
-        Err(bserrno) => Err(BlobError::OpenError(blob_id.clone(), bserrno))?,
+        Err(bserrno) => Err(BlobError::OpenError(blob_id, bserrno))?,
     }
 }
 
