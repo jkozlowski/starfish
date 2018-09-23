@@ -35,15 +35,16 @@ jobs:
           name: Install rustup
           command: |
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
-            source $HOME/.cargo/env
       - run:
           name: Run 'cargo fmt'
           command: |
+            source $HOME/.cargo/env
             rustup component add rustfmt-preview
             cargo fmt --all -- --check
       - run:
           name: Run 'cargo clippy'
           command: |
+            source $HOME/.cargo/env
             rustup component add clippy-preview
             # Enabling warnings trips clippy in generated code that has a compiler warning; 
             # See https://github.com/rust-lang-nursery/rust-clippy/issues/702
@@ -51,10 +52,13 @@ jobs:
             cargo clippy --all --all-targets --all-features
       - run:
           name: Build starfish
-          command: cargo build --all
+          command: |
+            source $HOME/.cargo/env 
+            cargo build --all
       - run:
           name: Run tests
           command: |
+            source $HOME/.cargo/env
             dd if=/dev/zero of=/tmp/aiofile bs=2048 count=5000
             cargo test --all
       # - save_cache:
