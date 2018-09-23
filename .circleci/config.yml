@@ -20,7 +20,7 @@ jobs:
             - spdk-v4-
       - run:
           name: Build spdk
-          command: sh .circleci/scripts/build_spdk.sh
+          command: sudo sh .circleci/scripts/build_spdk.sh
       - save_cache:
           key: spdk-v4-{{ checksum ".circleci/scripts/build_spdk.sh" }}
           paths:
