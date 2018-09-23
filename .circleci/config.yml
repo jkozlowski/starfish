@@ -58,13 +58,7 @@ jobs:
       - run:
           name: Run tests
           command: |
-            sudo -s -- <<EOF
-              curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
-              source $HOME/.cargo/env
-              dd if=/dev/zero of=/tmp/aiofile bs=2048 count=5000
-              export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib"
-              cargo test --all
-            EOF
+            sudo bash .circleci/scripts/run_test.sh 
       # - save_cache:
       #     key: rust-v5-{{ .Branch }}-{{ .Revision }}
       #     paths:
