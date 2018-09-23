@@ -34,7 +34,7 @@ jobs:
       - run:
           name: Install rustup
           command: |
-            curl https://sh.rustup.rs -sSf | sh  
+            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
       - run:
           name: Run 'cargo fmt'
           command: |
@@ -55,7 +55,7 @@ jobs:
           name: Run tests
           command: |
             dd if=/dev/zero of=/tmp/aiofile bs=2048 count=5000
-            /tmp/spdk/scripts/setup.sh
+            sudo /tmp/spdk/scripts/setup.sh
             cargo test --all
       - save_cache:
           key: rust-v4-{{ .Branch }}-{{ .Revision }}

@@ -13,6 +13,8 @@ sudo ./scripts/pkgdep.sh
 
 sudo apt-get install -y module-init-tools
 
+sudo /tmp/spdk/scripts/setup.sh
+
 if [ ! -f "/usr/local/lib/libspdk.so" ]; then
     ./configure
     sudo make install
