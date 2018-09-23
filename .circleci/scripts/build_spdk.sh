@@ -8,10 +8,10 @@ git checkout v18.07.1
 git submodule update --init
 
 echo 'APT::Get::Assume-Yes "true"; APT::Get::force-yes "true";' > /etc/apt/apt.conf.d/99force-yes
-apt-get update
-./scripts/pkgdep.sh
+sudo apt-get update
+sudo ./scripts/pkgdep.sh
 
-apt-get install -y module-init-tools
+sudo apt-get install -y module-init-tools
 
 if [ ! -f "/usr/local/lib/libspdk.so" ]; then
     ./configure
