@@ -50,9 +50,8 @@ jobs:
       - run:
           name: Run tests
           command: |
-            # TODO: Figure out how to do it
-            #dd if=/dev/zero of=/tmp/aiofile bs=2048 count=5000
-            #/tmp/spdk/scripts/setup.sh
+            dd if=/dev/zero of=/tmp/aiofile bs=2048 count=5000
+            /tmp/spdk/scripts/setup.sh
             cargo test --all
       - save_cache:
           key: rust-v3-{{ .Branch }}-{{ .Revision }}

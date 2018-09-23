@@ -11,6 +11,8 @@ echo 'APT::Get::Assume-Yes "true"; APT::Get::force-yes "true";' > /etc/apt/apt.c
 apt-get update
 ./scripts/pkgdep.sh
 
+apt-get install -y module-init-tools
+
 if [ ! -f "/usr/local/lib/libspdk.so" ]; then
     ./configure
     make install
