@@ -21,6 +21,7 @@ jobs:
       - run:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
+      # TODO: restore cache by installing to another directory
       # - save_cache:
       #     key: spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
       #     paths:
@@ -58,7 +59,7 @@ jobs:
       - run:
           name: Run tests
           command: |
-            sudo su
+            sudo -s
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
             source $HOME/.cargo/env
             dd if=/dev/zero of=/tmp/aiofile bs=2048 count=5000
