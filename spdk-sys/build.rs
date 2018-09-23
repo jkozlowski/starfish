@@ -1,15 +1,17 @@
 extern crate bindgen;
 
+use std::env;
 use std::path::Path;
 use std::path::PathBuf;
 
 static SPDK_INCLUDE_DIR: &'static str = "/usr/local/include";
-static OUTPUT_DIR: &'static str = "src/generated";
 
 fn generate_bindings() {
+    let spdk_include_path = env::var("SPDK_INCLUDE").unwrap_or(SPDK_INCLUDE_DIR.to_string());
+    let output_path = env::var("OUT_DIR").unwrap();
     let generator = Generator {
-        spdk_include_path: Path::new(&SPDK_INCLUDE_DIR),
-        output_path: Path::new(OUTPUT_DIR),
+        spdk_include_path: Path::new(&spdk_include_path),
+        output_path: Path::new(&output_path),
     };
 
     let headers = [

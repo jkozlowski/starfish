@@ -11,6 +11,3 @@ Cargo.lock
 # IDE directories
 /.idea/
 /.vscode/
-
-# Generated code
-spdk-sys/src/generated/spdk_bindings.rs
