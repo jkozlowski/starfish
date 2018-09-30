@@ -23,10 +23,11 @@ $ ./scripts/setup.sh
 # Used for aio backed testing
 $ dd if=/dev/zero of=/tmp/aiofile bs=2048 count=5000
 
-$ sudo ldconfig /usr/local/lib
-
 # Need to run dpdk applications as root :(
 $ cargo build && sudo target/debug/starfish-example-app starfish-example-app/config/hello_blob.conf
+
+# Running tests
+$ sudo bash scripts/run_tests.sh --all
 ```
 
 ## Example apps
@@ -35,6 +36,7 @@ $ cargo build && sudo target/debug/starfish-example-app starfish-example-app/con
 * https://github.com/percona/tokudb-engine/wiki/Write-optimized-fractal-tree-storage
 * https://github.com/Tokutek
 * https://www.percona.com/blog/wp-content/uploads/2011/11/how-fractal-trees-work.pdf
+* https://crates.io/crates/sonnerie
 
 ## Futures and async/await
 

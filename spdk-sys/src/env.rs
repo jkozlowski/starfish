@@ -2,6 +2,7 @@ use crate::generated::{spdk_dma_free, spdk_dma_malloc};
 use libc::c_void;
 use std::ptr;
 
+#[derive(Debug)]
 pub struct Buf {
     pub(crate) len: usize,
     pub(crate) ptr: *mut c_void,

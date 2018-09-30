@@ -26,6 +26,9 @@ mod ete_test {
 
     use crate::bdev;
     use crate::blob;
+    use crate::blob::Blob;
+    use crate::blob::BlobId;
+    use crate::blob::IoChannel;
     use crate::blob_bdev;
     use crate::env as spdk_env;
     use crate::event;
@@ -34,16 +37,46 @@ mod ete_test {
     use failure::Error;
     use hamcrest2::prelude::*;
     use starfish_executor as executor;
+    use std::fs;
+    use std::fs::File;
+    use std::io::Write;
     use std::mem;
     use std::path::Path;
+    use std::process::Command;
+    use tempfile;
 
     #[test]
-    pub fn ete_test() {
-        let config_file = Path::new("config/hello_blob.conf").canonicalize().unwrap();
+    pub fn ete_test() -> Result<(), Error> {
+        let tmp_dir = tempfile::tempdir()?;
+
+        let config_file = tmp_dir.path().join("config.conf");
+        let aio_file = tmp_dir.path().join("aiofile");
+
+        {
+            let file = File::create(&aio_file)?;
+            drop(file);
+
+            let tmp_aio_file_arg = format!("of={}", &aio_file.to_str().unwrap());
+            Command::new("dd")
+                .args(&["if=/dev/zero", &tmp_aio_file_arg, "bs=2048", "count=5000"])
+                .output()?;
+        }
+
+        {
+            let mut buffer = File::create(&config_file)?;
+            write!(
+                buffer,
+                "[AIO]
+                 # AIO <file name> <bdev name> [<block size>]
+                 AIO {:?} AIO1 2048",
+                aio_file.canonicalize().unwrap()
+            ).expect("Failed to write config file");
+        }
+
         let mut opts = event::AppOpts::new();
 
         opts.name("hello_blob");
-        opts.config_file(config_file.to_str().unwrap());
+        opts.config_file(config_file.canonicalize().unwrap().to_str().unwrap());
 
         let ret = opts.start(|| {
             let executor = executor::initialize();
@@ -58,99 +91,79 @@ mod ete_test {
         });
 
         assert_that!(ret, is(ok()));
+
+        Ok(())
     }
 
     async fn run(poller: PollerHandle) {
-        match await!(run_inner()) {
-            Ok(_) => println!("Successful"),
-            Err(err) => println!("Failure: {:?}", err),
-        }
-
+        let res = await!(run_inner());
         drop(poller);
 
-        event::app_stop(true);
+        event::app_stop(res.is_ok());
     }
 
     async fn run_inner() -> Result<(), Error> {
         let mut bdev = bdev::get_by_name("AIO1")?;
-        println!("{:?}", bdev);
-
         let mut bs_dev = blob_bdev::create_bs_dev(&mut bdev)?;
-        println!("{:?}", bs_dev);
-
         let mut blobstore = await!(blob::bs_init(&mut bs_dev))?;
 
-        await!(run_with_blob_store(&mut blobstore))?;
+        await!(create_write_delete_single_blob(&mut blobstore))?;
 
         await!(blob::bs_unload(blobstore))?;
 
         Ok(())
     }
 
-    async fn run_with_blob_store(blobstore: &mut blob::Blobstore) -> Result<(), Error> {
-        let page_size = blobstore.get_page_size();
-
-        println!("Page size: {:?}", page_size);
-
-        let blob_id = await!(blob::create(&blobstore))?;
-
-        println!("Blob created: {:?}", blob_id);
-
-        let blob = await!(blob::open(&blobstore, blob_id))?;
-
-        println!("Opened blob");
-
-        let free_clusters = blobstore.get_free_cluster_count();
-        println!("blobstore has FREE clusters of {:?}", free_clusters);
-
-        await!(blob::resize(&blob, free_clusters));
-
-        let total = blob.get_num_clusters();
-        println!("resized blob now has USED clusters of {}", total);
-
-        await!(blob::sync_metadata(&blob));
-
-        println!("metadata sync complete");
-
-        /*
-         * Buffers for data transfer need to be allocated via SPDK. We will
-         * tranfer 1 page of 4K aligned data at offset 0 in the blob.
-         */
-        let mut write_buf = spdk_env::dma_malloc(page_size, 0x1000);
-        write_buf.fill(0x5a);
-
-        /* Now we have to allocate a channel. */
+    async fn create_write_delete_single_blob(blobstore: &mut blob::Blobstore) -> Result<(), Error> {
         let channel = blobstore.alloc_io_channel()?;
 
-        /* Let's perform the write, 1 page at offset 0. */
-        println!("Starting write");
-        await!(blob::write(&blob, &channel, &write_buf, 0, 1))?;
-        println!("Finished writing");
-
-        let read_buf = spdk_env::dma_malloc(page_size, 0x1000);
-
-        /* Issue the read */
-        println!("Starting read");
-        await!(blob::read(&blob, &channel, &read_buf, 0, 1))?;
-        println!("Finished read");
-
-        /* Now let's make sure things match. */
-        if write_buf != read_buf {
-            println!("Error in data compare");
-        // unload_bs(hello_context, "Error in data compare", -1);
-        // return;
-        } else {
-            println!("read SUCCESS and data matches!");
-        }
-
-        /* Now let's close it and delete the blob in the callback. */
-        await!(blob::close(blob))?;
-        println!("Closed");
+        let blob_id = await!(create_write_read_single_page_blob(
+            blobstore, &channel, 0x5a
+        ))?;
 
         await!(blob::delete(&blobstore, blob_id))?;
 
-        println!("Deleted");
+        Ok(())
+    }
 
+    async fn create_write_read_single_page_blob<'a>(
+        blobstore: &'a mut blob::Blobstore,
+        channel: &'a IoChannel,
+        val: i8,
+    ) -> Result<BlobId, Error> {
+        let blob_id = await!(blob::create(&blobstore))?;
+        let blob = await!(blob::open(&blobstore, blob_id))?;
+
+        await!(blob::resize(&blob, 1));
+
+        let total = blob.get_num_clusters();
+        await!(blob::sync_metadata(&blob));
+
+        assert_that!(total, is(equal_to(1)));
+
+        let page_size = blobstore.get_page_size();
+        await!(write_read_single_page_blob(&channel, &blob, page_size, val))?;
+
+        await!(blob::close(blob))?;
+
+        Ok(blob_id)
+    }
+
+    async fn write_read_single_page_blob<'a>(
+        channel: &'a IoChannel,
+        blob: &'a Blob,
+        page_size: u64,
+        val: i8,
+    ) -> Result<(), Error> {
+        let mut write_buf = spdk_env::dma_malloc(page_size, 0x1000);
+        write_buf.fill(val);
+
+        await!(blob::write(&blob, &channel, &write_buf, 0, 1))?;
+
+        let read_buf = spdk_env::dma_malloc(page_size, 0x1000);
+        await!(blob::read(&blob, &channel, &read_buf, 0, 1))?;
+
+        assert_that!(write_buf, is(equal_to(read_buf)));
         Ok(())
     }
 }

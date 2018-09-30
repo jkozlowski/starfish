@@ -38,9 +38,23 @@ impl AppOpts {
     }
 
     // TODO: probably need this to properly deallocate pollers :()
-    // pub fn shutdown_cb() {
-    //     //spdk_app_shutdown_cb
-    // }
+    pub fn shutdown_cb<F>(&mut self, f: &F)
+    where
+        F: fn() -> (),
+    {
+        extern "C" fn shutdown_cb<F>(closure: *mut c_void, _: *mut c_void)
+        where
+            F: Fn() -> (),
+        {
+            let opt_closure = closure as *mut F;
+            unsafe { (*opt_closure)() }
+        }
+
+        unsafe {
+           self.0.shutdown_cb = Some(shutdown_cb) 
+        }
+        //spdk_app_shutdown_cb
+    }
 
     pub fn start<F>(mut self, f: F) -> Result<(), Error>
     where

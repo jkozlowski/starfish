@@ -1,16 +1,16 @@
 [package]
-name = "starfish-example-app"
+name = "starfish-file"
 version = "0.1.0"
 authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
 description = """
-Example app that uses the APIs.
+DMA file subsystem.
 """
 edition = '2018'
 
 [dependencies]
 spdk-sys = { path = "../spdk-sys" }
-starfish-executor = { path = "../starfish-executor" }
-
-crc = "=1.8.1"
 failure = ""
 futures-preview = "= 0.3.0-alpha.6"
+
+[dev-dependencies]
+hamcrest = "*"

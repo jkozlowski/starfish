@@ -22,4 +22,5 @@ bindgen = "= 0.40.0"
 
 [dev-dependencies]
 hamcrest2 = "*"
+tempfile = "3.0.4"
 starfish-executor = { path = "../starfish-executor" }
