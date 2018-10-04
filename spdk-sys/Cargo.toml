@@ -14,11 +14,11 @@ links = "spdk"
 [dependencies]
 failure = ""
 failure_derive = ""
-futures-preview = "= 0.3.0-alpha.6"
+futures-preview = "= 0.3.0-alpha.7"
 libc = ""
 
 [build-dependencies]
-bindgen = "= 0.40.0"
+bindgen = "= 0.41.0"
 
 [dev-dependencies]
 hamcrest2 = "*"
