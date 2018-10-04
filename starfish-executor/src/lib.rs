@@ -3,16 +3,16 @@
 
 extern crate futures;
 
-use futures::future::FutureObj;
-use futures::future::{Future, LocalFutureObj};
-use futures::task::{Context, LocalWaker, Poll, Spawn, UnsafeWake, Waker};
-use futures::task::{SpawnErrorKind, SpawnObjError};
+use futures::future::Future;
+use futures::future::LocalFutureObj;
+use futures::task::LocalSpawn;
+use futures::task::SpawnError;
+use futures::task::{LocalWaker, Poll, UnsafeWake, Waker};
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;
-use std::pin::PinBox;
-use std::pin::PinMut;
+use std::pin::Pin;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
@@ -20,19 +20,28 @@ use std::rc::Rc;
 /// TODO: Use UnsafeCell, since we can guarantee correct implementation
 thread_local!(static CURRENT_EXECUTOR: RefCell<Option<CurrentThreadExecutor>> = RefCell::new(None));
 
-struct LocalThreadExecutor {}
+#[allow(dead_code)]
+struct LocalExecutor {}
 
-impl LocalThreadExecutor {
-    fn new() -> LocalThreadExecutor {
-        LocalThreadExecutor {}
+impl LocalExecutor {
+    #[allow(dead_code)]
+    fn new() -> Self {
+        LocalExecutor {}
     }
 }
 
-impl Spawn for LocalThreadExecutor {
-    fn spawn_obj(&mut self, future: FutureObj<'static, ()>) -> Result<(), SpawnObjError> {
-        Err(SpawnObjError {
-            future,
-            kind: SpawnErrorKind::shutdown(),
+impl LocalSpawn for LocalExecutor {
+    fn spawn_local_obj(&mut self, future: LocalFutureObj<'static, ()>) -> Result<(), SpawnError> {
+        with_default_no_fail(|maybe_executor| match maybe_executor {
+            Some(ref executor) => {
+                let task = Rc::new(TaskHandle {
+                    task: UnsafeCell::new(Some(TaskContext::new(future))),
+                    queued: Cell::new(true),
+                });
+                (&mut executor.tq.borrow_mut()).add_task(task);
+                Ok(())
+            }
+            None => Err(SpawnError::shutdown()),
         })
     }
 }
@@ -126,7 +135,7 @@ impl TaskContext {
         F: Future<Output = ()> + 'static,
     {
         TaskContext {
-            fut: PinBox::new(future).into(),
+            fut: Box::new(future).into(),
         }
     }
 }
@@ -223,14 +232,12 @@ pub fn pure_poll() -> bool {
                     let clone_task_handle_ptr =
                         Rc::into_raw(bomb.task_handle.as_ref().unwrap().clone());
                     // TODO: I think I should be able to use some of the functions from below
-                    let waker = LocalWaker::new(NonNull::new_unchecked(
+                    let lw = LocalWaker::new(NonNull::new_unchecked(
                         clone_task_handle_ptr as *mut TaskHandle,
                     ));
                     // TODO: need the executor bit done
-                    let mut executor = LocalThreadExecutor::new();
-                    let mut cx = Context::new(&waker, &mut executor);
-                    let future = PinMut::new_unchecked(&mut task.fut);
-                    future.poll(&mut cx)
+                    let future = Pin::new(&mut task.fut);
+                    future.poll(&lw)
                 };
 
                 if let Poll::Pending = res {
@@ -255,6 +262,16 @@ where
     CURRENT_EXECUTOR.with(|current| match *current.borrow() {
         Some(ref current_thread) => f(current_thread),
         None => panic!("Executor not set"),
+    })
+}
+
+fn with_default_no_fail<F, E, R>(f: F) -> Result<R, E>
+where
+    F: FnOnce(Option<&CurrentThreadExecutor>) -> Result<R, E>,
+{
+    CURRENT_EXECUTOR.with(|current| match *current.borrow() {
+        Some(ref current_thread) => f(Some(current_thread)),
+        None => f(None),
     })
 }
 
@@ -289,23 +306,22 @@ fn forget_rc(task_handle: Rc<TaskHandle>) {
 
 #[cfg(test)]
 #[macro_use]
-extern crate hamcrest;
+extern crate hamcrest2;
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
-    use futures::task;
     use futures::task::Poll;
-    use hamcrest::prelude::*;
+    use hamcrest2::prelude::*;
 
-    type PollerFn = dyn Fn(&mut task::Context<'_>, &mut Controller) -> Poll<()>;
+    type PollerFn = dyn Fn(&LocalWaker, &mut Controller) -> Poll<()>;
 
     struct Controller {
         pollers: VecDeque<Box<PollerFn>>,
         poll_count: usize,
         dropped: bool,
-        waker: Option<Waker>,
+        waker: Option<LocalWaker>,
     }
 
     impl Controller {
@@ -318,14 +334,14 @@ mod tests {
             }
         }
 
-        fn save_waker(&mut self, waker: Waker) {
+        fn save_waker(&mut self, waker: &LocalWaker) {
             match self.waker {
                 Some(_) => panic!("Waker already saved"),
-                None => self.waker = Some(waker),
+                None => self.waker = Some(waker.clone()),
             }
         }
 
-        fn unwrap_waker(&mut self) -> Waker {
+        fn unwrap_waker(&mut self) -> LocalWaker {
             self.waker.take().unwrap()
         }
 
@@ -348,7 +364,7 @@ mod tests {
 
         fn push_pollers<P>(&mut self, poller: P)
         where
-            P: Fn(&mut task::Context<'_>, &mut Controller) -> Poll<()> + 'static,
+            P: Fn(&LocalWaker, &mut Controller) -> Poll<()> + 'static,
         {
             self.pollers.push_back(Box::new(poller))
         }
@@ -377,14 +393,14 @@ mod tests {
     impl Future for MockFuture {
         type Output = ();
 
-        fn poll(self: PinMut<'_, Self>, ctx: &mut task::Context<'_>) -> Poll<()> {
+        fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<()> {
             let mut ctrl = self.controller.borrow_mut();
             let poller = match ctrl.pop_pollers() {
                 Some(poller) => poller,
                 None => panic!("Called poll when not expected"),
             };
             ctrl.poll();
-            poller(ctx, &mut ctrl)
+            poller(lw, &mut ctrl)
         }
     }
 
@@ -402,8 +418,8 @@ mod tests {
     fn future_is_notified_from_outside_poll() {
         mock_test(|ctrl| {
             // Save waker
-            ctrl.borrow_mut().push_pollers(|ctx, ctrl| {
-                ctrl.save_waker(ctx.waker().clone());
+            ctrl.borrow_mut().push_pollers(|lw, ctrl| {
+                ctrl.save_waker(lw);
                 Poll::Pending
             });
 
@@ -428,10 +444,10 @@ mod tests {
     #[test]
     fn future_is_polled_again_if_notified_from_poll() {
         mock_test(|ctrl| {
-            ctrl.borrow_mut().push_pollers(|ctx, _| {
+            ctrl.borrow_mut().push_pollers(|lw, _| {
                 // Wake multiple times
-                ctx.waker().wake();
-                ctx.waker().wake();
+                lw.wake();
+                lw.wake();
 
                 Poll::Pending
             });
@@ -451,7 +467,10 @@ mod tests {
         let _enter = initialize();
 
         let ctrl = Rc::new(RefCell::new(Controller::new()));
-        spawn(MockFuture::new(ctrl.clone()));
+        assert_that!(
+            LocalExecutor::new().spawn_local_obj(Box::new(MockFuture::new(ctrl.clone())).into()),
+            is(ok())
+        );
 
         f(ctrl)
     }
