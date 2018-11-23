@@ -73,5 +73,10 @@ fn main() {
     generate_bindings();
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rustc-link-lib=spdk");
+    println!("cargo:rustc-link-lib=spdk_env_dpdk");
+    println!("cargo:rustc-link-lib=dpdk");
+    // XXX We need to load this shlib even though that we don't explicitly use
+    // any symbols from it, but rustc ignores it anyway.
+    //println!("cargo:rustc-link-lib=rte_mempool_ring");
     println!("cargo:rustc-link-search=native=/usr/local/lib");
 }
