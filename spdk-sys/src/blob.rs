@@ -4,16 +4,18 @@ use crate::generated::{
     spdk_blob, spdk_blob_close, spdk_blob_get_id, spdk_blob_get_num_clusters, spdk_blob_id,
     spdk_blob_io_read, spdk_blob_io_write, spdk_blob_resize, spdk_blob_store, spdk_blob_sync_md,
     spdk_bs_alloc_io_channel, spdk_bs_create_blob, spdk_bs_delete_blob, spdk_bs_free_cluster_count,
-    spdk_bs_free_io_channel, spdk_bs_get_page_size, spdk_bs_init, spdk_bs_open_blob,
-    spdk_bs_unload, spdk_io_channel,
+    spdk_bs_free_io_channel, spdk_bs_get_page_size, spdk_bs_init, spdk_bs_load, spdk_bs_open_blob,
+    spdk_bs_opts, spdk_bs_opts_init, spdk_bs_unload, spdk_io_channel,
 };
 use failure::Error;
+use futures::channel::mpsc::UnboundedSender;
 use futures::channel::oneshot;
 use futures::channel::oneshot::Sender;
 use libc::c_int;
 use libc::c_void;
 use std::fmt;
 use std::fmt::Debug;
+use std::mem::forget;
 use std::ptr;
 
 #[derive(Debug, Fail)]
@@ -143,6 +145,72 @@ pub async fn bs_init(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore, Error> {
             ptr::null_mut(),
             Some(complete_callback_1::<*mut spdk_blob_store>),
             cb_arg(sender),
+        );
+    }
+
+    let res = await!(receiver).expect("Cancellation is not supported");
+
+    match res {
+        Ok(blob_store) => Ok(Blobstore { blob_store }),
+        Err(bserrno) => Err(BlobstoreError::InitError(bserrno))?,
+    }
+}
+
+pub async fn bs_load(
+    bs_dev: &mut BlobStoreBDev,
+    blobs_sender: UnboundedSender<Blob>,
+) -> Result<Blobstore, Error> {
+    let (sender, receiver) = oneshot::channel();
+
+    let mut bs_opts = spdk_bs_opts::default();
+
+    struct Senders {
+        completion_sender: Sender<Result<*mut spdk_blob_store, i32>>,
+        blobs_sender: UnboundedSender<Blob>,
+    }
+
+    extern "C" fn complete_callback(senders_ptr: *mut c_void, bs: *mut spdk_blob_store, bserrno: c_int) {
+        let senders = unsafe { Box::from_raw(senders_ptr as *mut Senders) };
+        let ret = if bserrno != 0 { Err(bserrno) } else { Ok(bs) };
+        senders.blobs_sender.close_channel();
+        senders
+            .completion_sender
+            .send(ret)
+            .expect("Receiver is gone");
+    }
+
+    extern "C" fn iter_callback(senders_ptr: *mut c_void, blob: *mut spdk_blob, bserrno: c_int) {
+        let senders = unsafe { Box::from_raw(senders_ptr as *mut Senders) };
+        if bserrno != 0 {
+            senders.blobs_sender.close_channel();
+            senders
+                .completion_sender
+                .send(Err(bserrno))
+                .expect("Receiver is gone");
+        } else {
+            // TODO: cleanup here (deallocate blob and whatnot) on error
+            senders.blobs_sender.unbounded_send(Blob { blob }).expect("Could not send the blob");
+            // Keep the senders allocated
+            forget(senders);
+        }
+    }
+
+    let senders_ptr = Box::into_raw(Box::new(Senders {
+        completion_sender: sender,
+        blobs_sender: blobs_sender,
+    })) as *const _ as *mut c_void;
+
+    unsafe {
+        spdk_bs_opts_init(&mut bs_opts);
+
+        bs_opts.iter_cb_fn = Some(iter_callback);
+        bs_opts.iter_cb_arg = senders_ptr;
+
+        spdk_bs_load(
+            bs_dev.bs_dev,
+            &mut bs_opts,
+            Some(complete_callback),
+            senders_ptr,
         );
     }
 
