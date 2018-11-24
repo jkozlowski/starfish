@@ -20,7 +20,7 @@ if [ ! -f "/usr/local/lib/libdpdk.so" ]; then
     make CONFIG_RTE_BUILD_SHARED_LIB=y
     sudo make install
 else
-    echo "dpdk already built"
+    echo "Not rebuilding dpdk"
 fi
 
 if [ ! -f "/usr/local/lib/libspdk.so" ]; then
