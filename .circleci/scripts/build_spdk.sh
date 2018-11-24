@@ -16,6 +16,7 @@ sudo apt-get install -y module-init-tools
 sudo /tmp/spdk/scripts/setup.sh
 
 if [ ! -f "/usr/local/lib/libdpdk.so" ]; then
+    cd /tmp/spdk/dpdk
     make CONFIG_RTE_BUILD_SHARED_LIB=y
     sudo make install
 else
@@ -23,6 +24,7 @@ else
 fi
 
 if [ ! -f "/usr/local/lib/libspdk.so" ]; then
+    cd /tmp/spdk
     ./configure --with-shared
     sudo make install
 else
