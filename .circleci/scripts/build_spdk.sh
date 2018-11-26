@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 cd /tmp
 git clone git@github.com:spdk/spdk.git
@@ -17,15 +17,15 @@ sudo /tmp/spdk/scripts/setup.sh
 
 if [ ! -f "/usr/local/lib/libdpdk.so" ]; then
     cd /tmp/spdk/dpdk
-    make CONFIG_RTE_BUILD_SHARED_LIB=y
-    sudo make install
+    sudo make install T=`uname -p`-native-linuxapp-gcc \
+	    CONFIG_RTE_BUILD_SHARED_LIB=y DESTDIR=/usr/local
 else
     echo "dpdk already built"
 fi
 
 if [ ! -f "/usr/local/lib/libspdk.so" ]; then
     cd /tmp/spdk
-    ./configure --with-shared
+    ./configure --with-shared --with-dpdk=/usr/local
     sudo make install
 else
     echo "spdk already built"
