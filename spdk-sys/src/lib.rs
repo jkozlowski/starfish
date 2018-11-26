@@ -102,12 +102,12 @@ mod ete_test {
         let free_clusters = blobstore.get_free_cluster_count();
         println!("blobstore has FREE clusters of {:?}", free_clusters);
 
-        await!(blob::resize(&blob, free_clusters));
+        await!(blob::resize(&blob, free_clusters))?;
 
         let total = blob.get_num_clusters();
         println!("resized blob now has USED clusters of {}", total);
 
-        await!(blob::sync_metadata(&blob));
+        await!(blob::sync_metadata(&blob))?;
 
         println!("metadata sync complete");
 
