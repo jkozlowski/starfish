@@ -36,6 +36,21 @@ jobs:
           name: Install rustup
           command: |
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
+      - restore_cache:
+          keys:
+            - deps-v1-{{ .Branch }}-{{ .Revision }}
+            - deps-v1-{{ .Branch }}-
+            - deps-v1-
+      - run:
+          name: Cache dependencies
+          command: |
+            source $HOME/.cargo/env
+            cargo install cargo-build-deps
+            cargo build-deps
+      - save_cache:
+          key: deps-v5-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - "target"
       - run:
           name: Run 'cargo fmt'
           command: |
