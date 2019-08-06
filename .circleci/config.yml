@@ -44,6 +44,7 @@ jobs:
       - run:
           name: Cache dependencies
           command: |
+            source $HOME/.cargo/env
             cargo install cargo-build-deps
             cargo build-deps
       - save_cache:
