@@ -12,8 +12,9 @@ edition = '2018'
 links = "spdk"
 
 [dependencies]
-failure = ""
-failure_derive = ""
+err-derive = ""
+#failure = ""
+#failure_derive = ""
 futures-preview = "= 0.3.0-alpha.17"
 libc = ""
 

@@ -7,7 +7,6 @@ use crate::generated::{
     spdk_bs_free_io_channel, spdk_bs_get_page_size, spdk_bs_init, spdk_bs_open_blob,
     spdk_bs_unload, spdk_io_channel,
 };
-use failure::Error;
 use futures::channel::oneshot;
 use futures::channel::oneshot::Sender;
 use libc::c_int;
@@ -16,15 +15,15 @@ use std::fmt;
 use std::fmt::Debug;
 use std::ptr;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum BlobstoreError {
-    #[fail(display = "Failed to initialize blob store: {}", _0)]
+    #[error(display = "Failed to initialize blob store: {}", _0)]
     InitError(i32),
 
-    #[fail(display = "Failed to allocate io channel")]
+    #[error(display = "Failed to allocate io channel")]
     IoChannelAllocateError,
 
-    #[fail(display = "Failed to unload blob store: {}", _0)]
+    #[error(display = "Failed to unload blob store: {}", _0)]
     UnloadError(i32),
 }
 
@@ -42,7 +41,7 @@ impl Blobstore {
         unsafe { spdk_bs_free_cluster_count(self.blob_store) }
     }
 
-    pub fn alloc_io_channel(&mut self) -> Result<IoChannel, Error> {
+    pub fn alloc_io_channel(&mut self) -> Result<IoChannel, BlobstoreError> {
         let io_channel = unsafe { spdk_bs_alloc_io_channel(self.blob_store) };
         if io_channel.is_null() {
             return Err(BlobstoreError::IoChannelAllocateError)?;
@@ -51,36 +50,36 @@ impl Blobstore {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum BlobError {
-    #[fail(display = "Failed to create blob: {}", _0)]
+    #[error(display = "Failed to create blob: {}", _0)]
     CreateError(i32),
 
-    #[fail(display = "Failed to open blob({}): {}", _0, _1)]
+    #[error(display = "Failed to open blob({}): {}", _0, _1)]
     OpenError(BlobId, i32),
 
-    #[fail(display = "Failed to resize blob({}): {}", _0, _1)]
+    #[error(display = "Failed to resize blob({}): {}", _0, _1)]
     ResizeError(BlobId, i32),
 
-    #[fail(display = "Failed to sync metadata for blob({}): {}", _0, _1)]
+    #[error(display = "Failed to sync metadata for blob({}): {}", _0, _1)]
     SyncError(BlobId, i32),
 
-    #[fail(
+    #[error(
         display = "Error in write completion({}): {}, offset: {}, length: {}",
         _0, _1, _2, _3
     )]
     WriteError(BlobId, i32, u64, u64),
 
-    #[fail(
+    #[error(
         display = "Error in read completion({}): {}, offset: {}, length: {}",
         _0, _1, _2, _3
     )]
     ReadError(BlobId, i32, u64, u64),
 
-    #[fail(display = "Failed to close blob: {}", _0)]
+    #[error(display = "Failed to close blob: {}", _0)]
     CloseError(i32),
 
-    #[fail(display = "Failed to delete blob({}): {}", _0, _1)]
+    #[error(display = "Failed to delete blob({}): {}", _0, _1)]
     DeleteError(BlobId, i32),
 }
 
@@ -128,7 +127,7 @@ impl Drop for IoChannel {
 // I can't block
 
 /// Initialize a blobstore on the given device.
-pub async fn bs_init(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore, Error> {
+pub async fn bs_init(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore, BlobstoreError> {
     let (sender, receiver) = oneshot::channel();
 
     unsafe {
@@ -140,7 +139,7 @@ pub async fn bs_init(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore, Error> {
         );
     }
 
-    let res = await!(receiver).expect("Cancellation is not supported");
+    let res = receiver.await.expect("Cancellation is not supported");
 
     match res {
         Ok(blob_store) => Ok(Blobstore { blob_store }),
@@ -148,7 +147,7 @@ pub async fn bs_init(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore, Error> {
     }
 }
 
-pub async fn bs_unload(blob_store: Blobstore) -> Result<(), Error> {
+pub async fn bs_unload(blob_store: Blobstore) -> Result<(), BlobstoreError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_bs_unload(
@@ -157,7 +156,7 @@ pub async fn bs_unload(blob_store: Blobstore) -> Result<(), Error> {
             cb_arg::<()>(sender),
         );
     }
-    let res = await!(receiver).expect("Cancellation is not supported");
+    let res = receiver.await.expect("Cancellation is not supported");
 
     match res {
         Ok(()) => Ok(()),
@@ -165,7 +164,7 @@ pub async fn bs_unload(blob_store: Blobstore) -> Result<(), Error> {
     }
 }
 
-pub async fn create(blob_store: &Blobstore) -> Result<BlobId, Error> {
+pub async fn create(blob_store: &Blobstore) -> Result<BlobId, BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_bs_create_blob(
@@ -174,7 +173,7 @@ pub async fn create(blob_store: &Blobstore) -> Result<BlobId, Error> {
             cb_arg(sender),
         );
     }
-    let res = await!(receiver).expect("Cancellation is not supported");
+    let res = receiver.await.expect("Cancellation is not supported");
 
     match res {
         Ok(blob_id) => Ok(BlobId { blob_id }),
@@ -182,7 +181,7 @@ pub async fn create(blob_store: &Blobstore) -> Result<BlobId, Error> {
     }
 }
 
-pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<Blob, Error> {
+pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<Blob, BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_bs_open_blob(
@@ -192,7 +191,7 @@ pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<Blob
             cb_arg(sender),
         );
     }
-    let res = await!(receiver).expect("Cancellation is not supported");
+    let res = receiver.await.expect("Cancellation is not supported");
 
     match res {
         Ok(blob) => Ok(Blob { blob }),
@@ -200,7 +199,7 @@ pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<Blob
     }
 }
 
-pub async fn resize<'a>(blob: &'a Blob, required_size: u64) -> Result<(), Error> {
+pub async fn resize<'a>(blob: &'a Blob, required_size: u64) -> Result<(), BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_blob_resize(
@@ -210,7 +209,7 @@ pub async fn resize<'a>(blob: &'a Blob, required_size: u64) -> Result<(), Error>
             cb_arg::<()>(sender),
         );
     }
-    let res = await!(receiver).expect("Cancellation is not supported");
+    let res = receiver.await.expect("Cancellation is not supported");
 
     match res {
         Ok(()) => Ok(()),
@@ -235,12 +234,12 @@ pub async fn resize<'a>(blob: &'a Blob, required_size: u64) -> Result<(), Error>
 /// automatically when the blob is closed. It is always a
 /// good idea to sync after making metadata changes unless
 /// it has an unacceptable impact on application performance.
-pub async fn sync_metadata<'a>(blob: &'a Blob) -> Result<(), Error> {
+pub async fn sync_metadata<'a>(blob: &'a Blob) -> Result<(), BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_blob_sync_md(blob.blob, Some(complete_callback_0), cb_arg::<()>(sender));
     }
-    let res = await!(receiver).expect("Cancellation is not supported");
+    let res = receiver.await.expect("Cancellation is not supported");
 
     match res {
         Ok(()) => Ok(()),
@@ -267,7 +266,7 @@ pub async fn write<'a>(
     buf: &'a Buf,
     offset: u64,
     length: u64,
-) -> Result<(), Error> {
+) -> Result<(), BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_blob_io_write(
@@ -280,7 +279,7 @@ pub async fn write<'a>(
             cb_arg::<()>(sender),
         );
     }
-    let res = await!(receiver).expect("Cancellation is not supported");
+    let res = receiver.await.expect("Cancellation is not supported");
 
     match res {
         Ok(()) => Ok(()),
@@ -299,7 +298,7 @@ pub async fn read<'a>(
     buf: &'a Buf,
     offset: u64,
     length: u64,
-) -> Result<(), Error> {
+) -> Result<(), BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_blob_io_read(
@@ -312,7 +311,7 @@ pub async fn read<'a>(
             cb_arg::<()>(sender),
         );
     }
-    let res = await!(receiver).expect("Cancellation is not supported");
+    let res = receiver.await.expect("Cancellation is not supported");
 
     match res {
         Ok(()) => Ok(()),
@@ -325,12 +324,12 @@ pub async fn read<'a>(
     }
 }
 
-pub async fn close(blob: Blob) -> Result<(), Error> {
+pub async fn close(blob: Blob) -> Result<(), BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_blob_close(blob.blob, Some(complete_callback_0), cb_arg::<()>(sender));
     }
-    let res = await!(receiver).expect("Cancellation is not supported");
+    let res = receiver.await.expect("Cancellation is not supported");
 
     match res {
         Ok(()) => Ok(()),
@@ -338,7 +337,7 @@ pub async fn close(blob: Blob) -> Result<(), Error> {
     }
 }
 
-pub async fn delete<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<(), Error> {
+pub async fn delete<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<(), BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_bs_delete_blob(
@@ -348,7 +347,7 @@ pub async fn delete<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<()
             cb_arg::<()>(sender),
         );
     }
-    let res = await!(receiver).expect("Cancellation is not supported");
+    let res = receiver.await.expect("Cancellation is not supported");
 
     match res {
         Ok(()) => Ok(()),

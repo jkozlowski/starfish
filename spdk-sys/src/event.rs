@@ -1,15 +1,14 @@
 use crate::generated::{
     spdk_app_fini, spdk_app_opts, spdk_app_opts_init, spdk_app_start, spdk_app_stop,
 };
-use failure::Error;
 use libc::c_char;
 use libc::c_void;
 use std::ffi::CString;
 use std::ptr;
 
-#[derive(Debug, Fail)]
-enum AppError {
-    #[fail(display = "Spdk failed to start: {}", _0)]
+#[derive(Debug, Error)]
+pub enum AppError {
+    #[error(display = "Spdk failed to start: {}", _0)]
     StartupError(i32),
 }
 
@@ -42,7 +41,7 @@ impl AppOpts {
     //     //spdk_app_shutdown_cb
     // }
 
-    pub fn start<F>(mut self, f: F) -> Result<(), Error>
+    pub fn start<F>(mut self, f: F) -> Result<(), AppError>
     where
         F: Fn() -> (),
     {
