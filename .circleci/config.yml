@@ -12,9 +12,9 @@ jobs:
       - image: jkozlowski/starfish:latest
         environment:
           DOCKER_BUILDKIT: 1
-        auth:	
-          username: $DOCKER_USERNAME	
-          password: $DOCKER_PASSWORD
+        # auth:	
+        #   username: $DOCKER_USERNAME	
+        #   password: $DOCKER_PASSWORD
     steps:
       - restore_cache:
           keys:
