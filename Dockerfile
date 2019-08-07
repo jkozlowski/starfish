@@ -1,6 +1,6 @@
 FROM circleci/rust:latest
 
-ADD build_spdk.sh /project
+ADD build_spdk.sh /project/build_spdk.sh
 
 RUN sh /project/build_spdk.sh
 
