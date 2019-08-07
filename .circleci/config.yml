@@ -5,7 +5,7 @@ jobs:
     steps:
       - checkout
       - run: echo "$DOCKER_PASSWORD" | docker login -u $DOCKER_USERNAME --password-stdin
-      - run: docker build -t $DOCKER_USERNAME/starfish:latest -f .circleci/images/Dockerfile .
+      - run: docker build -t $DOCKER_USERNAME/starfish:latest
       - run: docker push $DOCKER_USERNAME/starfish:latest
   build:
     machine:
