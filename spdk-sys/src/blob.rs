@@ -44,7 +44,7 @@ impl Blobstore {
     pub fn alloc_io_channel(&mut self) -> Result<IoChannel, BlobstoreError> {
         let io_channel = unsafe { spdk_bs_alloc_io_channel(self.blob_store) };
         if io_channel.is_null() {
-            return Err(BlobstoreError::IoChannelAllocateError)?;
+            return Err(BlobstoreError::IoChannelAllocateError);
         }
         Ok(IoChannel { io_channel })
     }

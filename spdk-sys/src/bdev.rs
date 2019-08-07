@@ -23,7 +23,7 @@ where
 
     let bdev = unsafe { spdk_bdev_get_by_name(name_cstring.as_ptr()) };
     if bdev.is_null() {
-        return Err(BDevError::NotFound(name.clone().into()))?;
+        return Err(BDevError::NotFound(name.clone().into()));
     }
 
     Ok(BDev {

@@ -22,7 +22,7 @@ pub fn create_bs_dev(bdev: &mut BDev) -> Result<BlobStoreBDev, BlobBDevError> {
     let bs_dev = unsafe { spdk_bdev_create_bs_dev(bdev.bdev, None, ptr::null_mut()) };
 
     if bs_dev.is_null() {
-        return Err(BlobBDevError::FailedToCreate(bdev.name.clone()))?;
+        return Err(BlobBDevError::FailedToCreate(bdev.name.clone()));
     }
 
     Ok(BlobStoreBDev { bs_dev })
