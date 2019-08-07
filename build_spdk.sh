@@ -7,7 +7,7 @@ cd /tmp/spdk
 git checkout v18.07.1
 git submodule update --init
 
-echo 'APT::Get::Assume-Yes "true"; APT::Get::force-yes "true";' > /etc/apt/apt.conf.d/99force-yes
+sudo echo 'APT::Get::Assume-Yes "true"; APT::Get::force-yes "true";' > /etc/apt/apt.conf.d/99force-yes
 sudo apt-get update
 sudo ./scripts/pkgdep.sh
 

@@ -1,4 +1,4 @@
-FROM circleci/rust:latest
+FROM circleci/rust:1.36.0-buster
 
 ADD build_spdk.sh /project/build_spdk.sh
 

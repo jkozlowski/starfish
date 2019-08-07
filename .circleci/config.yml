@@ -39,7 +39,7 @@ jobs:
       - run:
           name: Run tests
           command: |
-            sudo bash .circleci/scripts/run_test.sh 
+            sudo sh .circleci/scripts/run_test.sh 
 workflows:
   version: 2
   build:
