@@ -10,6 +10,9 @@ jobs:
   build:
     machine:
       image: $DOCKER_USERNAME/starfish:latest
+      auth:
+          username: $DOCKER_USERNAME
+          password: $DOCKER_PASSWORD
     steps:
       - restore_cache:
           keys:

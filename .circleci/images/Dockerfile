@@ -1,4 +1,4 @@
-FROM circleci/classic:latest
+FROM circleci/rust:latest
 
 RUN sh .circleci/images/build_spdk.sh
 
