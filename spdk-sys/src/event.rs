@@ -73,7 +73,7 @@ impl AppOpts {
         if ret == 0 {
             Ok(())
         } else {
-            Err(AppError::StartupError(ret))?
+            Err(AppError::StartupError(ret))
         }
     }
 }

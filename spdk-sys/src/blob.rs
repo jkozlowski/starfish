@@ -149,7 +149,7 @@ pub async fn bs_init(bs_dev: &mut BlobStoreBDev) -> Result<Blobstore, BlobstoreE
 
     match res {
         Ok(blob_store) => Ok(Blobstore { blob_store }),
-        Err(bserrno) => Err(BlobstoreError::InitError(bserrno))?,
+        Err(bserrno) => Err(BlobstoreError::InitError(bserrno)),
     }
 }
 
@@ -166,7 +166,7 @@ pub async fn bs_unload(blob_store: Blobstore) -> Result<(), BlobstoreError> {
 
     match res {
         Ok(()) => Ok(()),
-        Err(bserrno) => Err(BlobstoreError::UnloadError(bserrno))?,
+        Err(bserrno) => Err(BlobstoreError::UnloadError(bserrno)),
     }
 }
 
@@ -183,11 +183,11 @@ pub async fn create(blob_store: &Blobstore) -> Result<BlobId, BlobError> {
 
     match res {
         Ok(blob_id) => Ok(BlobId { blob_id }),
-        Err(bserrno) => Err(BlobError::CreateError(bserrno))?,
+        Err(bserrno) => Err(BlobError::CreateError(bserrno)),
     }
 }
 
-pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<Blob, BlobError> {
+pub async fn open(blob_store: &Blobstore, blob_id: BlobId) -> Result<Blob, BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_bs_open_blob(
@@ -201,11 +201,11 @@ pub async fn open<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<Blob
 
     match res {
         Ok(blob) => Ok(Blob { blob }),
-        Err(bserrno) => Err(BlobError::OpenError(blob_id, bserrno))?,
+        Err(bserrno) => Err(BlobError::OpenError(blob_id, bserrno)),
     }
 }
 
-pub async fn resize<'a>(blob: &'a Blob, required_size: u64) -> Result<(), BlobError> {
+pub async fn resize(blob: &Blob, required_size: u64) -> Result<(), BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_blob_resize(
@@ -219,7 +219,7 @@ pub async fn resize<'a>(blob: &'a Blob, required_size: u64) -> Result<(), BlobEr
 
     match res {
         Ok(()) => Ok(()),
-        Err(bserrno) => Err(BlobError::ResizeError(blob.get_blob_id(), bserrno))?,
+        Err(bserrno) => Err(BlobError::ResizeError(blob.get_blob_id(), bserrno)),
     }
 }
 
@@ -240,7 +240,7 @@ pub async fn resize<'a>(blob: &'a Blob, required_size: u64) -> Result<(), BlobEr
 /// automatically when the blob is closed. It is always a
 /// good idea to sync after making metadata changes unless
 /// it has an unacceptable impact on application performance.
-pub async fn sync_metadata<'a>(blob: &'a Blob) -> Result<(), BlobError> {
+pub async fn sync_metadata(blob: &Blob) -> Result<(), BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_blob_sync_md(blob.blob, Some(complete_callback_0), cb_arg::<()>(sender));
@@ -249,7 +249,7 @@ pub async fn sync_metadata<'a>(blob: &'a Blob) -> Result<(), BlobError> {
 
     match res {
         Ok(()) => Ok(()),
-        Err(bserrno) => Err(BlobError::SyncError(blob.get_blob_id(), bserrno))?,
+        Err(bserrno) => Err(BlobError::SyncError(blob.get_blob_id(), bserrno)),
     }
 }
 
@@ -294,7 +294,7 @@ pub async fn write<'a>(
             bserrno,
             offset,
             length,
-        ))?,
+        )),
     }
 }
 
@@ -326,7 +326,7 @@ pub async fn read<'a>(
             bserrno,
             offset,
             length,
-        ))?,
+        )),
     }
 }
 
@@ -339,11 +339,11 @@ pub async fn close(blob: Blob) -> Result<(), BlobError> {
 
     match res {
         Ok(()) => Ok(()),
-        Err(bserrno) => Err(BlobError::CloseError(bserrno))?,
+        Err(bserrno) => Err(BlobError::CloseError(bserrno)),
     }
 }
 
-pub async fn delete<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<(), BlobError> {
+pub async fn delete(blob_store: &Blobstore, blob_id: BlobId) -> Result<(), BlobError> {
     let (sender, receiver) = oneshot::channel();
     unsafe {
         spdk_bs_delete_blob(
@@ -357,7 +357,7 @@ pub async fn delete<'a>(blob_store: &'a Blobstore, blob_id: BlobId) -> Result<()
 
     match res {
         Ok(()) => Ok(()),
-        Err(bserrno) => Err(BlobError::DeleteError(blob_id, bserrno))?,
+        Err(bserrno) => Err(BlobError::DeleteError(blob_id, bserrno)),
     }
 }
 
