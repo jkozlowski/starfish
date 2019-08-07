@@ -8,7 +8,7 @@ jobs:
       - run: DOCKER_BUILDKIT=1 docker build -t $DOCKER_USERNAME/starfish:latest .
       - run: docker push $DOCKER_USERNAME/starfish:latest
   build:
-    machine:
+    docker:
       image: jkozlowski/starfish:latest
       environment:
           DOCKER_BUILDKIT: 1
