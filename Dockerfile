@@ -1,9 +1,11 @@
 FROM circleci/rust:latest
 
-ADD . /project
+ADD build_spdk.sh /project
 
 RUN sh /project/build_spdk.sh
 
 #RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
+
+ADD . /project
 
 RUN cd /project && cargo fetch
