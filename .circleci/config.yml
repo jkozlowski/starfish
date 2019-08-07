@@ -4,16 +4,7 @@ jobs:
     machine:
       image: circleci/classic:latest
     steps:
-      - restore_cache:
-          keys:
-            - source-v5-{{ .Branch }}-{{ .Revision }}
-            - source-v5-{{ .Branch }}-
-            - source-v5-
       - checkout
-      - save_cache:
-          key: source-v5-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ".git"
       - restore_cache:
           keys:
             - spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
@@ -21,17 +12,10 @@ jobs:
       - run:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
-      # TODO: restore cache by installing to another directory
-      # - save_cache:
-      #     key: spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
-      #     paths:
-      #       - "/usr/local/include"
-      #       - "/usr/local/lib"
-      # - restore_cache:
-      #     keys:
-      #       - rust-v5-{{ .Branch }}-{{ .Revision }}
-      #       - rust-v5-{{ .Branch }}-
-      #       - rust-v5-
+      - save_cache:
+          key: spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+          paths:
+            - "/usr/local"
       - run:
           name: Install rustup
           command: |
@@ -48,7 +32,7 @@ jobs:
             cargo install cargo-build-deps
             cargo build-deps
       - save_cache:
-          key: deps-v5-{{ .Branch }}-{{ .Revision }}
+          key: deps-v1-{{ .Branch }}-{{ .Revision }}
           paths:
             - "target"
       - run:
@@ -67,9 +51,3 @@ jobs:
           name: Run tests
           command: |
             sudo bash .circleci/scripts/run_test.sh 
-      # - save_cache:
-      #     key: rust-v5-{{ .Branch }}-{{ .Revision }}
-      #     paths:
-      #       - "target/"
-      #       - "~/.cargo/"
-      #       - "~/.multirust/"
