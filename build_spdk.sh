@@ -21,3 +21,6 @@ if [ ! -f "/usr/local/lib/libspdk.so" ]; then
 else
     echo "spdk already built"
 fi
+
+sudo rm -rf /tmp/spdk
+sudo apt-get remove --purge -y $BUILD_PACKAGES $(apt-mark showauto) && rm -rf /var/lib/apt/lists/*
