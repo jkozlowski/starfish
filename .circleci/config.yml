@@ -1,8 +1,15 @@
 version: 2
 jobs:
+  docker:
+    machine: true
+    steps:
+      - checkout
+      - run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+      - run: docker build -t $DOCKER_USERNAME/starfish:latest -f .circleci/images/Dockerfile .
+      - run: docker push $DOCKER_USERNAME/starfish:latest
   build:
     machine:
-      image: circleci/classic:latest
+      image: $DOCKER_USERNAME/starfish:latest
     steps:
       - restore_cache:
           keys:
@@ -14,43 +21,6 @@ jobs:
           key: source-v5-{{ .Branch }}-{{ .Revision }}
           paths:
             - ".git"
-      - restore_cache:
-          keys:
-            - spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
-            - spdk-v5-
-      - run:
-          name: Build spdk
-          command: sh .circleci/scripts/build_spdk.sh
-      # TODO: restore cache by installing to another directory
-      # - save_cache:
-      #     key: spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
-      #     paths:
-      #       - "/usr/local/include"
-      #       - "/usr/local/lib"
-      # - restore_cache:
-      #     keys:
-      #       - rust-v5-{{ .Branch }}-{{ .Revision }}
-      #       - rust-v5-{{ .Branch }}-
-      #       - rust-v5-
-      - run:
-          name: Install rustup
-          command: |
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
-      - restore_cache:
-          keys:
-            - deps-v1-{{ .Branch }}-{{ .Revision }}
-            - deps-v1-{{ .Branch }}-
-            - deps-v1-
-      - run:
-          name: Cache dependencies
-          command: |
-            source $HOME/.cargo/env
-            cargo install cargo-build-deps
-            cargo build-deps
-      - save_cache:
-          key: deps-v5-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - "target"
       - run:
           name: Run 'cargo fmt'
           command: |
@@ -67,9 +37,10 @@ jobs:
           name: Run tests
           command: |
             sudo bash .circleci/scripts/run_test.sh 
-      # - save_cache:
-      #     key: rust-v5-{{ .Branch }}-{{ .Revision }}
-      #     paths:
-      #       - "target/"
-      #       - "~/.cargo/"
-      #       - "~/.multirust/"
+workflows:
+  version: 2
+  build:
+    jobs:
+      - docker
+      - build:
+          requires: docker
