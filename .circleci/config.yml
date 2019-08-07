@@ -10,11 +10,8 @@ jobs:
   build:
     docker:
       image: jkozlowski/starfish:latest
-      environment:
-          DOCKER_BUILDKIT: 1
-      auth:
-          username: $DOCKER_USERNAME
-          password: $DOCKER_PASSWORD
+      #environment:
+          #DOCKER_BUILDKIT: 1
     steps:
       - restore_cache:
           keys:
