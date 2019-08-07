@@ -66,13 +66,19 @@ pub enum BlobError {
 
     #[error(
         display = "Error in write completion({}): {}, offset: {}, length: {}",
-        _0, _1, _2, _3
+        _0,
+        _1,
+        _2,
+        _3
     )]
     WriteError(BlobId, i32, u64, u64),
 
     #[error(
         display = "Error in read completion({}): {}, offset: {}, length: {}",
-        _0, _1, _2, _3
+        _0,
+        _1,
+        _2,
+        _3
     )]
     ReadError(BlobId, i32, u64, u64),
 

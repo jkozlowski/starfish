@@ -23,8 +23,7 @@ extern crate hamcrest2;
 #[cfg(test)]
 mod ete_test {
 
-    use std::error::Error;
-use crate::bdev;
+    use crate::bdev;
     use crate::blob;
     use crate::blob_bdev;
     use crate::env as spdk_env;
@@ -33,6 +32,7 @@ use crate::bdev;
     use crate::io_channel::PollerHandle;
     use hamcrest2::prelude::*;
     use starfish_executor as executor;
+    use std::error::Error;
     use std::mem;
     use std::path::Path;
 
