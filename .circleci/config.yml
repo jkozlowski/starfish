@@ -9,9 +9,12 @@ jobs:
       - run: docker push $DOCKER_USERNAME/starfish:latest
   build:
     docker:
-      image: jkozlowski/starfish:latest
-      #environment:
-          #DOCKER_BUILDKIT: 1
+      - image: jkozlowski/starfish:latest
+        environment:
+          DOCKER_BUILDKIT: 1
+        auth:	
+          username: $DOCKER_USERNAME	
+          password: $DOCKER_PASSWORD
     steps:
       - restore_cache:
           keys:
