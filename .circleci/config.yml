@@ -29,8 +29,7 @@ jobs:
           name: Cache dependencies
           command: |
             source $HOME/.cargo/env
-            cargo install cargo-build-deps
-            cargo build-deps
+            cargo fetch
       - save_cache:
           key: deps-v1-{{ .Branch }}-{{ .Revision }}
           paths:
