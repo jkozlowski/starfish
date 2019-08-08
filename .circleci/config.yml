@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     machine:
-      image: circleci/classic:latest
+      image: circleci/classic:201710-01
     steps:
       - checkout
       - run:
