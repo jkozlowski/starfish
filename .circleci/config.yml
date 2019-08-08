@@ -36,18 +36,18 @@ jobs:
           name: Install rustup
           command: |
             curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
-      - run:
-          name: Run 'cargo fmt'
-          command: |
-            source $HOME/.cargo/env
-            rustup component add rustfmt-preview
-            cargo fmt --all -- --check
-      - run:
-          name: Run 'cargo clippy'
-          command: |
-            source $HOME/.cargo/env
-            rustup component add clippy-preview
-            cargo clippy --all --all-targets --all-features -- -D warnings
+      # - run:
+      #     name: Run 'cargo fmt'
+      #     command: |
+      #       source $HOME/.cargo/env
+      #       rustup component add rustfmt-preview
+      #       cargo fmt --all -- --check
+      # - run:
+      #     name: Run 'cargo clippy'
+      #     command: |
+      #       source $HOME/.cargo/env
+      #       rustup component add clippy-preview
+      #       cargo clippy --all --all-targets --all-features -- -D warnings
       - run:
           name: Run tests
           command: |
