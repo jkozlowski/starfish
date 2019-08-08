@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     machine:
-      image: circleci/classic:latest
+      image: circleci/classic:201809-24
     steps:
       # - restore_cache:
       #     keys:
@@ -51,9 +51,6 @@ jobs:
       - run:
           name: Run tests
           command: |
-            eval `ssh-agent -s`
-            ssh-add ~/.ssh/id_pipelines
-            ssh-add -l
             sudo bash .circleci/scripts/run_test.sh 
       # - save_cache:
       #     key: rust-v5-{{ .Branch }}-{{ .Revision }}
