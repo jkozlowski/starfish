@@ -4,20 +4,20 @@ jobs:
     machine:
       image: circleci/classic:latest
     steps:
-      - restore_cache:
-          keys:
-            - source-v5-{{ .Branch }}-{{ .Revision }}
-            - source-v5-{{ .Branch }}-
-            - source-v5-
+      # - restore_cache:
+      #     keys:
+      #       - source-v5-{{ .Branch }}-{{ .Revision }}
+      #       - source-v5-{{ .Branch }}-
+      #       - source-v5-
       - checkout
-      - save_cache:
-          key: source-v5-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ".git"
-      - restore_cache:
-          keys:
-            - spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
-            - spdk-v5-
+      # - save_cache:
+      #     key: source-v5-{{ .Branch }}-{{ .Revision }}
+      #     paths:
+      #       - ".git"
+      # - restore_cache:
+      #     keys:
+      #       - spdk-v5-{{ checksum ".circleci/scripts/build_spdk.sh" }}
+      #       - spdk-v5-
       - run:
           name: Build spdk
           command: sh .circleci/scripts/build_spdk.sh
