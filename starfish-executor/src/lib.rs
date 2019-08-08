@@ -1,38 +1,23 @@
 #![warn(rust_2018_idioms)]
-#![feature(arbitrary_self_types, nll)]
+#![feature(pin, arbitrary_self_types, futures_api, nll)]
 
 extern crate futures;
 
-macro_rules! waker_vtable {
-    ($ty:ident) => {
-        &RawWakerVTable::new(
-            clone_rc_raw::<$ty>,
-            wake_rc_raw::<$ty>,
-            wake_by_ref_rc_raw::<$ty>,
-            drop_rc_raw::<$ty>,
-        )
-    };
-}
-
-pub mod waker;
-pub mod waker_ref;
-
-use crate::waker::RcWake;
+use futures::future::Future;
 use futures::future::LocalFutureObj;
 use futures::task::LocalSpawn;
 use futures::task::SpawnError;
+use futures::task::{LocalWaker, Poll, UnsafeWake, Waker};
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::cell::UnsafeCell;
 use std::collections::VecDeque;
-use std::future::Future;
 use std::pin::Pin;
+use std::ptr::NonNull;
 use std::rc::Rc;
-use std::task::Context;
-use std::task::Poll;
 
-// Tracks the executor for the current execution context.
-// TODO: Use UnsafeCell, since we can guarantee correct implementation
+/// Tracks the executor for the current execution context.
+/// TODO: Use UnsafeCell, since we can guarantee correct implementation
 thread_local!(static CURRENT_EXECUTOR: RefCell<Option<CurrentThreadExecutor>> = RefCell::new(None));
 
 #[allow(dead_code)]
@@ -104,49 +89,36 @@ struct TaskHandle {
     queued: Cell<bool>,
 }
 
-impl Drop for TaskHandle {
-    fn drop(&mut self) {
-        unsafe {
-            if (*self.task.get()).is_some() {
-                // TODO(jkozlowski) Fix this up.
-                //abort("future still here when dropping");
-            }
-        }
-    }
-}
-
 // TODO: Revisit this, even though we only ever want to run local futures,
-// however I'll need to figure out how to have local counters that
-// send a message once the value reaches zero
+// however I'll need to figure out how to have local counters that send a message once the value reaches zero
 // to the original core.
 //
-// It is likely that CurrentThreadExecutor will need to store it's ID and
-// a function that will let it notify
-// other cores (that just maps to dpdk queues); Then TaskHandle also needs
-// to know which core it is on
-// and then UnsafeWake impls will actually do nested Rcs -> there is basically
-// a counter on each core
-// that has access and if a particular core's handle goes to 0, it notifies
-// the core that sent it the handle,
+// It is likely that CurrentThreadExecutor will need to store it's ID and a function that will let it notify
+// other cores (that just maps to dpdk queues); Then TaskHandle also needs to know which core it is on
+// and then UnsafeWake impls will actually do nested Rcs -> there is basically a counter on each core
+// that has access and if a particular core's handle goes to 0, it notifies the core that sent it the handle,
 // so they form a cycle?
 //
-// Not sure if this is even possible, so for now let's pretend
-// we'll never send handles to other cores.
+// Not sure if this is even possible, so for now let's pretend we'll never send handles to other cores.
 unsafe impl Send for TaskHandle {}
 unsafe impl Sync for TaskHandle {}
 
-impl RcWake for TaskHandle {
-    fn wake_by_ref(rc_self: &Rc<Self>) {
-        if !rc_self.queued.replace(true) {
+unsafe impl UnsafeWake for TaskHandle {
+    unsafe fn clone_raw(&self) -> Waker {
+        Waker::new(clone_task_handle_ptr(self))
+    }
+
+    unsafe fn drop_raw(&self) {
+        // This will drop the Rc
+        let _ = Rc::from_raw(self);
+    }
+
+    unsafe fn wake(&self) {
+        if !self.queued.replace(true) {
             CURRENT_EXECUTOR.with(|current| {
                 if let Some(ref current_thread) = *current.borrow() {
-                    // Note that we don't change the reference count of the task here,
-                    // we merely enqueue the raw pointer. The `pure_poll`
-                    // implementation guarantees that if we set the `queued` flag that
-                    // there's a reference count held by the main `pure_poll` queue
-                    // still.
-                    // TODO(jkozlowski) Fix this clone
-                    current_thread.tq.borrow_mut().add_task(rc_self.clone());
+                    let self_clone = clone_task_handle(self);
+                    current_thread.tq.borrow_mut().add_task(self_clone);
                 }
             });
         }
@@ -253,11 +225,19 @@ pub fn pure_poll() -> bool {
                 };
 
                 let res = {
-                    let waker = waker_ref::waker_ref(bomb.task_handle.as_ref().unwrap());
-                    let mut cx = Context::from_waker(&waker);
-
-                    let future = Pin::new_unchecked(&mut task.fut);
-                    future.poll(&mut cx)
+                    // We need to increase the counter temporarily,
+                    // so that the waker does not drop the task still owned by Bomb
+                    // when it drops;
+                    // TODO: probably can do away with this clone.
+                    let clone_task_handle_ptr =
+                        Rc::into_raw(bomb.task_handle.as_ref().unwrap().clone());
+                    // TODO: I think I should be able to use some of the functions from below
+                    let lw = LocalWaker::new(NonNull::new_unchecked(
+                        clone_task_handle_ptr as *mut TaskHandle,
+                    ));
+                    // TODO: need the executor bit done
+                    let future = Pin::new(&mut task.fut);
+                    future.poll(&lw)
                 };
 
                 if let Poll::Pending = res {
@@ -302,17 +282,26 @@ where
     with_default(|executor| f(&mut executor.tq.borrow_mut()))
 }
 
-pub fn abort(s: &str) -> ! {
-    struct DoublePanic;
+fn clone_task_handle(task_handle: &TaskHandle) -> Rc<TaskHandle> {
+    let self_as_rc = unsafe { Rc::from_raw(task_handle) };
+    let self_clone = self_as_rc.clone();
 
-    impl Drop for DoublePanic {
-        fn drop(&mut self) {
-            //panic!("panicking twice to abort the program");
-        }
+    // We need to make sure self_as_rc does not drop,
+    // since it is STILL referenced by this TaskHandle
+    forget_rc(self_as_rc);
+
+    self_clone
+}
+
+fn clone_task_handle_ptr(task_handle: &TaskHandle) -> NonNull<TaskHandle> {
+    // TODO: should be fine right?
+    unsafe {
+        NonNull::new_unchecked(Rc::into_raw(clone_task_handle(task_handle)) as *mut TaskHandle)
     }
+}
 
-    let _bomb = DoublePanic;
-    panic!("{}", s);
+fn forget_rc(task_handle: Rc<TaskHandle>) {
+    let _ = Rc::into_raw(task_handle);
 }
 
 #[cfg(test)]
@@ -325,15 +314,14 @@ mod tests {
     use super::*;
     use futures::task::Poll;
     use hamcrest2::prelude::*;
-    use std::task::Waker;
 
-    type PollerFn = dyn Fn(&Waker, &mut Controller) -> Poll<()>;
+    type PollerFn = dyn Fn(&LocalWaker, &mut Controller) -> Poll<()>;
 
     struct Controller {
         pollers: VecDeque<Box<PollerFn>>,
         poll_count: usize,
         dropped: bool,
-        waker: Option<Waker>,
+        waker: Option<LocalWaker>,
     }
 
     impl Controller {
@@ -346,14 +334,14 @@ mod tests {
             }
         }
 
-        fn save_waker(&mut self, waker: &Waker) {
+        fn save_waker(&mut self, waker: &LocalWaker) {
             match self.waker {
                 Some(_) => panic!("Waker already saved"),
                 None => self.waker = Some(waker.clone()),
             }
         }
 
-        fn unwrap_waker(&mut self) -> Waker {
+        fn unwrap_waker(&mut self) -> LocalWaker {
             self.waker.take().unwrap()
         }
 
@@ -376,7 +364,7 @@ mod tests {
 
         fn push_pollers<P>(&mut self, poller: P)
         where
-            P: Fn(&Waker, &mut Controller) -> Poll<()> + 'static,
+            P: Fn(&LocalWaker, &mut Controller) -> Poll<()> + 'static,
         {
             self.pollers.push_back(Box::new(poller))
         }
@@ -405,14 +393,14 @@ mod tests {
     impl Future for MockFuture {
         type Output = ();
 
-        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<()> {
             let mut ctrl = self.controller.borrow_mut();
             let poller = match ctrl.pop_pollers() {
                 Some(poller) => poller,
                 None => panic!("Called poll when not expected"),
             };
             ctrl.poll();
-            poller(cx.waker(), &mut ctrl)
+            poller(lw, &mut ctrl)
         }
     }
 
@@ -439,8 +427,8 @@ mod tests {
 
             // Notify future multiple times
             let waker = ctrl.borrow_mut().unwrap_waker();
-            waker.wake_by_ref();
-            waker.wake_by_ref();
+            waker.wake();
+            waker.wake();
 
             // Do not save the waker this time
             ctrl.borrow_mut().push_pollers(|_, _| Poll::Pending);
@@ -458,8 +446,8 @@ mod tests {
         mock_test(|ctrl| {
             ctrl.borrow_mut().push_pollers(|lw, _| {
                 // Wake multiple times
-                lw.wake_by_ref();
-                lw.wake_by_ref();
+                lw.wake();
+                lw.wake();
 
                 Poll::Pending
             });
