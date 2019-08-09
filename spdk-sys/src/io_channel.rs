@@ -1,7 +1,7 @@
 use libc::c_int;
 use libc::c_void;
 
-use crate::generated::{spdk_poller, spdk_poller_register, /*spdk_poller_unregister*/};
+use crate::generated::{spdk_poller, spdk_poller_register /*spdk_poller_unregister*/};
 
 pub struct PollerHandle {
     #[allow(dead_code)]
