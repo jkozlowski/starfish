@@ -1,10 +1,9 @@
 use crate::generated::{spdk_bdev, spdk_bdev_get_by_name};
-use failure::Error;
 use std::ffi::CString;
 
-#[derive(Debug, Fail)]
+#[derive(Error, Debug)]
 pub enum BDevError {
-    #[fail(display = "Could not find a bdev: {}", _0)]
+    #[error(display = "Could not find a bdev: {}", _0)]
     NotFound(String),
 }
 
@@ -16,7 +15,7 @@ pub struct BDev {
     pub(crate) bdev: *mut spdk_bdev,
 }
 
-pub fn get_by_name<S>(name: S) -> Result<BDev, Error>
+pub fn get_by_name<S>(name: S) -> Result<BDev, BDevError>
 where
     S: Into<String> + Clone,
 {
@@ -24,7 +23,7 @@ where
 
     let bdev = unsafe { spdk_bdev_get_by_name(name_cstring.as_ptr()) };
     if bdev.is_null() {
-        return Err(BDevError::NotFound(name.clone().into()))?;
+        return Err(BDevError::NotFound(name.clone().into()));
     }
 
     Ok(BDev {

@@ -1,10 +1,9 @@
 #![warn(rust_2018_idioms)]
-#![feature(async_await, await_macro, futures_api)]
-#![feature(tool_lints)]
+#![feature(async_await)]
 #![feature(nll)]
 #![allow(macro_use_extern_crate)]
 #[macro_use]
-extern crate failure_derive;
+extern crate err_derive;
 
 mod generated;
 
@@ -31,9 +30,9 @@ mod ete_test {
     use crate::event;
     use crate::io_channel;
     use crate::io_channel::PollerHandle;
-    use failure::Error;
     use hamcrest2::prelude::*;
     use starfish_executor as executor;
+    use std::error::Error;
     use std::mem;
     use std::path::Path;
 
@@ -61,7 +60,7 @@ mod ete_test {
     }
 
     async fn run(poller: PollerHandle) {
-        match await!(run_inner()) {
+        match run_inner().await {
             Ok(_) => println!("Successful"),
             Err(err) => println!("Failure: {:?}", err),
         }
@@ -71,44 +70,44 @@ mod ete_test {
         event::app_stop(true);
     }
 
-    async fn run_inner() -> Result<(), Error> {
+    async fn run_inner() -> Result<(), Box<dyn Error>> {
         let mut bdev = bdev::get_by_name("AIO1")?;
         println!("{:?}", bdev);
 
         let mut bs_dev = blob_bdev::create_bs_dev(&mut bdev)?;
         println!("{:?}", bs_dev);
 
-        let mut blobstore = await!(blob::bs_init(&mut bs_dev))?;
+        let mut blobstore = blob::bs_init(&mut bs_dev).await?;
 
-        await!(run_with_blob_store(&mut blobstore))?;
+        run_with_blob_store(&mut blobstore).await?;
 
-        await!(blob::bs_unload(blobstore))?;
+        blob::bs_unload(blobstore).await?;
 
         Ok(())
     }
 
-    async fn run_with_blob_store(blobstore: &mut blob::Blobstore) -> Result<(), Error> {
+    async fn run_with_blob_store(blobstore: &mut blob::Blobstore) -> Result<(), Box<dyn Error>> {
         let page_size = blobstore.get_page_size();
 
         println!("Page size: {:?}", page_size);
 
-        let blob_id = await!(blob::create(&blobstore))?;
+        let blob_id = blob::create(&blobstore).await?;
 
         println!("Blob created: {:?}", blob_id);
 
-        let blob = await!(blob::open(&blobstore, blob_id))?;
+        let blob = blob::open(&blobstore, blob_id).await?;
 
         println!("Opened blob");
 
         let free_clusters = blobstore.get_free_cluster_count();
         println!("blobstore has FREE clusters of {:?}", free_clusters);
 
-        await!(blob::resize(&blob, free_clusters));
+        blob::resize(&blob, free_clusters).await?;
 
         let total = blob.get_num_clusters();
         println!("resized blob now has USED clusters of {}", total);
 
-        await!(blob::sync_metadata(&blob));
+        blob::sync_metadata(&blob).await?;
 
         println!("metadata sync complete");
 
@@ -124,14 +123,14 @@ mod ete_test {
 
         /* Let's perform the write, 1 page at offset 0. */
         println!("Starting write");
-        await!(blob::write(&blob, &channel, &write_buf, 0, 1))?;
+        blob::write(&blob, &channel, &write_buf, 0, 1).await?;
         println!("Finished writing");
 
         let read_buf = spdk_env::dma_malloc(page_size, 0x1000);
 
         /* Issue the read */
         println!("Starting read");
-        await!(blob::read(&blob, &channel, &read_buf, 0, 1))?;
+        blob::read(&blob, &channel, &read_buf, 0, 1).await?;
         println!("Finished read");
 
         /* Now let's make sure things match. */
@@ -144,10 +143,10 @@ mod ete_test {
         }
 
         /* Now let's close it and delete the blob in the callback. */
-        await!(blob::close(blob))?;
+        blob::close(blob).await?;
         println!("Closed");
 
-        await!(blob::delete(&blobstore, blob_id))?;
+        blob::delete(&blobstore, blob_id).await?;
 
         println!("Deleted");
 

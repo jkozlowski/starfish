@@ -1,9 +1,10 @@
 use libc::c_int;
 use libc::c_void;
 
-use crate::generated::{spdk_poller, spdk_poller_register, spdk_poller_unregister};
+use crate::generated::{spdk_poller, spdk_poller_register /*spdk_poller_unregister*/};
 
 pub struct PollerHandle {
+    #[allow(dead_code)]
     pub(crate) poller: *mut spdk_poller,
     #[allow(dead_code)]
     pub(crate) closure: Box<dyn Fn() -> bool>,
@@ -12,10 +13,11 @@ pub struct PollerHandle {
 impl Drop for PollerHandle {
     #[allow(clippy::cast_ptr_alignment)]
     fn drop(&mut self) {
-        let tmp_poller = self.poller;
+        // TODO(jkozlowski): Fix this up eventually, it somehow causes a double-free.
+        //let tmp_poller = self.poller;
         // This is rather dogdy, spdk_poller_unregister will write NULL to self.poller,
         // hopefully that isn't going to crash!
-        unsafe { spdk_poller_unregister(tmp_poller as *mut *mut spdk_poller) }
+        //unsafe { spdk_poller_unregister(tmp_poller as *mut *mut spdk_poller) }
     }
 }
 
