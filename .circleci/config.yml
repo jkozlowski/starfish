@@ -1,44 +1,48 @@
 version: 2
 jobs:
-  build:
-    docker:
-      - image: ubuntu:eoan-20190717.1
+  docker:
+    machine:
+      image: ubuntu-1604:201903-01
     steps:
       - checkout
-      - run:
-          name: Build spdk
-          command: sh .circleci/scripts/build_spdk.sh
-      - run:
-          name: Install rustup
-          command: |
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
+      - run: echo "$DOCKER_PASSWORD" | docker login -u $DOCKER_USERNAME --password-stdin
+      - run: DOCKER_BUILDKIT=1 docker build -t $DOCKER_USERNAME/starfish:latest .
+      - run: docker push $DOCKER_USERNAME/starfish:latest
+  build:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+      # Need to run all these inside docker container
+
       - restore_cache:
           keys:
-            - deps-${CACHE_VERSION}-{{ .Branch }}-{{ .Revision }}
-            - deps-${CACHE_VERSION}-{{ .Branch }}-
-            - deps-${CACHE_VERSION}-
-      - run:
-          name: Cache dependencies
-          command: |
-            source $HOME/.cargo/env
-            cargo fetch
+            - source-v5-{{ .Branch }}-{{ .Revision }}
+            - source-v5-{{ .Branch }}-
+            - source-v5-
+      - checkout
       - save_cache:
-          key: deps-${CACHE_VERSION}-{{ .Branch }}-{{ .Revision }}
+          key: source-v5-{{ .Branch }}-{{ .Revision }}
           paths:
-            - "target"
+            - ".git"
       - run:
           name: Run 'cargo fmt'
           command: |
-            source $HOME/.cargo/env
             rustup component add rustfmt-preview
             cargo fmt --all -- --check
       - run:
           name: Run 'cargo clippy'
           command: |
-            source $HOME/.cargo/env
             rustup component add clippy-preview
             cargo clippy --all --all-targets --all-features -- -D warnings
       - run:
           name: Run tests
           command: |
-            sudo bash .circleci/scripts/run_test.sh 
+            sudo sh .circleci/scripts/run_test.sh 
+workflows:
+  version: 2
+  build:
+    jobs:
+      - docker
+      - build:
+          requires: 
+            - docker
