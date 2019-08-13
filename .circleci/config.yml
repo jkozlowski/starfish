@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: ubuntu/ubuntu:19.10
+      - image: ubuntu:disco-20190613
     steps:
       - checkout
       - run:
