@@ -20,7 +20,11 @@ slog-term = "=2.0.2"
 [workspace]
 
 members = [
-  "spdk-sys",
+  "spdk-async",
   "starfish-executor",
   "starfish-example-app"
+]
+
+exclude = [
+  "spdk-sys"
 ]

@@ -5,7 +5,8 @@
 #[macro_use]
 extern crate err_derive;
 
-mod generated;
+use spdk_sys as generated;
+// mod generated;
 
 pub mod bdev;
 

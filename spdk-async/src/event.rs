@@ -4,7 +4,6 @@ use crate::generated::{
 use libc::c_char;
 use libc::c_void;
 use std::ffi::CString;
-use std::ptr;
 
 #[derive(Debug, Error)]
 pub enum AppError {
@@ -47,7 +46,7 @@ impl AppOpts {
     {
         let user_data = &f as *const _ as *mut c_void;
 
-        extern "C" fn start_wrapper<F>(closure: *mut c_void, _: *mut c_void)
+        extern "C" fn start_wrapper<F>(closure: *mut c_void)
         where
             F: Fn() -> (),
         {
@@ -62,7 +61,6 @@ impl AppOpts {
                 opts_ref as *mut spdk_app_opts,
                 Some(start_wrapper::<F>),
                 user_data,
-                ptr::null_mut(),
             )
         };
 
