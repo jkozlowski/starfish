@@ -7,8 +7,8 @@ jobs:
       - checkout
       - run: echo "$DOCKER_PASSWORD" | docker login -u $DOCKER_USERNAME --password-stdin
       #- run: docker pull $DOCKER_USERNAME/starfish:latest || true
+       #--cache-from $DOCKER_USERNAME/starfish:latest
       - run: DOCKER_BUILDKIT=1 docker build
-               #--cache-from $DOCKER_USERNAME/starfish:latest
                -t $DOCKER_USERNAME/starfish:latest .
       - run: docker push $DOCKER_USERNAME/starfish:latest
   build:
