@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -v
 
 git submodule update --init --recursive
 
@@ -9,6 +9,8 @@ sudo ./spdk-sys/spdk/scripts/pkgdep.sh
 sudo apt-get install -y module-init-tools
 
 sh ./spdk-sys/build.sh
+
+sudo ./spdk-sys/spdk/scripts/setup.sh
 
 if [ ! -f "/usr/local/lib/libspdk.so" ]; then
     cd spdk-sys/spdk
