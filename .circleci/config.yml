@@ -8,9 +8,9 @@ jobs:
       - run: echo "$DOCKER_PASSWORD" | docker login -u $DOCKER_USERNAME --password-stdin
       #- run: docker pull $DOCKER_USERNAME/starfish:latest || true
        #--cache-from $DOCKER_USERNAME/starfish:latest
-      - run: DOCKER_BUILDKIT=1 docker build
-               -t $DOCKER_USERNAME/starfish:latest .
-      - run: docker push $DOCKER_USERNAME/starfish:latest
+      # - run: DOCKER_BUILDKIT=1 docker build
+      #          -t $DOCKER_USERNAME/starfish:latest .
+      # - run: docker push $DOCKER_USERNAME/starfish:latest
   build:
     machine:
       image: ubuntu-1604:201903-01
@@ -27,16 +27,16 @@ jobs:
           key: source-v5-{{ .Branch }}-{{ .Revision }}
           paths:
             - ".git"
-      - run:
-          name: Run 'cargo fmt'
-          command: |
-            rustup component add rustfmt-preview
-            cargo fmt --all -- --check
-      - run:
-          name: Run 'cargo clippy'
-          command: |
-            rustup component add clippy-preview
-            cargo clippy --all --all-targets --all-features -- -D warnings
+      # - run:
+      #     name: Run 'cargo fmt'
+      #     command: |
+      #       rustup component add rustfmt-preview
+      #       cargo fmt --all -- --check
+      # - run:
+      #     name: Run 'cargo clippy'
+      #     command: |
+      #       rustup component add clippy-preview
+      #       cargo clippy --all --all-targets --all-features -- -D warnings
       - run:
           name: Run tests
           command: |
