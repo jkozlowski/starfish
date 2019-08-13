@@ -1,8 +1,6 @@
 #!/bin/bash
 
-git submodule update --init
-
-sudo echo 'APT::Get::Assume-Yes "true"; APT::Get::force-yes "true";' > /etc/apt/apt.conf.d/99force-yes
+git submodule update --init --recursive
 
 sudo apt-get update
 # TODO(jkozlowski) Add this to spdk-sys
