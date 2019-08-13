@@ -3,6 +3,7 @@
 apt-get update
 # TODO(jkozlowski) Put in custom docker container
 apt-get install -y \
+    build-essential \
     git mercurial xvfb apt \
     locales sudo openssh-client ca-certificates tar gzip parallel \
     net-tools netcat unzip zip bzip2 gnupg curl wget make
