@@ -42,8 +42,11 @@ jobs:
           command: |
             # docker run --privileged --cap-add=ALL -v  /dev:/dev -v  /lib/modules:/lib/modules -it $DOCKER_USERNAME/starfish:latest
             docker run --privileged --cap-add=ALL 
+                       -v  /dev:/dev 
+                       -v  /lib/modules:/lib/modules
+                       -v .circleci/scripts/run_test.sh:/run_test.sh 
                        $DOCKER_USERNAME/starfish:latest 
-                       -c .circleci/scripts/run_test.sh 
+                       bash run_test.sh
 workflows:
   version: 2
   build:
