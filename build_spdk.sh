@@ -14,14 +14,14 @@ cd /tmp/spdk-sys
 git submodule update --init --recursive
 
 # TODO(jkozlowski) Add this to spdk-sys
-./spdk-sys/spdk/scripts/pkgdep.sh
+./spdk/scripts/pkgdep.sh
 # TODO(jkozlowski) What is this for?
 apt-get install -y module-init-tools
 
-sh ./spdk-sys/build.sh
-cp spdk-sys/build/libspdk_fat.so /usr/local/lib
+sh ./build.sh
+cp build/libspdk_fat.so /usr/local/lib
 
-./spdk-sys/spdk/scripts/setup.sh
+./spdk/scripts/setup.sh
 
-cd spdk-sys/spdk
+cd spdk
 make install
