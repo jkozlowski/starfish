@@ -8,4 +8,6 @@ FROM ubuntu:eoan-20190717.1
 
  ADD . /project
 
- RUN cd /project && cargo fetch
+ ENV PATH=$HOME/.cargo/bin:$PATH
+
+ RUN cd /project && source $HOME/.cargo/env && cargo fetch
