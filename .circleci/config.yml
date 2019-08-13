@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: ubuntu:disco-20190613
+      - image: ubuntu:eoan-20190717.1
     steps:
       - checkout
       - run:
