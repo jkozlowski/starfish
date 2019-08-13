@@ -1,25 +1,17 @@
 [package]
-name = "spdk-sys"
+name = "spdk-async"
 version = "0.1.0"
 authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
-categories = ["external-ffi-bindings"]
-build = "build.rs"
 description = """
-Rust bindings to spdk.
+Async wrappers for spdk-sys.
 """
 edition = '2018'
 
-links = "spdk"
-
 [dependencies]
 err-derive = ""
-#failure = ""
-#failure_derive = ""
 futures-preview = "= 0.3.0-alpha.17"
 libc = ""
-
-[build-dependencies]
-bindgen = "= 0.41.0"
+spdk-sys = { path = "../spdk-sys" }
 
 [dev-dependencies]
 hamcrest2 = "*"

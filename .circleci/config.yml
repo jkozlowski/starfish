@@ -1,44 +1,90 @@
 version: 2
 jobs:
+  docker:
+    machine:
+      image: ubuntu-1604:201903-01
+    steps:
+      - checkout
+      - run: echo "$DOCKER_PASSWORD" | docker login -u $DOCKER_USERNAME --password-stdin
+      #- run: docker pull $DOCKER_USERNAME/starfish:latest || true
+       #--cache-from $DOCKER_USERNAME/starfish:latest
+      # - run: |
+      #       DOCKER_BUILDKIT=1 docker build
+      #          -t $DOCKER_USERNAME/starfish:latest .
+      # - run: docker push $DOCKER_USERNAME/starfish:latest
   build:
     machine:
       image: circleci/classic:201710-01
     steps:
-      - checkout
-      - run:
-          name: Build spdk
-          command: sh .circleci/scripts/build_spdk.sh
-      - run:
-          name: Install rustup
-          command: |
-            curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
+      # Need to run all these inside docker container
+
       - restore_cache:
           keys:
-            - deps-${CACHE_VERSION}-{{ .Branch }}-{{ .Revision }}
-            - deps-${CACHE_VERSION}-{{ .Branch }}-
-            - deps-${CACHE_VERSION}-
-      - run:
-          name: Cache dependencies
-          command: |
-            source $HOME/.cargo/env
-            cargo fetch
+            - source-v5-{{ .Branch }}-{{ .Revision }}
+            - source-v5-{{ .Branch }}-
+            - source-v5-
+      - checkout
       - save_cache:
-          key: deps-${CACHE_VERSION}-{{ .Branch }}-{{ .Revision }}
+          key: source-v5-{{ .Branch }}-{{ .Revision }}
           paths:
-            - "target"
-      - run:
-          name: Run 'cargo fmt'
-          command: |
-            source $HOME/.cargo/env
-            rustup component add rustfmt-preview
-            cargo fmt --all -- --check
-      - run:
-          name: Run 'cargo clippy'
-          command: |
-            source $HOME/.cargo/env
-            rustup component add clippy-preview
-            cargo clippy --all --all-targets --all-features -- -D warnings
+            - ".git"
+      # - run:
+      #     name: Run 'cargo fmt'
+      #     command: |
+      #       rustup component add rustfmt-preview
+      #       cargo fmt --all -- --check
+      # - run:
+      #     name: Run 'cargo clippy'
+      #     command: |
+      #       rustup component add clippy-preview
+      #       cargo clippy --all --all-targets --all-features -- -D warnings
       - run:
           name: Run tests
           command: |
-            sudo bash .circleci/scripts/run_test.sh 
+            # docker run --privileged --cap-add=ALL -v  /dev:/dev -v  /lib/modules:/lib/modules -it $DOCKER_USERNAME/starfish:latest
+            # HOST
+            # circleci@default-fe3a243d-92e5-4a37-bfe6-1d374f7a7434:/tmp/spdk$ sudo ./scripts/setup.sh status
+            # Hugepages
+            # node     hugesize     free /  total
+            # node0   1048576kB        0 /      0
+            # node0      2048kB        0 /   1024
+            # NVMe devices
+            # BDF		Numa Node	Driver name		Device name
+            # I/OAT DMA
+            # BDF		Numa Node	Driver Name
+            # virtio
+            # BDF		Numa Node	Driver Name		Device Name
+            # 0000:00:03.0	-1		virtio-pci		 sda
+
+            # CONTAINER
+            # root@43b8d0fbea67:/project/spdk-sys# ./spdk/scripts/setup.sh status
+            # Hugepages
+            # node     hugesize     free /  total
+            # node0   1048576kB        0 /      0
+            # node0      2048kB        0 /      0
+
+            # NVMe devices
+            # BDF		Vendor	Device	NUMA	Driver		Device name
+
+            # I/OAT DMA
+            # BDF		Vendor	Device	NUMA	Driver
+
+            # virtio
+            # BDF		Vendor	Device	NUMA	Driver		Device name
+            # 0000:00:03.0	1af4	1004	-1		virtio-pci		 sda
+            # VMD
+            # BDF		Numa Node	Driver Name
+            docker run --privileged --cap-add=ALL 
+                       -v  /dev:/dev 
+                       -v  /lib/modules:/lib/modules
+                       -v .circleci/scripts/run_test.sh:/run_test.sh 
+                       $DOCKER_USERNAME/starfish:latest 
+                       bash run_test.sh
+workflows:
+  version: 2
+  build:
+    jobs:
+      - docker
+      - build:
+          requires: 
+            - docker
