@@ -8,6 +8,10 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain none -y
 
 ADD . /project
 
-ENV PATH=$HOME/.cargo/bin:$PATH
+ENV PATH=/root/.cargo/bin:$PATH
 
-RUN cd /project && cargo fetch
+RUN cd /project && \ 
+    git submodule update --init --recursive && \
+    cargo fetch && \
+    rustup component add rustfmt-preview && \\
+    rustup component add clippy-preview

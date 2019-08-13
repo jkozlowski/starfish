@@ -6,7 +6,10 @@ jobs:
     steps:
       - checkout
       - run: echo "$DOCKER_PASSWORD" | docker login -u $DOCKER_USERNAME --password-stdin
-      - run: DOCKER_BUILDKIT=1 docker build -t $DOCKER_USERNAME/starfish:latest .
+      - run: docker pull $DOCKER_USERNAME/starfish:latest || true
+      - run: DOCKER_BUILDKIT=1 docker build \
+               --cache-from $DOCKER_USERNAME/starfish:latest \ 
+               -t $DOCKER_USERNAME/starfish:latest .
       - run: docker push $DOCKER_USERNAME/starfish:latest
   build:
     machine:
@@ -37,7 +40,8 @@ jobs:
       - run:
           name: Run tests
           command: |
-            sudo sh .circleci/scripts/run_test.sh 
+            # docker run --privileged --cap-add=ALL -v  /dev:/dev -v  /lib/modules:/lib/modules -it $DOCKER_USERNAME/starfish:latest
+            docker run --privileged --cap-add=ALL $DOCKER_USERNAME/starfish:latest -c .circleci/scripts/run_test.sh 
 workflows:
   version: 2
   build:
