@@ -8,12 +8,13 @@ jobs:
       - run: echo "$DOCKER_PASSWORD" | docker login -u $DOCKER_USERNAME --password-stdin
       #- run: docker pull $DOCKER_USERNAME/starfish:latest || true
        #--cache-from $DOCKER_USERNAME/starfish:latest
-      # - run: DOCKER_BUILDKIT=1 docker build
+      # - run: |
+      #       DOCKER_BUILDKIT=1 docker build
       #          -t $DOCKER_USERNAME/starfish:latest .
       # - run: docker push $DOCKER_USERNAME/starfish:latest
   build:
     machine:
-      image: ubuntu-1604:201903-01
+      image: circleci/classic:201710-01
     steps:
       # Need to run all these inside docker container
 
@@ -41,6 +42,38 @@ jobs:
           name: Run tests
           command: |
             # docker run --privileged --cap-add=ALL -v  /dev:/dev -v  /lib/modules:/lib/modules -it $DOCKER_USERNAME/starfish:latest
+            # HOST
+            # circleci@default-fe3a243d-92e5-4a37-bfe6-1d374f7a7434:/tmp/spdk$ sudo ./scripts/setup.sh status
+            # Hugepages
+            # node     hugesize     free /  total
+            # node0   1048576kB        0 /      0
+            # node0      2048kB        0 /   1024
+            # NVMe devices
+            # BDF		Numa Node	Driver name		Device name
+            # I/OAT DMA
+            # BDF		Numa Node	Driver Name
+            # virtio
+            # BDF		Numa Node	Driver Name		Device Name
+            # 0000:00:03.0	-1		virtio-pci		 sda
+
+            # CONTAINER
+            # root@43b8d0fbea67:/project/spdk-sys# ./spdk/scripts/setup.sh status
+            # Hugepages
+            # node     hugesize     free /  total
+            # node0   1048576kB        0 /      0
+            # node0      2048kB        0 /      0
+
+            # NVMe devices
+            # BDF		Vendor	Device	NUMA	Driver		Device name
+
+            # I/OAT DMA
+            # BDF		Vendor	Device	NUMA	Driver
+
+            # virtio
+            # BDF		Vendor	Device	NUMA	Driver		Device name
+            # 0000:00:03.0	1af4	1004	-1		virtio-pci		 sda
+            # VMD
+            # BDF		Numa Node	Driver Name
             docker run --privileged --cap-add=ALL 
                        -v  /dev:/dev 
                        -v  /lib/modules:/lib/modules
