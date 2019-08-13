@@ -1,4 +1,4 @@
-#!/bin/bash -v
+#!/bin/bash -ve
 
 apt-get update
 # TODO(jkozlowski) Put in custom docker container
@@ -8,7 +8,7 @@ apt-get install -y \
     locales sudo openssh-client ca-certificates tar gzip parallel \
     net-tools netcat unzip zip bzip2 gnupg curl wget make
 
-git clone https://github.com/jkryl/spdk-sys.git
+git clone https://github.com/jkryl/spdk-sys.git /tmp/spdk-sys
 
 cd /tmp/spdk-sys
 git submodule update --init --recursive
