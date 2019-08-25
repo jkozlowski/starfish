@@ -12,7 +12,8 @@ edition = '2018'
 io-uring = ""
 liburing-sys = ""
 
-tokio = "=0.2.0-alpha.1"
+tokio = { git = "https://github.com/tokio-rs/tokio.git", rev="654f9d7", features=["rt-full"] }
+tokio-executor = { git = "https://github.com/tokio-rs/tokio.git", rev="654f9d7", features=["current-thread"] }
 
 intrusive-collections = ""
 bytes = ""

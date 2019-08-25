@@ -19,6 +19,9 @@ pub mod fs;
 mod shared;
 pub use shared::Shared;
 
+mod executor;
+pub use executor::spawn;
+
 #[cfg(test)]
 mod test {
 
