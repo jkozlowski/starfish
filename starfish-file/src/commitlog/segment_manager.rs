@@ -16,6 +16,7 @@ pub enum Error {
 
     #[error(display = "IO Error: _1")]
     IO(crate::fs::Error),
+    
 }
 
 impl From<crate::fs::Error> for Error {

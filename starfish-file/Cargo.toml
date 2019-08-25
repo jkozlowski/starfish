@@ -12,12 +12,13 @@ edition = '2018'
 io-uring = ""
 liburing-sys = ""
 
+tokio = "=0.2.0-alpha.1"
+
 intrusive-collections = ""
 bytes = ""
 byteorder = ""
 derive_builder = ""
 err-derive = ""
-futures = { package = "starfish-futures", path = "../starfish-futures" }
 
 [dev-dependencies]
 hamcrest2 = "*"
