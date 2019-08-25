@@ -69,8 +69,8 @@ pub struct Descriptor {
 }
 
 impl Descriptor {
-    pub fn create(segment_id: SegmentId, filename_prefix: &str) -> Self {
-        let filename = format!("{}{}{}", filename_prefix, Version::V1, FILENAME_EXTENSION);
+    pub fn create<T: AsRef<str>>(segment_id: SegmentId, filename_prefix: T) -> Self {
+        let filename = format!("{}{}{}", filename_prefix.as_ref(), Version::V1, FILENAME_EXTENSION);
         Descriptor {
             segment_id,
             filename

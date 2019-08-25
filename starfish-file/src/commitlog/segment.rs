@@ -1,11 +1,17 @@
 use crate::commitlog::segment_manager::Error;
 use crate::commitlog::segment_manager::SegmentManager;
 use crate::fs::File;
+use crate::shared::Shared;
 use std::rc::Rc;
 
 // A single commit log file on disk.
+#[derive(Clone)]
 pub struct Segment {
-    segment_manager: Rc<SegmentManager>,
+    inner: Shared<Inner>,
+}
+
+struct Inner {
+    segment_manager: SegmentManager,
 
     file: File,
 
@@ -17,20 +23,29 @@ pub struct Segment {
 }
 
 impl Segment {
-    pub fn create(segment_manager: Rc<SegmentManager>, file: File) -> Self {
+    pub fn create(segment_manager: SegmentManager, file: File) -> Self {
         Segment {
-            segment_manager,
+            inner: Shared::new(Inner {
+                segment_manager,
 
-            file,
+                file,
 
-            closed: false,
+                closed: false,
 
-            file_pos: 0,
-            flush_pos: 0,
-            buf_pos: 0,
+                file_pos: 0,
+                flush_pos: 0,
+                buf_pos: 0,
+            }),
         }
     }
 
+    pub fn is_still_allocating(&self) -> bool {
+        let inner = self.inner.borrow();
+        inner.is_still_allocating()
+    }
+}
+
+impl Inner {
     pub fn is_still_allocating(&self) -> bool {
         !self.closed && self.position() < self.segment_manager.max_size()
     }
@@ -40,7 +55,7 @@ impl Segment {
     }
 }
 
-impl Drop for Segment {
+impl Drop for Inner {
     fn drop(&mut self) {
         // TODO(jakubk): Make sure stuff gets closed and deleted
     }

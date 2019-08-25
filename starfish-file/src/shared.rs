@@ -5,7 +5,6 @@ use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
 
-#[derive(Clone)]
 pub struct Shared<T> {
     v: Rc<RefCell<T>>,
 }
@@ -16,6 +15,15 @@ impl<T> Shared<T> {
             v: Rc::new(RefCell::new(t)),
         }
     }
+}
+
+impl<T: Sized> Clone for Shared<T> {
+    #[inline]
+    fn clone(&self) -> Shared<T> {
+        Shared {
+            v: self.v.clone()
+        }
+    }    
 }
 
 impl<T> Shared<T> {
