@@ -1,16 +1,24 @@
 use crate::fs::File;
-use crate::fs::Error;
-use std::fs::File as StdFile;
-use std::fs::OpenOptions;
+use std::fs::OpenOptions as StdOpenOptions;
+use std::io;
 use std::path::Path;
+use tokio::fs::OpenOptions as TokioOpenOptions;
 
-pub struct FileSystem {
-
-}
+#[derive(Clone)]
+pub struct FileSystem {}
 
 impl FileSystem {
+    pub async fn create() -> io::Result<FileSystem> {
+        Ok(FileSystem {})
+    }
 
-    pub async fn open<P: AsRef<Path>>(&self, path: P, options: OpenOptions) -> Result<File, Error> {
-        unimplemented!();
-    } 
+    pub async fn open<P>(&self, path: P, options: StdOpenOptions) -> io::Result<File>
+    where
+        // TODO(jkozlowski): Get rid of this limitation
+        P: AsRef<Path> + Send + Unpin + 'static,
+    {
+        let tokio_options = TokioOpenOptions::from(options);
+        let file = tokio_options.open(path).await?;
+        Ok(File::create(file))
+    }
 }

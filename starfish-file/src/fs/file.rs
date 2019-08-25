@@ -1,17 +1,20 @@
-use crate::fs::Error;
+use std::io;
+use tokio::fs;
 
 pub struct File {
-    // File close is blocking by default, need my own type   
+    file: fs::File,
 }
 
 impl File {
-    pub async fn truncate(&self, length: u64) -> Result<(), Error> {
+    pub fn create(file: fs::File) -> File {
+        File { file }
+    }
+
+    pub async fn truncate(&self, length: u64) -> io::Result<()> {
         unimplemented!();
     }
 }
 
 impl Drop for File {
-    fn drop(&mut self) {
-        
-    }
+    fn drop(&mut self) {}
 }

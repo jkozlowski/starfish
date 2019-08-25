@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use std::fmt;
+use std::path::PathBuf;
 
 pub mod segment;
 pub mod segment_manager;
@@ -9,14 +9,14 @@ static FILENAME_PREFIX: &str = "CommitLog";
 static FILENAME_EXTENSION: &str = ".log";
 
 pub enum Version {
-    V1
+    V1,
 }
 
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Version::V1 => write!(f, "1"),
-        }   
+        }
     }
 }
 
@@ -35,7 +35,6 @@ pub struct Config {
 
     #[builder(default = "32")]
     commitlog_segment_size_in_mb: u64,
-    
     #[builder(default = "10 * 1000")]
     commitlog_sync_period_in_ms: u64,
 
@@ -46,12 +45,10 @@ pub struct Config {
     // // zero means try to figure it out ourselves
     // uint64_t max_active_writes = 0;
     // uint64_t max_active_flushes = 0;
-
-    #[builder(default = "SyncMode::Batch")] 
+    #[builder(default = "SyncMode::Batch")]
     sync_mode: SyncMode,
-    
     #[builder(default = "self.default_fname_prefix()")]
-    fname_prefix: String
+    fname_prefix: String,
 }
 
 impl ConfigBuilder {
@@ -65,19 +62,36 @@ pub type Position = u32;
 
 pub struct Descriptor {
     segment_id: SegmentId,
-    filename: String
+    filename: String,
 }
 
 impl Descriptor {
     pub fn create<T: AsRef<str>>(segment_id: SegmentId, filename_prefix: T) -> Self {
-        let filename = format!("{}{}{}", filename_prefix.as_ref(), Version::V1, FILENAME_EXTENSION);
+        let filename = format!(
+            "{}{}{}",
+            filename_prefix.as_ref(),
+            Version::V1,
+            FILENAME_EXTENSION
+        );
         Descriptor {
             segment_id,
-            filename
+            filename,
         }
     }
 
     pub fn filename(&self) -> &str {
         &self.filename
+    }
+}
+
+mod test {
+    #[tokio::test]
+    async fn my_test() {
+        // let addr = "127.0.0.1:8080".parse().unwrap();
+        // let mut listener = TcpListener::bind(&addr).unwrap();
+        // let addr = listener.local_addr().unwrap();
+
+        // // Connect to the listener
+        // TcpStream::connect(&addr).await.unwrap();
     }
 }

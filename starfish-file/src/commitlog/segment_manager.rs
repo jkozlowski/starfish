@@ -15,12 +15,12 @@ pub enum Error {
     Closed,
 
     #[error(display = "IO Error: _1")]
-    IO(crate::fs::Error),
+    IO(std::io::Error),
     
 }
 
-impl From<crate::fs::Error> for Error {
-    fn from(f: crate::fs::Error) -> Self {
+impl From<std::io::Error> for Error {
+    fn from(f: std::io::Error) -> Self {
         Error::IO(f)
     }
 }
