@@ -15,7 +15,7 @@ links = "spdk"
 err-derive = ""
 #failure = ""
 #failure_derive = ""
-futures-preview = "= 0.3.0-alpha.17"
+futures-preview = "= 0.3.0-alpha.18"
 libc = ""
 
 [build-dependencies]

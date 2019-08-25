@@ -1,0 +1,24 @@
+[package]
+name = "starfish-file"
+version = "0.1.0"
+authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
+description = """
+Async File IO
+"""
+
+edition = '2018'
+
+[dependencies]
+io-uring = ""
+liburing-sys = ""
+
+intrusive-collections = ""
+bytes = ""
+byteorder = ""
+derive_builder = ""
+err-derive = ""
+futures = { package = "starfish-futures", path = "../starfish-futures" }
+
+[dev-dependencies]
+hamcrest2 = "*"
+tempfile = ""

@@ -10,8 +10,8 @@ edition = '2018'
 
 [dependencies]
 failure = "= 0.1.2"
-futures-preview = "= 0.3.0-alpha.17"
-libc = "= 0.2.43"
+futures-preview = "= 0.3.0-alpha.18"
+#libc = "= 0.2.43"
 
 [dev-dependencies]
 spectral = "= 0.6.0"
@@ -20,7 +20,9 @@ slog-term = "=2.0.2"
 [workspace]
 
 members = [
-  "spdk-sys",
+  #"spdk-sys",
   "starfish-executor",
-  "starfish-example-app"
+  #"starfish-example-app",
+  "starfish-file",
+  "starfish-futures"
 ]

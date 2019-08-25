@@ -1,9 +1,9 @@
 [package]
-name = "starfish-executor"
+name = "starfish-futures"
 version = "0.1.0"
 authors = ["Jakub Kozlowski <mail@jakub-kozlowski.com>"]
 description = """
-Single threaded executor for futures-rs. No Arc in sight.
+Starfish future utilities
 """
 
 edition = '2018'
@@ -11,5 +11,3 @@ edition = '2018'
 [dependencies]
 futures-preview = "= 0.3.0-alpha.18"
 
-[dev-dependencies]
-hamcrest2 = "*"
