@@ -1,5 +1,5 @@
 #![warn(rust_2018_idioms)]
-#![feature(async_await, nll)]
+#![feature(nll)]
 
 #![allow(macro_use_extern_crate)]
 #![feature(custom_attribute)]
