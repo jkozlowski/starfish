@@ -4,13 +4,16 @@ use crate::commitlog::Descriptor;
 use crate::commitlog::Position;
 use crate::commitlog::SegmentId;
 use crate::fs::FileSystem;
+use crate::spawn;
 use crate::Shared;
+use futures::future::poll_fn;
 use futures::TryStreamExt;
 use std::cmp;
 use std::ffi::OsStr;
 use std::fs::DirEntry;
 use std::fs::OpenOptions;
 use std::rc::Rc;
+use tokio_sync::mpsc;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -62,6 +65,8 @@ struct Inner {
 
     segments: Vec<Segment>,
 
+    new_segments: mpsc::Receiver<Segment>,
+
     max_size: u64,
     max_mutation_size: u64,
 
@@ -79,13 +84,17 @@ impl SegmentManager {
             u64::from(Position::max_value()),
             cmp::max(cfg.commitlog_segment_size_in_mb, 1) * 1024 * 1024,
         );
-        Ok(SegmentManager {
+
+        let (tx, mut rx) = mpsc::channel(cfg.max_reserve_segments);
+
+        let segment_manager = SegmentManager {
             inner: Shared::new(Inner {
                 cfg,
 
                 fs,
 
                 segments: vec![],
+                new_segments: rx,
 
                 max_size,
                 max_mutation_size: max_size >> 1,
@@ -97,7 +106,14 @@ impl SegmentManager {
 
                 shutdown: false,
             }),
-        })
+        };
+
+        spawn(SegmentManager::replenish_reserve(
+            segment_manager.clone(),
+            tx,
+        ));
+
+        Ok(segment_manager)
     }
 
     pub async fn init(&mut self) -> Result<()> {
@@ -116,7 +132,23 @@ impl SegmentManager {
 
     async fn allocate_segment(&self) -> Result<Segment> {
         let mut inner = self.inner.borrow_mut();
-        inner.allocate_segment(self.clone(), true).await
+        inner.allocate_segment(self.clone()).await
+    }
+
+    async fn replenish_reserve(manager: SegmentManager, mut tx: mpsc::Sender<Segment>) {
+        async fn send_one(
+            manager: &SegmentManager,
+            tx: &mut mpsc::Sender<Segment>,
+        ) -> std::result::Result<(), ()> {
+            poll_fn(|cx| tx.poll_ready(cx)).await.map_err(|_| ())?;
+            let segment = manager.allocate_segment().await.map_err(|_| ())?;
+            println!("Created segment");
+            tx.try_send(segment).map_err(|_| ())
+        }
+
+        while let Ok(()) = send_one(&manager, &mut tx).await {
+            // Successful
+        }
     }
 }
 
@@ -135,17 +167,7 @@ impl Inner {
         Ok(active_segment)
     }
 
-    async fn new_segment(&mut self) -> Result<Segment> {
-        if self.shutdown {
-            return Err(Error::Closed);
-        }
-
-        self.new_counter += 1;
-
-        unimplemented!()
-    }
-
-    async fn allocate_segment(&mut self, this: SegmentManager, active: bool) -> Result<Segment> {
+    async fn allocate_segment(&mut self, this: SegmentManager) -> Result<Segment> {
         let new_segment_id = self.next_segment_id();
 
         let descriptor = Descriptor::create(new_segment_id);
@@ -170,6 +192,6 @@ impl Inner {
     fn next_segment_id(&mut self) -> SegmentId {
         let next_segment_id = self.next_segment_id;
         self.next_segment_id += 1;
-        return next_segment_id;
+        next_segment_id
     }
 }
