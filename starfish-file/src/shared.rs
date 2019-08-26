@@ -20,10 +20,8 @@ impl<T> Shared<T> {
 impl<T: Sized> Clone for Shared<T> {
     #[inline]
     fn clone(&self) -> Shared<T> {
-        Shared {
-            v: self.v.clone()
-        }
-    }    
+        Shared { v: self.v.clone() }
+    }
 }
 
 impl<T> Shared<T> {

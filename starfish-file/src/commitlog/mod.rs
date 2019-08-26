@@ -1,24 +1,14 @@
-use std::fmt;
+use simple_error::bail;
+use simple_error::try_with;
+use std::convert::TryFrom;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 pub mod segment;
 pub mod segment_manager;
 
-static SEPARATOR: &str = "-";
-static FILENAME_PREFIX: &str = "CommitLog";
-static FILENAME_EXTENSION: &str = ".log";
-
-pub enum Version {
-    V1,
-}
-
-impl fmt::Display for Version {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Version::V1 => write!(f, "1"),
-        }
-    }
-}
+mod descriptor;
+pub use descriptor::Descriptor;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SyncMode {
@@ -47,42 +37,24 @@ pub struct Config {
     // uint64_t max_active_flushes = 0;
     #[builder(default = "SyncMode::Batch")]
     sync_mode: SyncMode,
-    #[builder(default = "self.default_fname_prefix()")]
-    fname_prefix: String,
-}
-
-impl ConfigBuilder {
-    fn default_fname_prefix(&self) -> String {
-        format!("{}{}", FILENAME_PREFIX, SEPARATOR)
-    }
 }
 
 pub type SegmentId = u64;
 pub type Position = u32;
 
-pub struct Descriptor {
-    segment_id: SegmentId,
-    filename: String,
-}
+// impl TryFrom<&str> for SegmentId {
+//     type Error = Box<dyn std::error::Error>;
 
-impl Descriptor {
-    pub fn create<T: AsRef<str>>(segment_id: SegmentId, filename_prefix: T) -> Self {
-        let filename = format!(
-            "{}{}{}",
-            filename_prefix.as_ref(),
-            Version::V1,
-            FILENAME_EXTENSION
-        );
-        Descriptor {
-            segment_id,
-            filename,
-        }
-    }
+//     fn try_from(s: &str) -> Result<Self, Self::Error> {
+//         let value = try_with!(u64::from_str(s), "Failed to parse version");
 
-    pub fn filename(&self) -> &str {
-        &self.filename
-    }
-}
+//         if value != 1 {
+//             bail!("Only V1 supported: {}", value)
+//         } else {
+//             Ok(Version::V1)
+//         }
+//     }
+// }
 
 mod test {
     #[tokio::test]

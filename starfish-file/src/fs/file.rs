@@ -10,8 +10,8 @@ impl File {
         File { file }
     }
 
-    pub async fn truncate(&self, length: u64) -> io::Result<()> {
-        unimplemented!();
+    pub async fn truncate(&mut self, len: u64) -> io::Result<()> {
+        self.file.set_len(len).await
     }
 }
 

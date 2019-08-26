@@ -12,8 +12,14 @@ edition = '2018'
 io-uring = ""
 liburing-sys = ""
 
+simple-error = ""
+regex = ""
+lazy_static = ""
+
 tokio = { git = "https://github.com/tokio-rs/tokio.git", rev="654f9d7", features=["rt-full"] }
 tokio-executor = { git = "https://github.com/tokio-rs/tokio.git", rev="654f9d7", features=["current-thread"] }
+tokio-fs = { git = "https://github.com/tokio-rs/tokio.git", rev="654f9d7" }
+futures-preview = "=0.3.0-alpha.18"
 
 intrusive-collections = ""
 bytes = ""

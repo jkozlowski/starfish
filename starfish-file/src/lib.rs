@@ -1,8 +1,7 @@
 #![warn(rust_2018_idioms)]
 #![feature(nll)]
-
 #![allow(macro_use_extern_crate)]
-#![feature(custom_attribute)]
+#![feature(custom_attribute, stmt_expr_attributes)]
 #[macro_use]
 extern crate err_derive;
 
@@ -25,13 +24,13 @@ pub use executor::spawn;
 #[cfg(test)]
 mod test {
 
+    use io_uring::UringQueue;
     use std::error::Error;
-    use io_uring::{UringQueue};
     use std::fs::File;
     use std::io;
+    use std::io::Write;
     use std::os::unix::io::AsRawFd;
     use tempfile::tempfile;
-    use std::io::Write;
 
     #[test]
     fn test_read_exact() -> Result<(), io_uring::Error> {

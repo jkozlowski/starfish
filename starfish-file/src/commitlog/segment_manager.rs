@@ -5,7 +5,10 @@ use crate::commitlog::Position;
 use crate::commitlog::SegmentId;
 use crate::fs::FileSystem;
 use crate::Shared;
+use futures::TryStreamExt;
 use std::cmp;
+use std::ffi::OsStr;
+use std::fs::DirEntry;
 use std::fs::OpenOptions;
 use std::rc::Rc;
 
@@ -16,12 +19,22 @@ pub enum Error {
 
     #[error(display = "IO Error: _1")]
     IO(std::io::Error),
-    
+
+    #[error(display = "Something else failed: _1")]
+    Other(Box<dyn std::error::Error>),
 }
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 impl From<std::io::Error> for Error {
     fn from(f: std::io::Error) -> Self {
         Error::IO(f)
+    }
+}
+
+impl From<Box<dyn std::error::Error>> for Error {
+    fn from(f: Box<dyn std::error::Error>) -> Self {
+        Error::Other(f)
     }
 }
 
@@ -47,7 +60,7 @@ struct Inner {
 
     fs: FileSystem,
 
-    segments: Vec<Rc<Segment>>,
+    segments: Vec<Segment>,
 
     max_size: u64,
     max_mutation_size: u64,
@@ -61,7 +74,7 @@ struct Inner {
 }
 
 impl SegmentManager {
-    pub async fn create(cfg: Config, fs: FileSystem) -> Result<SegmentManager, Error> {
+    pub async fn create(cfg: Config, fs: FileSystem) -> Result<SegmentManager> {
         let max_size = cmp::min(
             u64::from(Position::max_value()),
             cmp::max(cfg.commitlog_segment_size_in_mb, 1) * 1024 * 1024,
@@ -87,20 +100,43 @@ impl SegmentManager {
         })
     }
 
-    pub async fn allocate_when_possible(&self) -> Result<(), ()> {
+    pub async fn init(&mut self) -> Result<()> {
+        unimplemented!()
+    }
+
+    pub async fn allocate_when_possible(&self) -> Result<()> {
         let mut inner = self.inner.borrow_mut();
         let segment = inner.active_segment().await?;
         Ok(())
     }
 
-    async fn allocate_segment(&self) -> Result<Segment, Error> {
+    pub fn max_size(&self) -> u64 {
+        self.inner.max_size()
+    }
+
+    async fn allocate_segment(&self) -> Result<Segment> {
         let mut inner = self.inner.borrow_mut();
         inner.allocate_segment(self.clone(), true).await
     }
 
-    pub fn max_size(&self) -> u64 {
-        self.inner.max_size()
+    async fn list_descriptors(&self) -> Result<Descriptor> {
+        let mut inner = self.inner.borrow_mut();
+
+        let commit_log_location = &inner.cfg.commit_log_location;
+
+        let mut files = inner.fs.read_dir(commit_log_location.clone()).await?;
+
+        let mut descriptors: Vec<Descriptor> = vec![];
+
+        for elem in files.try_next().await? {
+            let os_file_name = elem.file_name();
+            let file_name = os_file_name.to_str().expect("Failed to get file name");
+            let descriptor = Descriptor::try_create(file_name)?;
+        }
+
+        unimplemented!();
     }
+    // list_descriptors(sstring dirname)
 }
 
 impl Inner {
@@ -108,7 +144,7 @@ impl Inner {
         self.max_size
     }
 
-    async fn active_segment(&mut self) -> Result<Rc<Segment>, ()> {
+    async fn active_segment(&mut self) -> Result<Segment> {
         let active_segment = self
             .segments
             .last()
@@ -118,7 +154,7 @@ impl Inner {
         Ok(active_segment)
     }
 
-    async fn new_segment(&mut self) -> Result<Rc<Segment>, Error> {
+    async fn new_segment(&mut self) -> Result<Segment> {
         if self.shutdown {
             return Err(Error::Closed);
         }
@@ -128,14 +164,10 @@ impl Inner {
         unimplemented!()
     }
 
-    async fn allocate_segment(
-        &mut self,
-        this: SegmentManager,
-        active: bool,
-    ) -> Result<Segment, Error> {
+    async fn allocate_segment(&mut self, this: SegmentManager, active: bool) -> Result<Segment> {
         let new_segment_id = self.next_segment_id();
 
-        let descriptor = Descriptor::create(new_segment_id, &self.cfg.fname_prefix);
+        let descriptor = Descriptor::create(new_segment_id);
 
         let mut path = self.cfg.commit_log_location.clone();
         path.push(descriptor.filename());
@@ -143,7 +175,7 @@ impl Inner {
         let mut open_options = OpenOptions::new();
         open_options.write(true).create_new(true);
 
-        let file = self.fs.open(path, open_options).await?;
+        let mut file = self.fs.open(path, open_options).await?;
 
         file.truncate(self.max_size).await?;
 
