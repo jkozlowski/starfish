@@ -1,4 +1,6 @@
 use crate::commitlog::SegmentId;
+use crate::fs::FileSystem;
+use futures::TryStreamExt;
 use lazy_static::lazy_static;
 use regex::Regex;
 use simple_error::bail;
@@ -7,6 +9,7 @@ use simple_error::try_with;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt;
+use std::path::Path;
 use std::str::FromStr;
 
 pub enum Version {
@@ -35,6 +38,7 @@ impl TryFrom<&str> for Version {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct Descriptor {
     segment_id: SegmentId,
     filename: String,
@@ -71,6 +75,76 @@ impl Descriptor {
     pub fn filename(&self) -> &str {
         &self.filename
     }
+
+    pub async fn list_descriptors<P>(
+        fs: &mut FileSystem,
+        path: P,
+    ) -> Result<Vec<Descriptor>, Box<dyn Error>>
+    where
+        P: AsRef<Path> + Clone + Send + 'static,
+    {
+        let mut files = fs.read_dir(path.clone()).await?;
+
+        let mut descriptors: Vec<Descriptor> = vec![];
+
+        while let Some(elem) = files.try_next().await? {
+            let os_file_name = elem.file_name();
+            let file_name = os_file_name.to_str().expect("Failed to get file name");
+            let descriptor = Descriptor::try_create(file_name)?;
+            descriptors.push(descriptor);
+        }
+
+        Ok(descriptors)
+    }
 }
 
-mod test {}
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use crate::fs::FileSystem;
+    use futures::channel::oneshot;
+    use hamcrest2::assert_that;
+    use hamcrest2::contains;
+    use hamcrest2::prelude::*;
+    use std::fs::File;
+    use tempdir::TempDir;
+    use tokio::runtime::Builder;
+
+    #[test]
+    fn test_list_descriptors() -> Result<(), String> {
+        let rt = Builder::new().build().unwrap();
+
+        let (sender, receiver) = oneshot::channel::<Result<(), String>>();
+
+        rt.spawn(async move {
+            let res: Result<(), Box<dyn Error>> = (async {
+                let tmp_dir = TempDir::new("test_list_descriptors")?;
+
+                create_file(&tmp_dir, "CommitLog-1-13.log")?;
+                create_file(&tmp_dir, "CommitLog-1-1234.log")?;
+
+                let mut fs = FileSystem::create().await?;
+
+                let tmp_dir_tmp = tmp_dir.path().to_owned();
+                let descriptors = Descriptor::list_descriptors(&mut fs, tmp_dir_tmp).await?;
+
+                assert_that!(
+                    &descriptors,
+                    contains(vec!(Descriptor::create(13), Descriptor::create(1234))).exactly()
+                );
+                Ok(())
+            })
+                .await;
+
+            sender.send(res.map_err(|_| "Oops".to_owned()));
+        });
+
+        futures::executor::block_on(receiver).unwrap()
+    }
+
+    fn create_file(tmp_dir: &TempDir, file_name: &str) -> std::io::Result<()> {
+        let file_path = tmp_dir.path().join(file_name);
+        File::create(file_path).map(|_| ())
+    }
+}

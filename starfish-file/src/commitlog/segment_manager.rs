@@ -118,25 +118,6 @@ impl SegmentManager {
         let mut inner = self.inner.borrow_mut();
         inner.allocate_segment(self.clone(), true).await
     }
-
-    async fn list_descriptors(&self) -> Result<Descriptor> {
-        let mut inner = self.inner.borrow_mut();
-
-        let commit_log_location = &inner.cfg.commit_log_location;
-
-        let mut files = inner.fs.read_dir(commit_log_location.clone()).await?;
-
-        let mut descriptors: Vec<Descriptor> = vec![];
-
-        for elem in files.try_next().await? {
-            let os_file_name = elem.file_name();
-            let file_name = os_file_name.to_str().expect("Failed to get file name");
-            let descriptor = Descriptor::try_create(file_name)?;
-        }
-
-        unimplemented!();
-    }
-    // list_descriptors(sstring dirname)
 }
 
 impl Inner {

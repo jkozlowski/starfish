@@ -30,3 +30,4 @@ err-derive = ""
 [dev-dependencies]
 hamcrest2 = "*"
 tempfile = ""
+tempdir = ""

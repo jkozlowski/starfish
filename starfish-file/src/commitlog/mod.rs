@@ -1,8 +1,4 @@
-use simple_error::bail;
-use simple_error::try_with;
-use std::convert::TryFrom;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 pub mod segment;
 pub mod segment_manager;
@@ -41,29 +37,3 @@ pub struct Config {
 
 pub type SegmentId = u64;
 pub type Position = u32;
-
-// impl TryFrom<&str> for SegmentId {
-//     type Error = Box<dyn std::error::Error>;
-
-//     fn try_from(s: &str) -> Result<Self, Self::Error> {
-//         let value = try_with!(u64::from_str(s), "Failed to parse version");
-
-//         if value != 1 {
-//             bail!("Only V1 supported: {}", value)
-//         } else {
-//             Ok(Version::V1)
-//         }
-//     }
-// }
-
-mod test {
-    #[tokio::test]
-    async fn my_test() {
-        // let addr = "127.0.0.1:8080".parse().unwrap();
-        // let mut listener = TcpListener::bind(&addr).unwrap();
-        // let addr = listener.local_addr().unwrap();
-
-        // // Connect to the listener
-        // TcpStream::connect(&addr).await.unwrap();
-    }
-}
