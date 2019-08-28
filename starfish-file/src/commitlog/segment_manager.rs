@@ -8,12 +8,16 @@ use crate::spawn;
 use crate::Shared;
 use futures::future::poll_fn;
 use futures::TryStreamExt;
+use slog::log;
+use slog::Logger;
 use std::cmp;
 use std::ffi::OsStr;
 use std::fs::DirEntry;
 use std::fs::OpenOptions;
 use std::rc::Rc;
 use tokio_sync::mpsc;
+use tokio_sync::Lock;
+use tokio_sync::LockGuard;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -62,10 +66,11 @@ struct Inner {
     cfg: Config,
 
     fs: FileSystem,
+    log: Logger,
 
     segments: Vec<Segment>,
 
-    new_segments: mpsc::Receiver<Segment>,
+    new_segments: Lock<mpsc::Receiver<Segment>>,
 
     max_size: u64,
     max_mutation_size: u64,
@@ -79,13 +84,13 @@ struct Inner {
 }
 
 impl SegmentManager {
-    pub async fn create(cfg: Config, fs: FileSystem) -> Result<SegmentManager> {
+    pub async fn create(cfg: Config, fs: FileSystem, log: Logger) -> Result<SegmentManager> {
         let max_size = cmp::min(
             u64::from(Position::max_value()),
             cmp::max(cfg.commitlog_segment_size_in_mb, 1) * 1024 * 1024,
         );
 
-        let (tx, mut rx) = mpsc::channel(cfg.max_reserve_segments);
+        let (tx, rx) = mpsc::channel(cfg.max_reserve_segments);
 
         let segment_manager = SegmentManager {
             inner: Shared::new(Inner {
@@ -93,8 +98,10 @@ impl SegmentManager {
 
                 fs,
 
+                log,
+
                 segments: vec![],
-                new_segments: rx,
+                new_segments: Lock::new(rx),
 
                 max_size,
                 max_mutation_size: max_size >> 1,
@@ -116,10 +123,6 @@ impl SegmentManager {
         Ok(segment_manager)
     }
 
-    pub async fn init(&mut self) -> Result<()> {
-        unimplemented!()
-    }
-
     pub async fn allocate_when_possible(&self) -> Result<()> {
         let mut inner = self.inner.borrow_mut();
         let segment = inner.active_segment().await?;
@@ -132,7 +135,7 @@ impl SegmentManager {
 
     async fn allocate_segment(&self) -> Result<Segment> {
         let mut inner = self.inner.borrow_mut();
-        inner.allocate_segment(self.clone()).await
+        inner.allocate_segment(self).await
     }
 
     async fn replenish_reserve(manager: SegmentManager, mut tx: mpsc::Sender<Segment>) {
@@ -142,7 +145,7 @@ impl SegmentManager {
         ) -> std::result::Result<(), ()> {
             poll_fn(|cx| tx.poll_ready(cx)).await.map_err(|_| ())?;
             let segment = manager.allocate_segment().await.map_err(|_| ())?;
-            println!("Created segment");
+            info!(manager.inner.borrow().log, "Created segment");
             tx.try_send(segment).map_err(|_| ())
         }
 
@@ -158,16 +161,24 @@ impl Inner {
     }
 
     async fn active_segment(&mut self) -> Result<Segment> {
-        let active_segment = self
-            .segments
-            .last()
-            .filter(|segment| segment.is_still_allocating())
-            .unwrap()
-            .clone();
-        Ok(active_segment)
+        if let Some(active_segment) = self.current_segment() {
+            return Ok(active_segment.clone());
+        }
+
+        let mut locked = self.new_segments.lock().await;
+
+        if let Some(active_segment) = self.current_segment() {
+            return Ok(active_segment.clone());
+        }
+
+        self.new_segment(&mut *locked).await
     }
 
-    async fn allocate_segment(&mut self, this: SegmentManager) -> Result<Segment> {
+    fn current_segment(&self) -> Option<Segment> {
+        self.segments.last().cloned()
+    }
+
+    async fn allocate_segment(&mut self, this: &SegmentManager) -> Result<Segment> {
         let new_segment_id = self.next_segment_id();
 
         let descriptor = Descriptor::create(new_segment_id);
@@ -182,11 +193,25 @@ impl Inner {
 
         file.truncate(self.max_size).await?;
 
-        let segment = Segment::create(this, file);
+        let segment = Segment::create(this.clone(), file);
 
         self.stats.segments_created += 1;
 
         Ok(segment)
+    }
+
+    async fn new_segment(&mut self, new_segments: &mut mpsc::Receiver<Segment>) -> Result<Segment> {
+        if self.shutdown {
+            return Err(Error::Closed);
+        }
+
+        self.new_counter += 1;
+
+        let new_segment = new_segments.recv().await.ok_or(Error::Closed)?;
+        new_segment.reset_sync_time();
+
+        self.segments.push(new_segment.clone());
+        Ok(new_segment)
     }
 
     fn next_segment_id(&mut self) -> SegmentId {

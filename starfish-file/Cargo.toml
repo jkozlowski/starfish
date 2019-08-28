@@ -13,6 +13,8 @@ io-uring = ""
 liburing-sys = ""
 
 simple-error = ""
+snafu = ""
+slog = "2.5.2"
 regex = ""
 lazy_static = ""
 

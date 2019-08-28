@@ -8,6 +8,9 @@ extern crate err_derive;
 #[macro_use]
 extern crate derive_builder;
 
+#[macro_use]
+extern crate slog;
+
 pub type Lsn = u64;
 pub type BlockNum = i64;
 pub type FileId = u64;

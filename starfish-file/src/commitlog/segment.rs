@@ -39,6 +39,11 @@ impl Segment {
         }
     }
 
+    pub fn reset_sync_time(&self) {
+        let inner = self.inner.borrow_mut();
+        inner.reset_sync_time()
+    }
+
     pub fn is_still_allocating(&self) -> bool {
         let inner = self.inner.borrow();
         inner.is_still_allocating()
@@ -52,6 +57,10 @@ impl Inner {
 
     fn position(&self) -> u64 {
         self.file_pos + self.buf_pos
+    }
+
+    pub fn reset_sync_time(&self) {
+        // DO
     }
 }
 
