@@ -7,12 +7,12 @@ pub use filesystem::FileSystem;
 #[cfg(test)]
 mod test {
 
-    use io_uring::UringQueue;
-    use std::error::Error;
+    
+    
     use std::fs::File;
-    use std::io;
+    
     use std::io::Write;
-    use std::os::unix::io::AsRawFd;
+    
     use tempfile::tempfile;
 
     #[cfg(uring)]

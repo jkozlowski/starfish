@@ -10,16 +10,16 @@ use crate::spawn;
 use crate::Shared;
 use futures::future::poll_fn;
 use futures::TryStreamExt;
-use slog::log;
+
 use slog::Logger;
 use std::cmp;
-use std::ffi::OsStr;
-use std::fs::DirEntry;
+
+
 use std::fs::OpenOptions;
-use std::rc::Rc;
+
 use tokio_sync::mpsc;
 use tokio_sync::Lock;
-use tokio_sync::LockGuard;
+
 
 struct Stats {
     segments_created: u64,
@@ -110,7 +110,7 @@ impl SegmentManager {
 
     pub async fn allocate_when_possible(&self) -> Result<()> {
         let mut inner = self.inner.borrow_mut();
-        let segment = inner.active_segment().await?;
+        let _segment = inner.active_segment().await?;
         Ok(())
     }
 

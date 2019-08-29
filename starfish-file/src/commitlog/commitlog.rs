@@ -9,7 +9,7 @@ pub struct Commitlog {
 }
 
 impl Commitlog {
-    pub async fn create(cfg: Config, fs: FileSystem, log: Logger) -> Result<Commitlog> {
+    pub async fn create(_cfg: Config, _fs: FileSystem, _log: Logger) -> Result<Commitlog> {
         unimplemented!()
     }
 }

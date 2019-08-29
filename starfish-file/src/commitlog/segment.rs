@@ -1,9 +1,9 @@
 use crate::commitlog::segment_manager::SegmentManager;
-use crate::commitlog::Error;
-use crate::commitlog::Result;
+
+
 use crate::fs::File;
 use crate::shared::Shared;
-use std::rc::Rc;
+
 
 // A single commit log file on disk.
 #[derive(Clone)]
