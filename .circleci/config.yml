@@ -32,8 +32,8 @@ jobs:
             source $HOME/.cargo/env
             rustup component add rustfmt-preview
             cargo fmt --all -- --check
-            #cargo install cargo-fix
-            # cargo fix
+            # cargo install cargo-fix
+            # cargo fix --all-targets --all-features
       - run:
           name: Run 'cargo clippy'
           command: |
