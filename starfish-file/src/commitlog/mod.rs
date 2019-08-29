@@ -12,8 +12,15 @@ pub enum Error {
     #[error(display = "Commitlog has been shut down. Cannot add data")]
     Closed,
 
+    #[error(
+        display = "Mutation of {:?} bytes is too large for the maxiumum size of {:?}",
+        size,
+        max_size
+    )]
+    MutationTooLarge { size: u64, max_size: u64 },
+
     #[error(display = "IO Error: _1")]
-    IO(std::io::Error),
+    IO(#[error(cause)] std::io::Error),
 
     #[error(display = "Something else failed: _1")]
     Other(Box<dyn std::error::Error>),
@@ -33,12 +40,6 @@ impl From<Box<dyn std::error::Error>> for Error {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum SyncMode {
-    Periodic,
-    Batch,
-}
-
 #[derive(Builder, Debug, PartialEq)]
 pub struct Config {
     commit_log_location: PathBuf,
@@ -56,8 +57,6 @@ pub struct Config {
     // // zero means try to figure it out ourselves
     // uint64_t max_active_writes = 0;
     // uint64_t max_active_flushes = 0;
-    #[builder(default = "SyncMode::Batch")]
-    sync_mode: SyncMode,
 }
 
 impl ConfigBuilder {

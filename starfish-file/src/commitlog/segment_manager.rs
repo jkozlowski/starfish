@@ -14,12 +14,10 @@ use futures::TryStreamExt;
 use slog::Logger;
 use std::cmp;
 
-
 use std::fs::OpenOptions;
 
 use tokio_sync::mpsc;
 use tokio_sync::Lock;
-
 
 struct Stats {
     segments_created: u64,
@@ -118,6 +116,10 @@ impl SegmentManager {
         self.inner.max_size()
     }
 
+    pub fn sanity_check_size(&self, size: u64) -> Result<()> {
+        self.inner.sanity_check_size(size)
+    }
+
     async fn allocate_segment(&self) -> Result<Segment> {
         let mut inner = self.inner.borrow_mut();
         inner.allocate_segment(self).await
@@ -143,6 +145,14 @@ impl SegmentManager {
 impl Inner {
     fn max_size(&self) -> u64 {
         self.max_size
+    }
+
+    fn sanity_check_size(&self, size: u64) -> Result<()> {
+        let max_size = self.max_mutation_size;
+        if size > max_size {
+            return Err(Error::MutationTooLarge { size, max_size });
+        }
+        Ok(())
     }
 
     async fn active_segment(&mut self) -> Result<Segment> {

@@ -29,6 +29,7 @@ bytes = ""
 byteorder = ""
 derive_builder = ""
 err-derive = ""
+enum_dispatch = ""
 
 [dev-dependencies]
 hamcrest2 = "*"
