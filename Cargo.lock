@@ -1088,14 +1088,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "starfish-executor"
-version = "0.1.0"
-dependencies = [
- "futures-preview 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "hamcrest2 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "starfish-file"
 version = "0.1.0"
 dependencies = [

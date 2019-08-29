@@ -21,7 +21,7 @@ slog-term = "=2.0.2"
 
 members = [
   #"spdk-sys",
-  "starfish-executor",
+  #"starfish-executor",
   #"starfish-example-app",
   "starfish-file",
 ]
