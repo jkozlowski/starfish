@@ -1,7 +1,9 @@
 use crate::commitlog::segment::Segment;
 use crate::commitlog::Config;
 use crate::commitlog::Descriptor;
+use crate::commitlog::Error;
 use crate::commitlog::Position;
+use crate::commitlog::Result;
 use crate::commitlog::SegmentId;
 use crate::fs::FileSystem;
 use crate::spawn;
@@ -19,32 +21,6 @@ use tokio_sync::mpsc;
 use tokio_sync::Lock;
 use tokio_sync::LockGuard;
 
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error(display = "Commitlog has been shut down. Cannot add data")]
-    Closed,
-
-    #[error(display = "IO Error: _1")]
-    IO(std::io::Error),
-
-    #[error(display = "Something else failed: _1")]
-    Other(Box<dyn std::error::Error>),
-}
-
-pub type Result<T> = std::result::Result<T, Error>;
-
-impl From<std::io::Error> for Error {
-    fn from(f: std::io::Error) -> Self {
-        Error::IO(f)
-    }
-}
-
-impl From<Box<dyn std::error::Error>> for Error {
-    fn from(f: Box<dyn std::error::Error>) -> Self {
-        Error::Other(f)
-    }
-}
-
 struct Stats {
     segments_created: u64,
 }
@@ -55,6 +31,15 @@ impl Default for Stats {
             segments_created: 0,
         }
     }
+}
+
+pub trait EntryWriter: Sized {
+    // How much to write
+    fn size() -> usize;
+    // virtual size_t size(segment&) = 0;
+    //     // Returns segment-independent size of the entry. Must be <= than segment-dependant size.
+    //     virtual size_t size() = 0;
+    //     virtual void write(segment&, output&) = 0;
 }
 
 #[derive(Clone)]
