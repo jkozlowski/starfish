@@ -112,6 +112,11 @@ impl SegmentManager {
         Ok(())
     }
 
+    pub async fn active_segment(&self) -> Result<Segment> {
+        let mut inner = self.inner.borrow_mut();
+        inner.active_segment().await
+    }
+
     pub fn max_size(&self) -> u64 {
         self.inner.max_size()
     }

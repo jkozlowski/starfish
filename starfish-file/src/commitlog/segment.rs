@@ -2,9 +2,12 @@ use crate::commitlog::segment_manager::SegmentManager;
 use crate::commitlog::Result;
 use crate::fs::File;
 use crate::shared::Shared;
+use crate::spawn;
 use bytes::BufMut;
 use bytes::BytesMut;
+use std::boxed::Box;
 use std::mem::size_of;
+use std::pin::Pin;
 
 // The commit log entry overhead in bytes (int: length + int: head checksum + int: tail checksum)
 const ENTRY_OVERHEAD_SIZE: u64 = (3 * size_of::<u32>()) as u64;
@@ -22,6 +25,8 @@ pub struct Segment {
 struct Inner {
     segment_manager: SegmentManager,
 
+    buffer: BytesMut,
+
     file: File,
 
     closed: bool,
@@ -36,6 +41,8 @@ impl Segment {
         Segment {
             inner: Shared::new(Inner {
                 segment_manager,
+
+                buffer: BytesMut::new(),
 
                 file,
 
@@ -64,7 +71,7 @@ impl Inner {
         !self.closed && self.position() < self.segment_manager.max_size()
     }
 
-    pub async fn allocate<W>(&mut self, size: u64, writer: &W) -> Result<()>
+    async fn allocate<W>(&mut self, this: Segment, size: u64, writer: &W) -> Result<()>
     where
         W: Fn(BytesMut),
     {
@@ -73,34 +80,84 @@ impl Inner {
 
         if !self.is_still_allocating()
             || self.position() + total_size > self.segment_manager.max_size()
-        { // would we make the file too big?
-             // return finish_and_get_new(timeout).then([id, writer = std::move(writer), permit = std::move(permit), timeout] (auto new_seg) mutable {
-             //     return new_seg->allocate(id, std::move(writer), std::move(permit), timeout);
-             // });
-        } else if (!_buffer.empty() && (s > (_buffer.size() - _buf_pos))) { // enough data?
-             // if (_segment_manager->cfg.mode == sync_mode::BATCH) {
-             //     // TODO: this could cause starvation if we're really unlucky.
-             //     // If we run batch mode and find ourselves not fit in a non-empty
-             //     // buffer, we must force a cycle and wait for it (to keep flush order)
-             //     // This will most likely cause parallel writes, and consecutive flushes.
-             //     return with_timeout(timeout, cycle(true)).then([this, id, writer = std::move(writer), permit = std::move(permit), timeout] (auto new_seg) mutable {
-             //         return new_seg->allocate(id, std::move(writer), std::move(permit), timeout);
-             //     });
-             // } else {
-             //     cycle().discard_result().handle_exception([] (auto ex) {
-             //         clogger.error("Failed to flush commits to disk: {}", ex);
-             //     });
-             // }
+        {
+            // would we make the file too big?
+            let segment = self.finish_and_get_new(this).await?;
+            // https://github.com/rust-lang/rust/issues/53690
+            // https://github.com/rust-lang/rust/issues/62284
+            // https://www.reddit.com/r/rust/comments/cbdxxm/why_are_recursive_async_fns_forbidden/
+            let recurse: Pin<Box<dyn std::future::Future<Output = Result<()>>>> =
+                Box::pin(async move {
+                    let mut inner = segment.inner.borrow_mut();
+                    inner.allocate(segment.clone(), size, writer).await
+                });
+            return recurse.await;
+        } else if total_size as usize > self.buffer.remaining_mut() {
+            // if (_segment_manager->cfg.mode == sync_mode::BATCH) {
+            //     // TODO: this could cause starvation if we're really unlucky.
+            //     // If we run batch mode and find ourselves not fit in a non-empty
+            //     // buffer, we must force a cycle and wait for it (to keep flush order)
+            //     // This will most likely cause parallel writes, and consecutive flushes.
+            //     return with_timeout(timeout, cycle(true)).then([this, id, writer = std::move(writer), permit = std::move(permit), timeout] (auto new_seg) mutable {
+            //         return new_seg->allocate(id, std::move(writer), std::move(permit), timeout);
+            //     });
+            // } else {
+            //     cycle().discard_result().handle_exception([] (auto ex) {
+            //         clogger.error("Failed to flush commits to disk: {}", ex);
+            //     });
+            // }
+            return Ok(());
         }
-        unimplemented!()
+        Ok(())
+    }
+
+    pub fn reset_sync_time(&self) {
+        // DO
     }
 
     fn position(&self) -> u64 {
         self.file_pos + self.buf_pos
     }
 
-    pub fn reset_sync_time(&self) {
-        // DO
+    async fn finish_and_get_new(&mut self, this: Segment) -> Result<Segment> {
+        self.closed = true;
+        spawn(async move {
+            let inner = this.inner.borrow();
+            inner.sync(false).await.map_err(|e| ());
+        });
+        self.segment_manager.active_segment().await
+    }
+
+    async fn sync(&self, shutdown: bool) -> Result<Segment> {
+        /*
+         * If we are shutting down, we first
+         * close the allocation gate, thus no new
+         * data can be appended. Then we just issue a
+         * flush, which will wait for any queued ops
+         * to complete as well. Then we close the ops
+         * queue, just to be sure.
+         */
+        // if (shutdown) {
+        //     auto me = shared_from_this();
+        //     return _gate.close().then([me] {
+        //         me->_closed = true;
+        //         return me->sync().finally([me] {
+        //             // When we get here, nothing should add ops,
+        //             // and we should have waited out all pending.
+        //             return me->_pending_ops.close().finally([me] {
+        //                 return me->_file.truncate(me->_flush_pos).then([me] {
+        //                     return me->_file.close();
+        //                 });
+        //             });
+        //         });
+        //     });
+        // }
+
+        // // Note: this is not a marker for when sync was finished.
+        // // It is when it was initiated
+        // reset_sync_time();
+        // return cycle(true);
+        unimplemented!()
     }
 }
 
