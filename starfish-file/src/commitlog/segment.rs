@@ -64,6 +64,14 @@ impl Segment {
         let inner = self.inner.borrow();
         inner.is_still_allocating()
     }
+
+    pub async fn allocate<W>(&mut self, this: Segment, size: u64, writer: &W) -> Result<()>
+    where
+        W: Fn(BytesMut),
+    {
+        let mut inner = self.inner.borrow_mut();
+        inner.allocate(this, size, writer).await
+    }
 }
 
 impl Inner {
@@ -82,15 +90,12 @@ impl Inner {
             || self.position() + total_size > self.segment_manager.max_size()
         {
             // would we make the file too big?
-            let segment = self.finish_and_get_new(this).await?;
+            let mut segment = self.finish_and_get_new(this.clone()).await?;
             // https://github.com/rust-lang/rust/issues/53690
             // https://github.com/rust-lang/rust/issues/62284
             // https://www.reddit.com/r/rust/comments/cbdxxm/why_are_recursive_async_fns_forbidden/
-            let recurse: Pin<Box<dyn std::future::Future<Output = Result<()>>>> =
-                Box::pin(async move {
-                    let mut inner = segment.inner.borrow_mut();
-                    inner.allocate(segment.clone(), size, writer).await
-                });
+            let recurse: Pin<Box<dyn std::future::Future<Output = _>>> =
+                Box::pin(segment.allocate(this.clone(), size, writer));
             return recurse.await;
         } else if total_size as usize > self.buffer.remaining_mut() {
             // if (_segment_manager->cfg.mode == sync_mode::BATCH) {
