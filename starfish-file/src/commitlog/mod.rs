@@ -1,6 +1,8 @@
+use std::fmt::Debug;
 use std::path::PathBuf;
 
 pub mod commitlog;
+pub mod flush_queue;
 pub mod segment;
 pub mod segment_manager;
 
@@ -67,3 +69,15 @@ impl ConfigBuilder {
 
 pub type SegmentId = u64;
 pub type Position = u32;
+
+#[derive(Eq, PartialEq, PartialOrd, Ord, Copy, Clone, Debug)]
+pub struct ReplayPosition {
+    id: SegmentId,
+    position: Position,
+}
+
+impl ReplayPosition {
+    pub fn create(id: SegmentId, position: Position) -> Self {
+        ReplayPosition { id, position }
+    }
+}
