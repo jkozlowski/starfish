@@ -1,5 +1,4 @@
 // TODO: Add gates
-use crate::spawn;
 use futures::channel::oneshot;
 use futures::channel::oneshot::Receiver;
 use futures::channel::oneshot::Sender;
@@ -31,7 +30,8 @@ impl Notifier {
 /// Keeps an ordered queue of pending operations. Allows flushes for various chunks
 /// to complete in arbitrary order while making sure that callbacks for mutations
 /// at higher position run only after all the lower position mutations are finished.
-pub struct FlushQueue<T> {
+#[derive(Default)]
+pub struct FlushQueue<T: Ord + Copy + Debug> {
     map: BTreeMap<T, Notifier>,
 }
 
@@ -42,17 +42,17 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
         }
     }
 
-    pub async fn run_with_ordered_post_op<F>(&mut self, t: T, action: F, post: F)
+    pub async fn run_with_ordered_post_op<F, P>(&mut self, t: T, action: F, post: P)
     where
         F: Future<Output = ()> + 'static,
+        P: Future<Output = ()> + 'static,
     {
         // Check that all elements are lower than what we're inserting or it contains the key already
-        if !self.map.is_empty()
-            && self
-                .map
-                .range((Bound::Excluded(t), Bound::Unbounded))
-                .next()
-                .is_none()
+        if self
+            .map
+            .range((Bound::Excluded(t), Bound::Unbounded))
+            .next()
+            .is_some()
         {
             panic!("Attempting to insert key out of order: {:?}", t);
         }
@@ -70,7 +70,7 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
 
         if let Some(prev) = iter.next_back().filter(|prev_value| *prev_value.0 < t) {
             // If there is a key before us, wait until that is finished before running our post
-            prev.1.receiver.clone().await.map_err(|e| {}).unwrap();
+            prev.1.receiver.clone().await;
         }
         // Now is the right time to run post
         post.await;
@@ -78,12 +78,100 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
         me.1.count -= 1;
 
         if me.1.count == 0 {
-            self.map.remove(&t);
-            // if (f.failed() && _chain_exceptions) {
-            //     return handle_failed_future(std::move(f), pr);
-            // } else {
-            //     pr.set_value();
-            // }
+            let notifier_again = self.map.remove(&t).unwrap();
+            notifier_again.sender.send(()).unwrap()
         }
+    }
+
+    // Waits for all operations currently active to finish
+    pub async fn wait_for_all(&self) {
+        if !self.map.is_empty() {
+            return self
+                .wait_for_pending(self.map.keys().next().unwrap().clone())
+                .await;
+        }
+    }
+
+    // Waits for all operations whose key is less than or equal to "rp"
+    // to complete
+    pub async fn wait_for_pending(&self, t: T) {
+        if let Some(notifier) = self
+            .map
+            .range((Bound::Excluded(t), Bound::Unbounded))
+            .rev()
+            .next()
+        {
+            notifier.1.receiver.clone().await;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::spawn;
+    use crate::Shared;
+    use futures::channel::oneshot::Receiver;
+    use futures::channel::oneshot::Sender;
+    use hamcrest2::assert_that;
+    use hamcrest2::prelude::*;
+    use rand::prelude::*;
+    use rand::thread_rng;
+    use rand::Rng;
+    use std::mem;
+
+    #[tokio::test]
+    pub async fn test_run_with_ordered_post_op() {
+        let num_ops = 1000;
+
+        struct Env {
+            queue: FlushQueue<usize>,
+            promises: Vec<(Option<Sender<()>>, Receiver<()>)>,
+            result: Vec<usize>,
+        }
+
+        impl Env {
+            fn create(num: usize) -> Env {
+                let vec: Vec<usize> = (0..num).collect();
+                Env {
+                    queue: FlushQueue::new(),
+                    promises: vec
+                        .iter()
+                        .map(|_| {
+                            let (sender, receiver) = oneshot::channel();
+                            (Some(sender), receiver)
+                        })
+                        .collect(),
+                    result: vec![],
+                }
+            }
+        }
+
+        async fn run_single_op(i: usize, env: Shared<Env>) {}
+
+        let mut env = Shared::new(Env::create(num_ops));
+
+        for i in 0..num_ops {
+            spawn(run_single_op(i, env.clone()))
+        }
+
+        fn shuffled(num_ops: usize) -> Vec<usize> {
+            let mut vec: Vec<usize> = (0..num_ops).collect();
+            vec.shuffle(&mut thread_rng());
+            vec
+        }
+
+        for i in shuffled(num_ops) {
+            let p = &mut env.borrow_mut().promises[i];
+            let sender = mem::replace(&mut p.0, None);
+            sender.unwrap().send(()).unwrap();
+        }
+
+        // Wait for all to finish
+        let env_borrow = env.borrow();
+        env_borrow.queue.wait_for_all().await;
+
+        assert_that!(env_borrow.result.is_empty(), is(false));
     }
 }

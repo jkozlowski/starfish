@@ -7,12 +7,8 @@ pub use filesystem::FileSystem;
 #[cfg(test)]
 mod test {
 
-    
-    
     use std::fs::File;
-    
     use std::io::Write;
-    
     use tempfile::tempfile;
 
     #[cfg(uring)]
