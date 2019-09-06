@@ -42,6 +42,14 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+
     pub async fn run_with_ordered_post_op<F, P>(&mut self, t: T, action: F, post: P)
     where
         F: Future<Output = ()> + 'static,
@@ -114,8 +122,11 @@ mod tests {
     use crate::Shared;
     use futures::channel::oneshot::Receiver;
     use futures::channel::oneshot::Sender;
+    use futures::future::RemoteHandle;
+    use futures::FutureExt;
     use hamcrest2::assert_that;
     use hamcrest2::prelude::*;
+    use is_sorted::IsSorted;
     use rand::prelude::*;
     use rand::thread_rng;
     use rand::Rng;
@@ -124,10 +135,11 @@ mod tests {
     #[tokio::test]
     pub async fn test_run_with_ordered_post_op() {
         let num_ops = 1000;
+        let expected_result: Vec<usize> = (0..num_ops).collect();
 
         struct Env {
             queue: FlushQueue<usize>,
-            promises: Vec<(Option<Sender<()>>, Receiver<()>)>,
+            promises: Vec<(Option<Sender<()>>, Option<Receiver<()>>)>,
             result: Vec<usize>,
         }
 
@@ -140,7 +152,7 @@ mod tests {
                         .iter()
                         .map(|_| {
                             let (sender, receiver) = oneshot::channel();
-                            (Some(sender), receiver)
+                            (Some(sender), Some(receiver))
                         })
                         .collect(),
                     result: vec![],
@@ -148,30 +160,61 @@ mod tests {
             }
         }
 
-        async fn run_single_op(i: usize, env: Shared<Env>) {}
-
-        let mut env = Shared::new(Env::create(num_ops));
-
-        for i in 0..num_ops {
-            spawn(run_single_op(i, env.clone()))
+        async fn run_single_op(i: usize, env: Shared<Env>) {
+            let env_cpy = env.clone();
+            let env_cpy1 = env.clone();
+            let mut env_borrow = env.borrow_mut();
+            env_borrow
+                .queue
+                .run_with_ordered_post_op(
+                    i,
+                    async move {
+                        let env = env_cpy;
+                        let p = &mut env.borrow_mut().promises[i];
+                        let receiver = mem::replace(&mut p.1, None);
+                        receiver.unwrap().await.unwrap()
+                    },
+                    async move {
+                        let env = env_cpy1;
+                        let result = &mut env.borrow_mut().result;
+                        result.push(i)
+                    },
+                )
+                .await
         }
 
-        fn shuffled(num_ops: usize) -> Vec<usize> {
-            let mut vec: Vec<usize> = (0..num_ops).collect();
+        let env = Shared::new(Env::create(num_ops));
+
+        let ops: Vec<RemoteHandle<()>> = expected_result
+            .iter()
+            .map(|i| {
+                let (f, handle) = run_single_op(*i, env.clone()).remote_handle();
+                spawn(f);
+                handle
+            })
+            .collect();
+
+        fn shuffled(expected_result: &Vec<usize>) -> Vec<usize> {
+            let mut vec: Vec<usize> = expected_result.clone();
             vec.shuffle(&mut thread_rng());
             vec
         }
 
-        for i in shuffled(num_ops) {
+        for i in shuffled(&expected_result) {
             let p = &mut env.borrow_mut().promises[i];
             let sender = mem::replace(&mut p.0, None);
             sender.unwrap().send(()).unwrap();
         }
 
         // Wait for all to finish
+        for op in ops {
+            op.await
+        }
+
         let env_borrow = env.borrow();
+        println!("Size: {:?}", env_borrow.queue.len());
         env_borrow.queue.wait_for_all().await;
 
-        assert_that!(env_borrow.result.is_empty(), is(false));
+        assert_that!(&env_borrow.result[0..], contains(expected_result).exactly());
     }
 }
