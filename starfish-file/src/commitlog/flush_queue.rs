@@ -137,8 +137,13 @@ mod tests {
         let num_ops = 1000;
         let expected_result: Vec<usize> = (0..num_ops).collect();
 
+        struct Pipe {
+            sender: Option<Sender<()>>,
+            receiver: Option<Receiver<()>>,
+        }
+
         struct Env {
-            promises: Vec<(Option<Sender<()>>, Option<Receiver<()>>)>,
+            promises: Vec<Pipe>,
             result: Vec<usize>,
         }
 
@@ -150,7 +155,10 @@ mod tests {
                         .iter()
                         .map(|_| {
                             let (sender, receiver) = oneshot::channel();
-                            (Some(sender), Some(receiver))
+                            Pipe {
+                                sender: Some(sender),
+                                receiver: Some(receiver),
+                            }
                         })
                         .collect(),
                     result: vec![],
@@ -169,7 +177,7 @@ mod tests {
                         let receiver = {
                             let env = env_cpy;
                             let p = &mut env.borrow_mut().promises[i];
-                            mem::replace(&mut p.1, None)
+                            mem::replace(&mut p.receiver, None)
                         };
                         receiver.unwrap().await.unwrap();
                     },
@@ -194,16 +202,18 @@ mod tests {
             })
             .collect();
 
-        fn shuffled(expected_result: &Vec<usize>) -> Vec<usize> {
-            let mut vec: Vec<usize> = expected_result.clone();
+        fn shuffled(expected_result: &[usize]) -> Vec<usize> {
+            let mut vec: Vec<usize> = expected_result.to_vec();
             vec.shuffle(&mut thread_rng());
             vec
         }
 
         for i in shuffled(&expected_result) {
-            let p = &mut env.borrow_mut().promises[i];
-            let sender = mem::replace(&mut p.0, None);
-            sender.unwrap().send(()).unwrap();
+            let sender = {
+                let p = &mut env.borrow_mut().promises[i];
+                mem::replace(&mut p.sender, None).unwrap()
+            };
+            sender.send(()).unwrap();
         }
 
         // Wait for all to finish
@@ -211,8 +221,8 @@ mod tests {
             op.await
         }
 
-        let queue_borrow = queue.borrow();
-        queue_borrow.wait_for_all().await;
+        // let queue_borrow = queue.borrow();
+        queue.borrow().wait_for_all().await;
 
         assert_that!(
             &env.borrow().result[0..],
