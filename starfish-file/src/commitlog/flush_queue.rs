@@ -78,7 +78,7 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
 
         if let Some(prev) = iter.next_back().filter(|prev_value| *prev_value.0 < t) {
             // If there is a key before us, wait until that is finished before running our post
-            prev.1.receiver.clone().await;
+            prev.1.receiver.clone().await.unwrap();
         }
         // Now is the right time to run post
         post.await;
@@ -109,7 +109,7 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
             .rev()
             .next()
         {
-            notifier.1.receiver.clone().await;
+            notifier.1.receiver.clone().await.unwrap();
         }
     }
 }
