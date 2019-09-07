@@ -1130,6 +1130,7 @@ dependencies = [
  "tokio-executor 0.2.0-alpha.2 (git+https://github.com/tokio-rs/tokio.git?rev=654f9d7)",
  "tokio-fs 0.2.0-alpha.2 (git+https://github.com/tokio-rs/tokio.git?rev=654f9d7)",
  "tokio-sync 0.2.0-alpha.2 (git+https://github.com/tokio-rs/tokio.git?rev=654f9d7)",
+ "tokio-timer 0.3.0-alpha.2 (git+https://github.com/tokio-rs/tokio.git?rev=654f9d7)",
 ]
 
 [[package]]

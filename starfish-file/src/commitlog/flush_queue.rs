@@ -131,6 +131,8 @@ mod tests {
     use rand::thread_rng;
     use rand::Rng;
     use std::mem;
+    use std::time::Duration;
+    use tokio_timer::sleep;
 
     #[tokio::test]
     pub async fn test_run_with_ordered_post_op() {
@@ -193,20 +195,21 @@ mod tests {
         let queue: Shared<FlushQueue<usize>> = Shared::new(FlushQueue::new());
         let env = Shared::new(Env::create(num_ops));
 
-        let ops: Vec<RemoteHandle<()>> = expected_result
-            .iter()
-            .map(|i| {
-                let (f, handle) = run_single_op(*i, queue.clone(), env.clone()).remote_handle();
-                spawn(f);
-                handle
-            })
-            .collect();
+        let mut ops = vec![];
+        for i in &expected_result {
+            sleep(Duration::from_millis(100)).await;
+            let (f, handle) = run_single_op(*i, queue.clone(), env.clone()).remote_handle();
+            spawn(f);
+            ops.push(handle);
+        }
 
         fn shuffled(expected_result: &[usize]) -> Vec<usize> {
             let mut vec: Vec<usize> = expected_result.to_vec();
             vec.shuffle(&mut thread_rng());
             vec
         }
+
+        // Let's sleep for a bit
 
         for i in shuffled(&expected_result) {
             let sender = {
