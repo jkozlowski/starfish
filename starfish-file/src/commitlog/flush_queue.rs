@@ -138,7 +138,6 @@ mod tests {
         let expected_result: Vec<usize> = (0..num_ops).collect();
 
         struct Env {
-            queue: FlushQueue<usize>,
             promises: Vec<(Option<Sender<()>>, Option<Receiver<()>>)>,
             result: Vec<usize>,
         }
@@ -147,7 +146,6 @@ mod tests {
             fn create(num: usize) -> Env {
                 let vec: Vec<usize> = (0..num).collect();
                 Env {
-                    queue: FlushQueue::new(),
                     promises: vec
                         .iter()
                         .map(|_| {
@@ -160,35 +158,37 @@ mod tests {
             }
         }
 
-        async fn run_single_op(i: usize, env: Shared<Env>) {
+        async fn run_single_op(i: usize, queue: Shared<FlushQueue<usize>>, env: Shared<Env>) {
             let env_cpy = env.clone();
             let env_cpy1 = env.clone();
-            let mut env_borrow = env.borrow_mut();
-            env_borrow
-                .queue
+            let mut queue_borrow = queue.borrow_mut();
+            queue_borrow
                 .run_with_ordered_post_op(
                     i,
                     async move {
-                        let env = env_cpy;
-                        let p = &mut env.borrow_mut().promises[i];
-                        let receiver = mem::replace(&mut p.1, None);
-                        receiver.unwrap().await.unwrap()
+                        let receiver = {
+                            let env = env_cpy;
+                            let p = &mut env.borrow_mut().promises[i];
+                            mem::replace(&mut p.1, None)
+                        };
+                        receiver.unwrap().await.unwrap();
                     },
                     async move {
                         let env = env_cpy1;
                         let result = &mut env.borrow_mut().result;
-                        result.push(i)
+                        result.push(i);
                     },
                 )
                 .await
         }
 
+        let queue: Shared<FlushQueue<usize>> = Shared::new(FlushQueue::new());
         let env = Shared::new(Env::create(num_ops));
 
         let ops: Vec<RemoteHandle<()>> = expected_result
             .iter()
             .map(|i| {
-                let (f, handle) = run_single_op(*i, env.clone()).remote_handle();
+                let (f, handle) = run_single_op(*i, queue.clone(), env.clone()).remote_handle();
                 spawn(f);
                 handle
             })
@@ -211,10 +211,12 @@ mod tests {
             op.await
         }
 
-        let env_borrow = env.borrow();
-        println!("Size: {:?}", env_borrow.queue.len());
-        env_borrow.queue.wait_for_all().await;
+        let queue_borrow = queue.borrow();
+        queue_borrow.wait_for_all().await;
 
-        assert_that!(&env_borrow.result[0..], contains(expected_result).exactly());
+        assert_that!(
+            &env.borrow().result[0..],
+            contains(expected_result).exactly()
+        );
     }
 }
