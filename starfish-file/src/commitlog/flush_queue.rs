@@ -1,8 +1,9 @@
 // TODO: Add gates
+use crate::Shared;
 use futures::channel::oneshot;
 use futures::channel::oneshot::Receiver;
 use futures::channel::oneshot::Sender;
-use futures::future::Shared;
+use futures::future::Shared as SharedFut;
 use futures::FutureExt;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -12,7 +13,7 @@ use std::ops::Bound;
 
 struct Notifier {
     sender: Sender<()>,
-    receiver: Shared<Receiver<()>>,
+    receiver: SharedFut<Receiver<()>>,
     count: usize,
 }
 
@@ -30,15 +31,16 @@ impl Notifier {
 /// Keeps an ordered queue of pending operations. Allows flushes for various chunks
 /// to complete in arbitrary order while making sure that callbacks for mutations
 /// at higher position run only after all the lower position mutations are finished.
-#[derive(Default)]
+// #[derive(Default)]
+#[derive(Clone)]
 pub struct FlushQueue<T: Ord + Copy + Debug> {
-    map: BTreeMap<T, Notifier>,
+    map: Shared<BTreeMap<T, Notifier>>,
 }
 
 impl<T: Ord + Copy + Debug> FlushQueue<T> {
     pub fn new() -> Self {
         FlushQueue {
-            map: BTreeMap::new(),
+            map: Shared::new(BTreeMap::new()),
         }
     }
 
@@ -50,7 +52,7 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
         self.map.is_empty()
     }
 
-    pub async fn run_with_ordered_post_op<F, P>(&mut self, t: T, action: F, post: P)
+    pub async fn run_with_ordered_post_op<F, P>(self, t: T, action: F, post: P)
     where
         F: Future<Output = ()> + 'static,
         P: Future<Output = ()> + 'static,
@@ -66,27 +68,42 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
         }
 
         {
-            let entry = self.map.entry(t).or_insert_with(Notifier::new);
+            let mut map = self.map.borrow_mut();
+            let entry = map.entry(t).or_insert_with(Notifier::new);
             entry.count += 1;
         }
 
         // Run the action
         action.await;
 
-        let mut iter = self.map.range_mut(t..);
-        let me = iter.next().unwrap();
+        let receiver = {
+            let mut map = self.map.borrow_mut();
+            let mut iter = map.range_mut(t..);
+            let _ = iter.next().unwrap();
 
-        if let Some(prev) = iter.next_back().filter(|prev_value| *prev_value.0 < t) {
-            // If there is a key before us, wait until that is finished before running our post
-            prev.1.receiver.clone().await.unwrap();
+            if let Some(prev) = iter.next_back().filter(|prev_value| *prev_value.0 < t) {
+                // If there is a key before us, wait until that is finished before running our post
+                Some(prev.1.receiver.clone())
+            } else {
+                None
+            }
+        };
+
+        // Wait for previous actions to finish
+        if let Some(receiver) = receiver {
+            receiver.await.unwrap();
         }
+
         // Now is the right time to run post
         post.await;
 
+        let mut map = self.map.borrow_mut();
+        let mut iter = map.range_mut(t..);
+        let me = iter.next().unwrap();
         me.1.count -= 1;
 
         if me.1.count == 0 {
-            let notifier_again = self.map.remove(&t).unwrap();
+            let notifier_again = map.remove(&t).unwrap();
             notifier_again.sender.send(()).unwrap()
         }
     }
@@ -168,11 +185,10 @@ mod tests {
             }
         }
 
-        async fn run_single_op(i: usize, queue: Shared<FlushQueue<usize>>, env: Shared<Env>) {
+        async fn run_single_op(i: usize, queue: FlushQueue<usize>, env: Shared<Env>) {
             let env_cpy = env.clone();
             let env_cpy1 = env.clone();
-            let mut queue_borrow = queue.borrow_mut();
-            queue_borrow
+            queue
                 .run_with_ordered_post_op(
                     i,
                     async move {
@@ -192,12 +208,12 @@ mod tests {
                 .await
         }
 
-        let queue: Shared<FlushQueue<usize>> = Shared::new(FlushQueue::new());
+        let queue: FlushQueue<usize> = FlushQueue::new();
         let env = Shared::new(Env::create(num_ops));
 
         let mut ops = vec![];
         for i in &expected_result {
-            sleep(Duration::from_millis(100)).await;
+            sleep(Duration::from_nanos(100)).await;
             let (f, handle) = run_single_op(*i, queue.clone(), env.clone()).remote_handle();
             spawn(f);
             ops.push(handle);
@@ -224,8 +240,7 @@ mod tests {
             op.await
         }
 
-        let queue_borrow = queue.borrow();
-        queue_borrow.wait_for_all().await;
+        queue.wait_for_all().await;
 
         assert_that!(
             &env.borrow().result[0..],
