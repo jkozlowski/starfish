@@ -221,8 +221,8 @@ mod tests {
             op.await
         }
 
-        // let queue_borrow = queue.borrow();
-        queue.borrow().wait_for_all().await;
+        let queue_borrow = queue.borrow();
+        queue_borrow.wait_for_all().await;
 
         assert_that!(
             &env.borrow().result[0..],
