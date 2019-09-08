@@ -107,27 +107,71 @@ impl SegmentManager {
     }
 
     pub async fn allocate_when_possible(&self) -> Result<()> {
-        let mut inner = self.inner.borrow_mut();
-        let _segment = inner.active_segment().await?;
+        let segment = self.active_segment().await?;
         Ok(())
     }
 
     pub async fn active_segment(&self) -> Result<Segment> {
-        let mut inner = self.inner.borrow_mut();
-        inner.active_segment().await
+        if let Some(active_segment) = self.current_segment() {
+            return Ok(active_segment.clone());
+        }
+
+        let mut lock = self.inner.new_segments.clone();
+        let mut locked = lock.lock().await;
+
+        if let Some(active_segment) = self.current_segment() {
+            return Ok(active_segment.clone());
+        }
+
+        self.new_segment(&mut *locked).await
     }
 
     pub fn max_size(&self) -> u64 {
-        self.inner.max_size()
+        self.inner.max_size
     }
 
     pub fn sanity_check_size(&self, size: u64) -> Result<()> {
-        self.inner.sanity_check_size(size)
+        let max_size = self.inner.max_mutation_size;
+        if size > max_size {
+            return Err(Error::MutationTooLarge { size, max_size });
+        }
+        Ok(())
     }
 
     async fn allocate_segment(&self) -> Result<Segment> {
-        let mut inner = self.inner.borrow_mut();
-        inner.allocate_segment(self).await
+        let new_segment_id = self.next_segment_id();
+
+        let descriptor = Descriptor::create(new_segment_id);
+
+        let mut path = self.inner.cfg.commit_log_location.clone();
+        path.push(descriptor.filename());
+
+        let mut open_options = OpenOptions::new();
+        open_options.write(true).create_new(true);
+
+        let mut file = self.inner.fs.open(path, open_options).await?;
+
+        file.truncate(self.inner.max_size).await?;
+
+        let segment = Segment::create(self.clone(), self.inner.log.clone(), descriptor, file);
+
+        self.inner.borrow_mut().stats.segments_created += 1;
+
+        Ok(segment)
+    }
+
+    async fn new_segment(&self, new_segments: &mut mpsc::Receiver<Segment>) -> Result<Segment> {
+        if self.inner.shutdown {
+            return Err(Error::Closed);
+        }
+
+        self.inner.borrow_mut().new_counter += 1;
+
+        let new_segment = new_segments.recv().await.ok_or(Error::Closed)?;
+        new_segment.reset_sync_time();
+
+        self.inner.borrow_mut().segments.push(new_segment.clone());
+        Ok(new_segment)
     }
 
     async fn replenish_reserve(manager: SegmentManager, mut tx: mpsc::Sender<Segment>) {
@@ -145,78 +189,14 @@ impl SegmentManager {
             // Successful
         }
     }
-}
-
-impl Inner {
-    fn max_size(&self) -> u64 {
-        self.max_size
-    }
-
-    fn sanity_check_size(&self, size: u64) -> Result<()> {
-        let max_size = self.max_mutation_size;
-        if size > max_size {
-            return Err(Error::MutationTooLarge { size, max_size });
-        }
-        Ok(())
-    }
-
-    async fn active_segment(&mut self) -> Result<Segment> {
-        if let Some(active_segment) = self.current_segment() {
-            return Ok(active_segment.clone());
-        }
-
-        let mut locked = self.new_segments.lock().await;
-
-        if let Some(active_segment) = self.current_segment() {
-            return Ok(active_segment.clone());
-        }
-
-        self.new_segment(&mut *locked).await
-    }
 
     fn current_segment(&self) -> Option<Segment> {
-        self.segments.last().cloned()
+        self.inner.segments.last().cloned()
     }
 
-    async fn allocate_segment(&mut self, this: &SegmentManager) -> Result<Segment> {
-        let new_segment_id = self.next_segment_id();
-
-        let descriptor = Descriptor::create(new_segment_id);
-
-        let mut path = self.cfg.commit_log_location.clone();
-        path.push(descriptor.filename());
-
-        let mut open_options = OpenOptions::new();
-        open_options.write(true).create_new(true);
-
-        let mut file = self.fs.open(path, open_options).await?;
-
-        file.truncate(self.max_size).await?;
-
-        let segment = Segment::create(this.clone(), file);
-
-        self.stats.segments_created += 1;
-
-        Ok(segment)
-    }
-
-    async fn new_segment(&mut self, new_segments: &mut mpsc::Receiver<Segment>) -> Result<Segment> {
-        if self.shutdown {
-            return Err(Error::Closed);
-        }
-
-        self.new_counter += 1;
-
-        let new_segment = new_segments.recv().await.ok_or(Error::Closed)?;
-        new_segment.reset_sync_time();
-
-        self.segments.push(new_segment.clone());
-        Ok(new_segment)
-    }
-
-    fn next_segment_id(&mut self) -> SegmentId {
-        let next_segment_id = self.next_segment_id;
-        self.next_segment_id += 1;
+    fn next_segment_id(&self) -> SegmentId {
+        let next_segment_id = self.inner.next_segment_id;
+        self.inner.borrow_mut().next_segment_id += 1;
         next_segment_id
     }
 }

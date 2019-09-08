@@ -68,7 +68,7 @@ impl ConfigBuilder {
 }
 
 pub type SegmentId = u64;
-pub type Position = u32;
+pub type Position = u64;
 
 #[derive(Eq, PartialEq, PartialOrd, Ord, Copy, Clone, Debug)]
 pub struct ReplayPosition {

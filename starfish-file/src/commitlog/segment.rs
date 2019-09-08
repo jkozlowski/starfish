@@ -1,5 +1,7 @@
 use crate::commitlog::flush_queue::FlushQueue;
 use crate::commitlog::segment_manager::SegmentManager;
+use crate::commitlog::Descriptor;
+use crate::commitlog::Position;
 use crate::commitlog::ReplayPosition;
 use crate::commitlog::Result;
 use crate::fs::File;
@@ -7,6 +9,8 @@ use crate::shared::Shared;
 use crate::spawn;
 use bytes::BufMut;
 use bytes::BytesMut;
+use slog::Logger;
+
 use std::boxed::Box;
 use std::mem::size_of;
 use std::pin::Pin;
@@ -26,32 +30,40 @@ pub struct Segment {
 
 struct Inner {
     segment_manager: SegmentManager,
+    log: Logger,
 
     file: File,
+    descriptor: Descriptor,
 
     closed: bool,
 
     file_pos: u64,
     flush_pos: u64,
-    buf_pos: u64,
 
     buffer: BytesMut,
     pending_ops: FlushQueue<ReplayPosition>,
 }
 
 impl Segment {
-    pub fn create(segment_manager: SegmentManager, file: File) -> Self {
+    pub fn create(
+        segment_manager: SegmentManager,
+        log: Logger,
+        descriptor: Descriptor,
+        file: File,
+    ) -> Self {
+        let log = log.new(o!(descriptor.clone()));
         Segment {
             inner: Shared::new(Inner {
                 segment_manager,
+                log,
 
                 file,
+                descriptor,
 
                 closed: false,
 
                 file_pos: 0,
                 flush_pos: 0,
-                buf_pos: 0,
 
                 buffer: BytesMut::new(),
 
@@ -68,7 +80,7 @@ impl Segment {
         !self.inner.closed && self.position() < self.inner.segment_manager.max_size()
     }
 
-    pub async fn allocate<W>(&self, this: Segment, size: u64, writer: &W) -> Result<()>
+    pub async fn allocate<W>(&self, size: u64, writer: &W) -> Result<()>
     where
         W: Fn(BytesMut),
     {
@@ -84,7 +96,7 @@ impl Segment {
             // https://github.com/rust-lang/rust/issues/62284
             // https://www.reddit.com/r/rust/comments/cbdxxm/why_are_recursive_async_fns_forbidden/
             let recurse: Pin<Box<dyn std::future::Future<Output = _>>> =
-                Box::pin(segment.allocate(this.clone(), size, writer));
+                Box::pin(segment.allocate(size, writer));
             return recurse.await;
         } else if total_size as usize > self.inner.buffer.remaining_mut() {
             // if (_segment_manager->cfg.mode == sync_mode::BATCH) {
@@ -109,10 +121,14 @@ impl Segment {
      * Send any buffer contents to disk and get a new tmp buffer
      */
     // See class comment for info
-    async fn cycle(flush_after: bool) -> Result<Segment> {
-        // if (_buffer.empty()) {
-        //     return flush_after ? flush() : make_ready_future<sseg_ptr>(shared_from_this());
-        // }
+    async fn cycle(&self, flush_after: bool) -> Result<Segment> {
+        if self.inner.buffer.is_empty() {
+            return if flush_after {
+                self.flush_from_start().await
+            } else {
+                Ok(self.clone())
+            };
+        }
 
         // auto size = clear_buffer_slack();
         // auto buf = std::move(_buffer);
@@ -202,15 +218,11 @@ impl Segment {
         unimplemented!()
     }
 
-    fn position(&self) -> u64 {
-        self.inner.file_pos + self.inner.buf_pos
-    }
-
     async fn finish_and_get_new(&self) -> Result<Segment> {
         self.inner.borrow_mut().closed = true;
         let self_clone = self.clone();
         spawn(async move {
-            self_clone.sync(false).await.map_err(|e| ()).unwrap();
+            self_clone.sync(false).await.map_err(|_| ()).unwrap();
         });
         self.inner.segment_manager.active_segment().await
     }
@@ -246,6 +258,32 @@ impl Segment {
         // return cycle(true);
         unimplemented!()
     }
+
+    async fn flush_from_start(&self) -> Result<Segment> {
+        self.flush(0).await
+    }
+
+    async fn flush(&self, pos: u64) -> Result<Segment> {
+        unimplemented!();
+    }
+
+    fn clear_buffer_slack(&self) -> usize {
+        // auto size = align_up(_buf_pos, alignment);
+        // std::fill(_buffer.get_write() + _buf_pos, _buffer.get_write() + size,
+        //         0);
+        // _segment_manager->totals.bytes_slack += (size - _buf_pos);
+        // _segment_manager->account_memory_usage(size - _buf_pos);
+        // return size;
+        unimplemented!()
+    }
+
+    fn position(&self) -> Position {
+        self.inner.file_pos + self.inner.buffer.len() as u64
+    }
+
+    // size_t size_on_disk() const {
+    //     return _file_pos;
+    // }
 }
 
 impl Drop for Inner {

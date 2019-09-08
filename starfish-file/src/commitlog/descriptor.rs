@@ -6,6 +6,7 @@ use regex::Regex;
 use simple_error::bail;
 use simple_error::require_with;
 use simple_error::try_with;
+use slog;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt;
@@ -42,6 +43,17 @@ impl TryFrom<&str> for Version {
 pub struct Descriptor {
     segment_id: SegmentId,
     filename: String,
+}
+
+impl slog::KV for Descriptor {
+    fn serialize(
+        &self,
+        _rec: &slog::Record<'_>,
+        serializer: &mut dyn slog::Serializer,
+    ) -> slog::Result {
+        serializer.emit_u64("segment_it", self.segment_id)?;
+        serializer.emit_str("filename", &self.filename)
+    }
 }
 
 impl Descriptor {
