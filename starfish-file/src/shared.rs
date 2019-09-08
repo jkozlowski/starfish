@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::cell::RefMut;
 use std::fmt;
 use std::ops::Deref;
+use std::ops::DerefMut;
 use std::rc::Rc;
 
 pub struct Shared<T> {
@@ -56,5 +57,12 @@ impl<'a, T> Deref for Shared<T> {
     #[inline]
     fn deref(&self) -> &T {
         unsafe { self.as_ptr().as_ref().unwrap() }
+    }
+}
+
+impl<'a, T> DerefMut for Shared<T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.as_ptr().as_mut().unwrap() }
     }
 }
