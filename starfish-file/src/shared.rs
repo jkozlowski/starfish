@@ -2,6 +2,7 @@ use std::cell::Ref;
 use std::cell::RefCell;
 use std::cell::RefMut;
 use std::fmt;
+use std::fmt::Debug;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::rc::Rc;

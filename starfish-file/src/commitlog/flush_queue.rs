@@ -6,6 +6,7 @@ use futures::channel::oneshot::Sender;
 use futures::future::Shared as SharedFut;
 use futures::FutureExt;
 use std::collections::BTreeMap;
+use std::fmt;
 use std::fmt::Debug;
 use std::future::Future;
 use std::iter::DoubleEndedIterator;
@@ -28,11 +29,17 @@ impl Notifier {
     }
 }
 
+impl fmt::Debug for Notifier {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
+}
+
 /// Keeps an ordered queue of pending operations. Allows flushes for various chunks
 /// to complete in arbitrary order while making sure that callbacks for mutations
 /// at higher position run only after all the lower position mutations are finished.
 // #[derive(Default)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FlushQueue<T: Ord + Copy + Debug> {
     map: Shared<BTreeMap<T, Notifier>>,
 }
@@ -78,10 +85,8 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
 
         let receiver = {
             let mut map = self.map.borrow_mut();
-            let mut iter = map.range_mut(t..);
-            let _ = iter.next().unwrap();
-
-            if let Some(prev) = iter.next_back().filter(|prev_value| *prev_value.0 < t) {
+            let mut iter = map.range_mut((Bound::Unbounded, Bound::Excluded(t)));
+            if let Some(prev) = iter.next_back() {
                 // If there is a key before us, wait until that is finished before running our post
                 Some(prev.1.receiver.clone())
             } else {
@@ -111,22 +116,20 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
     // Waits for all operations currently active to finish
     pub async fn wait_for_all(&self) {
         if !self.map.is_empty() {
-            return self
-                .wait_for_pending(self.map.keys().next().unwrap().clone())
-                .await;
+            let last_key = *self.map.range(..).next_back().unwrap().0;
+            return self.wait_for_pending(last_key).await;
         }
     }
 
     // Waits for all operations whose key is less than or equal to "rp"
     // to complete
     pub async fn wait_for_pending(&self, t: T) {
-        if let Some(notifier) = self
+        if let Some(e) = self
             .map
-            .range((Bound::Excluded(t), Bound::Unbounded))
-            .rev()
-            .next()
+            .range((Bound::Unbounded, Bound::Included(t)))
+            .next_back()
         {
-            notifier.1.receiver.clone().await.unwrap();
+            e.1.receiver.clone().await.unwrap();
         }
     }
 }
@@ -139,21 +142,18 @@ mod tests {
     use crate::Shared;
     use futures::channel::oneshot::Receiver;
     use futures::channel::oneshot::Sender;
-    use futures::future::RemoteHandle;
     use futures::FutureExt;
     use hamcrest2::assert_that;
     use hamcrest2::prelude::*;
-    use is_sorted::IsSorted;
     use rand::prelude::*;
     use rand::thread_rng;
-    use rand::Rng;
     use std::mem;
     use std::time::Duration;
     use tokio_timer::sleep;
 
     #[tokio::test]
     pub async fn test_run_with_ordered_post_op() {
-        let num_ops = 1000;
+        let num_ops = 5;
         let expected_result: Vec<usize> = (0..num_ops).collect();
 
         struct Pipe {
@@ -231,13 +231,14 @@ mod tests {
                 let p = &mut env.borrow_mut().promises[i];
                 mem::replace(&mut p.sender, None).unwrap()
             };
+            sleep(Duration::from_nanos(1)).await;
             sender.send(()).unwrap();
         }
 
         queue.wait_for_all().await;
 
         assert_that!(
-            &env.borrow().result[0..],
+            &env.borrow().result[..],
             contains(expected_result).exactly()
         );
     }
