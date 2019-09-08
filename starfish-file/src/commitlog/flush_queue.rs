@@ -52,7 +52,7 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
         self.map.is_empty()
     }
 
-    pub async fn run_with_ordered_post_op<F, P>(self, t: T, action: F, post: P)
+    pub async fn run_with_ordered_post_op<F, P>(&self, t: T, action: F, post: P)
     where
         F: Future<Output = ()> + 'static,
         P: Future<Output = ()> + 'static,
@@ -213,7 +213,8 @@ mod tests {
 
         let mut ops = vec![];
         for i in &expected_result {
-            sleep(Duration::from_nanos(100)).await;
+            // Tests overlaping borrows
+            sleep(Duration::from_nanos(1)).await;
             let (f, handle) = run_single_op(*i, queue.clone(), env.clone()).remote_handle();
             spawn(f);
             ops.push(handle);
@@ -225,19 +226,12 @@ mod tests {
             vec
         }
 
-        // Let's sleep for a bit
-
         for i in shuffled(&expected_result) {
             let sender = {
                 let p = &mut env.borrow_mut().promises[i];
                 mem::replace(&mut p.sender, None).unwrap()
             };
             sender.send(()).unwrap();
-        }
-
-        // Wait for all to finish
-        for op in ops {
-            op.await
         }
 
         queue.wait_for_all().await;
