@@ -14,6 +14,7 @@ use slog::Logger;
 use std::boxed::Box;
 use std::mem::size_of;
 use std::pin::Pin;
+use byteorder::NetworkEndian;
 
 // The commit log entry overhead in bytes (int: length + int: head checksum + int: tail checksum)
 const ENTRY_OVERHEAD_SIZE: u64 = (3 * size_of::<u32>()) as u64;
@@ -21,6 +22,7 @@ static SEGMENT_OVERHEAD_SIZE: u64 = (2 * size_of::<u32>()) as u64;
 static DESCRIPTOR_HEADER_SIZE: u64 = (5 * size_of::<u32>()) as u64;
 static SEGMENT_MAGIC: u32 =
     (('S' as u32) << 24) | (('C' as u32) << 16) | (('L' as u32) << 8) | ('C' as u32);
+static ALIGNMENT: usize = 4096;
 
 // A single commit log file on disk.
 #[derive(Clone)]
@@ -42,6 +44,8 @@ struct Inner {
 
     buffer: BytesMut,
     pending_ops: FlushQueue<ReplayPosition>,
+
+    num_allocs: u64,
 }
 
 impl Segment {
@@ -68,6 +72,8 @@ impl Segment {
                 buffer: BytesMut::new(),
 
                 pending_ops: FlushQueue::new(),
+
+                num_allocs: 0,
             }),
         }
     }
@@ -81,8 +87,8 @@ impl Segment {
     }
 
     pub async fn allocate<W>(&self, size: u64, writer: &W) -> Result<()>
-    where
-        W: Fn(BytesMut),
+        where
+            W: Fn(BytesMut),
     {
         let total_size = size + ENTRY_OVERHEAD_SIZE as u64;
         self.inner.segment_manager.sanity_check_size(total_size)?;
@@ -95,7 +101,7 @@ impl Segment {
             // https://github.com/rust-lang/rust/issues/53690
             // https://github.com/rust-lang/rust/issues/62284
             // https://www.reddit.com/r/rust/comments/cbdxxm/why_are_recursive_async_fns_forbidden/
-            let recurse: Pin<Box<dyn std::future::Future<Output = _>>> =
+            let recurse: Pin<Box<dyn std::future::Future<Output=_>>> =
                 Box::pin(segment.allocate(size, writer));
             return recurse.await;
         } else if total_size as usize > self.inner.buffer.remaining_mut() {
@@ -130,38 +136,31 @@ impl Segment {
             };
         }
 
-        // auto size = clear_buffer_slack();
-        // auto buf = std::move(_buffer);
-        // auto off = _file_pos;
-        // auto top = off + size;
-        // auto num = _num_allocs;
+        self.clear_buffer_slack();
+        let size = self.inner.buffer.len() as u64;
+        let mut buf = self.inner.borrow_mut().buffer.take();
+        let off = self.inner.file_pos;
+        let top = off + size;
+        let num = self.inner.num_allocs;
 
-        // _file_pos = top;
-        // _buf_pos = 0;
-        // _num_allocs = 0;
+        self.inner.borrow_mut().file_pos = top;
+        self.inner.borrow_mut().num_allocs = 0;
 
-        // auto me = shared_from_this();
-        // assert(me.use_count() > 1);
+        let header_size = 0;
+        unsafe { buf.set_len(0); }
 
-        // auto * p = buf.get_write();
-        // assert(std::count(p, p + 2 * sizeof(uint32_t), 0) == 2 * sizeof(uint32_t));
-
-        // data_output out(p, p + buf.size());
-
-        // auto header_size = 0;
-
-        // if (off == 0) {
-        //     // first block. write file header.
-        //     out.write(segment_magic);
-        //     out.write(_desc.ver);
-        //     out.write(_desc.id);
-        //     crc32_nbo crc;
-        //     crc.process(_desc.ver);
-        //     crc.process<int32_t>(_desc.id & 0xffffffff);
-        //     crc.process<int32_t>(_desc.id >> 32);
-        //     out.write(crc.checksum());
-        //     header_size = descriptor_header_size;
-        // }
+        if off == 0 {
+            // first block. write file header.
+            buf.put_u32_be(SEGMENT_MAGIC);
+            buf.put_u32_be(self.inner.descriptor.version().into());
+            buf.put_u64_be(self.inner.descriptor.segment_id());
+            //     crc32_nbo crc;
+            //     crc.process(_desc.ver);
+            //     crc.process<int32_t>(_desc.id & 0xffffffff);
+            //     crc.process<int32_t>(_desc.id >> 32);
+            //     out.write(crc.checksum());
+            //     header_size = descriptor_header_size;
+        }
 
         // // write chunk header
         // crc32_nbo crc;
@@ -267,27 +266,74 @@ impl Segment {
         unimplemented!();
     }
 
-    fn clear_buffer_slack(&self) -> usize {
-        // auto size = align_up(_buf_pos, alignment);
-        // std::fill(_buffer.get_write() + _buf_pos, _buffer.get_write() + size,
-        //         0);
-        // _segment_manager->totals.bytes_slack += (size - _buf_pos);
-        // _segment_manager->account_memory_usage(size - _buf_pos);
-        // return size;
-        unimplemented!()
+    fn clear_buffer_slack(&self) {
+        let slack = clear_buffer_slack(&mut self.inner.borrow_mut().buffer);
+        self.inner.segment_manager.record_slack(slack);
     }
 
     fn position(&self) -> Position {
         self.inner.file_pos + self.inner.buffer.len() as u64
     }
 
-    // size_t size_on_disk() const {
-    //     return _file_pos;
-    // }
+    fn size_on_disk(&self) -> u64 {
+        self.inner.file_pos
+    }
+}
+
+fn align_up(buf: &[u8], align: usize) -> usize {
+    (buf.len() + align - 1) & !(align - 1)
+}
+
+fn clear_buffer_slack(buf: &mut BytesMut) -> usize {
+    let new_size = align_up(&buf, ALIGNMENT);
+    let slack_size = new_size - buf.len();
+    // TODO(jkozlowski): Get rid of this sloppy allocation.
+    let slack = vec![0 as u8; slack_size];
+    buf.extend_from_slice(&slack[..]);
+    slack_size
 }
 
 impl Drop for Inner {
     fn drop(&mut self) {
         // TODO(jakubk): Make sure stuff gets closed and deleted
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hamcrest2::assert_that;
+    use hamcrest2::prelude::*;
+
+    #[test]
+    fn test_align_up() {
+        assert_that!(align_up(&vec![0;0][0..], ALIGNMENT), is(eq(0)));
+        for i in 1..ALIGNMENT {
+            assert_that!(align_up(&vec![0;i][0..], ALIGNMENT), is(eq(ALIGNMENT)));
+        }
+    }
+
+    #[test]
+    fn test_clear_buffer_slack() {
+        assert_buffer_slack(0, 0);
+        for i in 1..ALIGNMENT {
+            assert_buffer_slack(i, ALIGNMENT);
+        }
+    }
+
+    fn assert_buffer_slack(before_len: usize, after_len: usize) {
+        let mut bytes = buf(before_len);
+        clear_buffer_slack(&mut bytes);
+        assert_that!(bytes.len(), is(eq(after_len)));
+    }
+
+    fn buf(len: usize) -> BytesMut {
+        let mut bytes = BytesMut::new();
+        bytes.reserve(len);
+        for i in 0..len {
+            bytes.put_u8(1);
+        }
+        assert_that!(bytes.len(), is(eq(len)));
+        bytes
     }
 }

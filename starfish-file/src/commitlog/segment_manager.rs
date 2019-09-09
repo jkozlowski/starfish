@@ -21,12 +21,14 @@ use tokio_sync::Lock;
 
 struct Stats {
     segments_created: u64,
+    bytes_slack: u64
 }
 
 impl Default for Stats {
     fn default() -> Self {
         Stats {
             segments_created: 0,
+            bytes_slack: 0
         }
     }
 }
@@ -136,6 +138,15 @@ impl SegmentManager {
             return Err(Error::MutationTooLarge { size, max_size });
         }
         Ok(())
+    }
+
+    pub fn record_slack(&self, slack: usize) {
+        self.inner.borrow_mut().stats.bytes_slack += slack as u64;
+        self.account_memory_usage(slack);
+    }
+
+    pub fn account_memory_usage(&self, size: usize) {
+        // request_controller.consume(size);
     }
 
     async fn allocate_segment(&self) -> Result<Segment> {

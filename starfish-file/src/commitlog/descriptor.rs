@@ -17,6 +17,14 @@ pub enum Version {
     V1,
 }
 
+impl Into<u32> for Version {
+    fn into(self) -> u32 {
+        match self {
+            Version::V1 => 1
+        }
+    }
+}
+
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -86,6 +94,14 @@ impl Descriptor {
 
     pub fn filename(&self) -> &str {
         &self.filename
+    }
+
+    pub fn version(&self) -> Version {
+        Version::V1
+    }
+
+    pub fn segment_id(&self) -> SegmentId {
+        self.segment_id
     }
 
     pub async fn list_descriptors<P>(
