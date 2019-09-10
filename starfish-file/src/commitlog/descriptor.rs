@@ -1,17 +1,20 @@
-use crate::commitlog::SegmentId;
-use crate::fs::FileSystem;
-use futures::TryStreamExt;
-use lazy_static::lazy_static;
-use regex::Regex;
-use simple_error::bail;
-use simple_error::require_with;
-use simple_error::try_with;
-use slog;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt;
 use std::path::Path;
 use std::str::FromStr;
+
+use futures::TryStreamExt;
+use regex::Regex;
+use simple_error::bail;
+use simple_error::require_with;
+use simple_error::try_with;
+use slog;
+
+use lazy_static::lazy_static;
+
+use crate::commitlog::SegmentId;
+use crate::fs::FileSystem;
 
 pub enum Version {
     V1,
@@ -108,8 +111,8 @@ impl Descriptor {
         fs: &mut FileSystem,
         path: P,
     ) -> Result<Vec<Descriptor>, Box<dyn Error>>
-    where
-        P: AsRef<Path> + Clone + Send + 'static,
+        where
+            P: AsRef<Path> + Clone + Send + 'static,
     {
         let mut files = fs.read_dir(path.clone()).await?;
 
@@ -128,16 +131,18 @@ impl Descriptor {
 
 #[cfg(test)]
 mod test {
+    use std::fs::File;
 
-    use super::*;
-    use crate::fs::FileSystem;
     use futures::channel::oneshot;
     use hamcrest2::assert_that;
     use hamcrest2::contains;
     use hamcrest2::prelude::*;
-    use std::fs::File;
     use tempdir::TempDir;
     use tokio::runtime::Builder;
+
+    use crate::fs::FileSystem;
+
+    use super::*;
 
     #[test]
     fn test_list_descriptors() -> Result<(), String> {

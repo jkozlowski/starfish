@@ -1,20 +1,23 @@
-use crate::commitlog::flush_queue::FlushQueue;
-use crate::commitlog::segment_manager::SegmentManager;
-use crate::commitlog::Descriptor;
-use crate::commitlog::Position;
-use crate::commitlog::ReplayPosition;
-use crate::commitlog::Result;
-use crate::fs::File;
-use crate::shared::Shared;
-use crate::spawn;
-use bytes::BufMut;
-use bytes::BytesMut;
-use slog::Logger;
-
 use std::boxed::Box;
 use std::mem::size_of;
 use std::pin::Pin;
+
 use byteorder::NetworkEndian;
+use bytes::BufMut;
+use bytes::BytesMut;
+use slog::Logger;
+use crc::crc32;
+use crc::Hasher32;
+
+use crate::commitlog::Descriptor;
+use crate::commitlog::flush_queue::FlushQueue;
+use crate::commitlog::Position;
+use crate::commitlog::ReplayPosition;
+use crate::commitlog::Result;
+use crate::commitlog::segment_manager::SegmentManager;
+use crate::fs::File;
+use crate::shared::Shared;
+use crate::spawn;
 
 // The commit log entry overhead in bytes (int: length + int: head checksum + int: tail checksum)
 const ENTRY_OVERHEAD_SIZE: u64 = (3 * size_of::<u32>()) as u64;
@@ -146,30 +149,23 @@ impl Segment {
         self.inner.borrow_mut().file_pos = top;
         self.inner.borrow_mut().num_allocs = 0;
 
-        let header_size = 0;
+        let mut header_size = 0;
         unsafe { buf.set_len(0); }
 
         if off == 0 {
             // first block. write file header.
-            buf.put_u32_be(SEGMENT_MAGIC);
-            buf.put_u32_be(self.inner.descriptor.version().into());
-            buf.put_u64_be(self.inner.descriptor.segment_id());
-            //     crc32_nbo crc;
-            //     crc.process(_desc.ver);
-            //     crc.process<int32_t>(_desc.id & 0xffffffff);
-            //     crc.process<int32_t>(_desc.id >> 32);
-            //     out.write(crc.checksum());
-            //     header_size = descriptor_header_size;
+            write_file_header(&mut buf, &self.inner.descriptor);
+            header_size = DESCRIPTOR_HEADER_SIZE;
         }
 
-        // // write chunk header
-        // crc32_nbo crc;
-        // crc.process<int32_t>(_desc.id & 0xffffffff);
-        // crc.process<int32_t>(_desc.id >> 32);
-        // crc.process(uint32_t(off + header_size));
-
-        // out.write(uint32_t(_file_pos));
-        // out.write(crc.checksum());
+        // write chunk header
+        write_chunk_header(
+            &mut buf,
+            &self.inner.descriptor,
+            // TODO(jkozlowski) The casts are a bit meh
+            (off + header_size) as u32,
+            top as u32
+        );
 
         // forget_schema_versions();
 
@@ -293,6 +289,50 @@ fn clear_buffer_slack(buf: &mut BytesMut) -> usize {
     slack_size
 }
 
+fn write_file_header(buf: &mut BytesMut, descriptor: &Descriptor) {
+    let version: u32 = descriptor.version().into();
+    let segment_id: u64 = descriptor.segment_id().into();
+
+    buf.put_u32_be(SEGMENT_MAGIC);
+    buf.put_u32_be(version);
+    buf.put_u64_be(segment_id);
+
+    let mut crc = crc();
+
+    crc.write(&version.to_be_bytes());
+
+    //     crc.process<int32_t>(_desc.id & 0xffffffff);
+    //     crc.process<int32_t>(_desc.id >> 32);
+    crc.write(&segment_id.to_be_bytes());
+
+    buf.put_u32_be(crc.sum32());
+}
+
+fn write_chunk_header(
+    buf: &mut BytesMut,
+    descriptor: &Descriptor,
+    data_offset: u32,
+    end_of_chunk_offset: u32) {
+    let segment_id: u64 = descriptor.segment_id().into();
+
+    let mut crc = crc();
+    // crc.process<int32_t>(_desc.id & 0xffffffff);
+    // crc.process<int32_t>(_desc.id >> 32);
+    crc.write(&segment_id.to_be_bytes());
+
+    // crc.process(uint32_t(off + header_size));
+    crc.write(&data_offset.to_be_bytes());
+
+    // out.write(uint32_t(_file_pos));
+    buf.put_u32_be(end_of_chunk_offset);
+
+    buf.put_u32_be(crc.sum32());
+}
+
+fn crc() -> crc32::Digest {
+    crc32::Digest::new(crc32::IEEE)
+}
+
 impl Drop for Inner {
     fn drop(&mut self) {
         // TODO(jakubk): Make sure stuff gets closed and deleted
@@ -301,9 +341,10 @@ impl Drop for Inner {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use hamcrest2::assert_that;
     use hamcrest2::prelude::*;
+
+    use super::*;
 
     #[test]
     fn test_align_up() {

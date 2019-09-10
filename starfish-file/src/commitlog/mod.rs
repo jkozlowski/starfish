@@ -1,13 +1,14 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 
+pub use descriptor::Descriptor;
+
 pub mod commitlog;
 pub mod flush_queue;
 pub mod segment;
 pub mod segment_manager;
 
 mod descriptor;
-pub use descriptor::Descriptor;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -15,9 +16,9 @@ pub enum Error {
     Closed,
 
     #[error(
-        display = "Mutation of {:?} bytes is too large for the maxiumum size of {:?}",
-        size,
-        max_size
+    display = "Mutation of {:?} bytes is too large for the maxiumum size of {:?}",
+    size,
+    max_size
     )]
     MutationTooLarge { size: u64, max_size: u64 },
 
@@ -55,15 +56,20 @@ pub struct Config {
     commitlog_sync_period_in_ms: u64,
 
     max_reserve_segments: usize,
-    // // Max active writes/flushes. Default value
-    // // zero means try to figure it out ourselves
+
+    // Max active writes/flushes. Default value
+    // zero means try to figure it out ourselves
     // uint64_t max_active_writes = 0;
-    // uint64_t max_active_flushes = 0;
+    max_active_flushes: usize,
 }
 
 impl ConfigBuilder {
     fn default_max_reserve_segments() -> usize {
         12
+    }
+    fn default_max_active_flushes() -> usize {
+        // 5 * smp::count
+        0
     }
 }
 

@@ -1,34 +1,34 @@
-use crate::commitlog::segment::Segment;
+use std::cmp;
+use std::fs::OpenOptions;
+
+use futures::future::poll_fn;
+use futures::TryStreamExt;
+use futures_intrusive::sync::Semaphore;
+use slog::Logger;
+use tokio_sync::Lock;
+use tokio_sync::mpsc;
+
 use crate::commitlog::Config;
 use crate::commitlog::Descriptor;
 use crate::commitlog::Error;
 use crate::commitlog::Position;
 use crate::commitlog::Result;
+use crate::commitlog::segment::Segment;
 use crate::commitlog::SegmentId;
 use crate::fs::FileSystem;
-use crate::spawn;
 use crate::Shared;
-use futures::future::poll_fn;
-use futures::TryStreamExt;
-
-use slog::Logger;
-use std::cmp;
-
-use std::fs::OpenOptions;
-
-use tokio_sync::mpsc;
-use tokio_sync::Lock;
+use crate::spawn;
 
 struct Stats {
     segments_created: u64,
-    bytes_slack: u64
+    bytes_slack: u64,
 }
 
 impl Default for Stats {
     fn default() -> Self {
         Stats {
             segments_created: 0,
-            bytes_slack: 0
+            bytes_slack: 0,
         }
     }
 }
@@ -53,6 +53,8 @@ struct Inner {
     fs: FileSystem,
     log: Logger,
 
+    flush_semaphore: Semaphore,
+
     segments: Vec<Segment>,
 
     new_segments: Lock<mpsc::Receiver<Segment>>,
@@ -76,6 +78,7 @@ impl SegmentManager {
         );
 
         let (tx, rx) = mpsc::channel(cfg.max_reserve_segments);
+        let max_active_flushes = cfg.max_active_flushes;
 
         let segment_manager = SegmentManager {
             inner: Shared::new(Inner {
@@ -84,6 +87,8 @@ impl SegmentManager {
                 fs,
 
                 log,
+
+                flush_semaphore: Semaphore::new(false, max_active_flushes),
 
                 segments: vec![],
                 new_segments: Lock::new(rx),
