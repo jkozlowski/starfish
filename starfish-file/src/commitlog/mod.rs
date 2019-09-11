@@ -83,7 +83,7 @@ pub struct ReplayPosition {
 }
 
 impl ReplayPosition {
-    pub fn create(id: SegmentId, position: Position) -> Self {
+    pub fn new(id: SegmentId, position: Position) -> Self {
         ReplayPosition { id, position }
     }
 }

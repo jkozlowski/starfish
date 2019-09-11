@@ -59,10 +59,10 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
         self.map.is_empty()
     }
 
-    pub async fn run_with_ordered_post_op<F, P>(&self, t: T, action: F, post: P)
+    pub async fn run_with_ordered_post_op<R, F, P>(&self, t: T, action: F, post: P) -> R
     where
         F: Future<Output = ()> + 'static,
-        P: Future<Output = ()> + 'static,
+        P: Future<Output = R> + 'static,
     {
         // Check that all elements are lower than what we're inserting or it contains the key already
         if self
@@ -100,7 +100,7 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
         }
 
         // Now is the right time to run post
-        post.await;
+        let ret = post.await;
 
         let mut map = self.map.borrow_mut();
         let mut iter = map.range_mut(t..);
@@ -111,6 +111,8 @@ impl<T: Ord + Copy + Debug> FlushQueue<T> {
             let notifier_again = map.remove(&t).unwrap();
             notifier_again.sender.send(()).unwrap()
         }
+
+        return ret;
     }
 
     // Waits for all operations currently active to finish
@@ -188,7 +190,7 @@ mod tests {
         async fn run_single_op(i: usize, queue: FlushQueue<usize>, env: Shared<Env>) {
             let env_cpy = env.clone();
             let env_cpy1 = env.clone();
-            queue
+            let ret = queue
                 .run_with_ordered_post_op(
                     i,
                     async move {
@@ -203,9 +205,11 @@ mod tests {
                         let env = env_cpy1;
                         let result = &mut env.borrow_mut().result;
                         result.push(i);
+                        i
                     },
                 )
-                .await
+                .await;
+            assert_that!(ret, is(eq(i)));
         }
 
         let queue: FlushQueue<usize> = FlushQueue::new();

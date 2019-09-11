@@ -126,6 +126,10 @@ impl Segment {
         Ok(())
     }
 
+    async fn do_flush(&self, pos: u64) -> Result<Segment> {
+        unimplemented!();
+    }
+
     /**
      * Send any buffer contents to disk and get a new tmp buffer
      */
@@ -164,53 +168,45 @@ impl Segment {
             &self.inner.descriptor,
             // TODO(jkozlowski) The casts are a bit meh
             (off + header_size) as u32,
-            top as u32
+            top as u32,
         );
 
         // forget_schema_versions();
 
-        // replay_position rp(_desc.id, position_type(off));
+        let rp = ReplayPosition::new(self.inner.descriptor.segment_id(), off);
 
-        // clogger.trace("Writing {} entries, {} k in {} -> {}", num, size, off, off + size);
+        trace!(self.inner.log, "Writing {} entries, {} k in {} -> {}", num, size, off, off + size);
 
-        // // The write will be allowed to start now, but flush (below) must wait for not only this,
-        // // but all previous write/flush pairs.
-        // return _pending_ops.run_with_ordered_post_op(rp, [this, size, off, buf = std::move(buf)]() mutable {
-        //         auto written = make_lw_shared<size_t>(0);
-        //         auto p = buf.get();
-        //         return repeat([this, size, off, written, p]() mutable {
-        //             auto&& priority_class = service::get_local_commitlog_priority();
-        //             return _file.dma_write(off + *written, p + *written, size - *written, priority_class).then_wrapped([this, size, written](future<size_t>&& f) {
-        //                 try {
-        //                     auto bytes = std::get<0>(f.get());
-        //                     *written += bytes;
-        //                     _segment_manager->totals.bytes_written += bytes;
-        //                     _segment_manager->totals.total_size_on_disk += bytes;
-        //                     ++_segment_manager->totals.cycle_count;
-        //                     if (*written == size) {
-        //                         return make_ready_future<stop_iteration>(stop_iteration::yes);
-        //                     }
-        //                     // gah, partial write. should always get here with dma chunk sized
-        //                     // "bytes", but lets make sure...
-        //                     clogger.debug("Partial write {}: {}/{} bytes", *this, *written, size);
-        //                     *written = align_down(*written, alignment);
-        //                     return make_ready_future<stop_iteration>(stop_iteration::no);
-        //                     // TODO: retry/ignore/fail/stop - optional behaviour in origin.
-        //                     // we fast-fail the whole commit.
-        //                 } catch (...) {
-        //                     clogger.error("Failed to persist commits to disk for {}: {}", *this, std::current_exception());
-        //                     throw;
-        //                 }
-        //             });
-        //         }).finally([this, buf = std::move(buf), size]() mutable {
-        //             _segment_manager->release_buffer(std::move(buf));
-        //             _segment_manager->notify_memory_written(size);
-        //         });
-        // }, [me, flush_after, top, rp] { // lambda instead of bind, so we keep "me" alive.
-        //     assert(me->_pending_ops.has_operation(rp));
-        //     return flush_after ? me->do_flush(top) : make_ready_future<sseg_ptr>(me);
-        // });
-        unimplemented!()
+        // The write will be allowed to start now, but flush (below) must wait for not only this,
+        // but all previous write/flush pairs.
+        let self_clone = self.clone();
+        let self_clone1= self.clone();
+        let ret: Result<Segment> = self.inner.pending_ops.run_with_ordered_post_op(
+            rp,
+            async {
+                // Write buffer at "off" to segment file
+
+                // Update metrics
+//                _segment_manager->totals.bytes_written += bytes;
+                //                     _segment_manager->totals.total_size_on_disk += bytes;
+                //                     ++_segment_manager->totals.cycle_count;
+
+                // If failed do some nice logging
+                // error!(self_clone.inner.log, "Failed to persist commits to disk {}");
+
+                // Finally, always return the buffer to the pool.
+//                _segment_manager->release_buffer(std::move(buf));
+                //             _segment_manager->notify_memory_written(size);
+
+            },
+            async move {
+                if flush_after {
+                    self_clone1.flush(top).await
+                } else {
+                    Ok(self_clone1)
+                }
+            }).await;
+        ret
     }
 
     async fn finish_and_get_new(&self) -> Result<Segment> {
