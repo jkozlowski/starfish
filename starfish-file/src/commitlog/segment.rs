@@ -18,6 +18,7 @@ use crate::commitlog::segment_manager::SegmentManager;
 use crate::fs::File;
 use crate::shared::Shared;
 use crate::spawn;
+use std::io::SeekFrom;
 
 // The commit log entry overhead in bytes (int: length + int: head checksum + int: tail checksum)
 const ENTRY_OVERHEAD_SIZE: u64 = (3 * size_of::<u32>()) as u64;
@@ -171,8 +172,8 @@ impl Segment {
             top as u32,
         );
 
-        // forget_schema_versions();
-
+        // Reset len back to what it's supposed to be
+        unsafe { buf.set_len(size as usize); }
         let rp = ReplayPosition::new(self.inner.descriptor.segment_id(), off);
 
         trace!(self.inner.log, "Writing {} entries, {} k in {} -> {}", num, size, off, off + size);
@@ -180,25 +181,33 @@ impl Segment {
         // The write will be allowed to start now, but flush (below) must wait for not only this,
         // but all previous write/flush pairs.
         let self_clone = self.clone();
-        let self_clone1= self.clone();
+        let self_clone1 = self.clone();
         let pending_ops_clone = self.inner.pending_ops.clone();
         let ret: Result<Segment> = pending_ops_clone.run_with_ordered_post_op(
             rp,
-            async {
+            async move {
                 // Write buffer at "off" to segment file
+                // TODO(jakubk): Fix that borrow_mut; Also probably need to make File
+                // Have it's own lifetime and be reference counted
+                let mut inner = self_clone.inner.borrow_mut();
+                let res = inner.file.write(
+                    SeekFrom::Start(off),
+                    buf.freeze(),
+                    |buff| {
+                        // Finally, always return the buffer to the pool.
+//                _segment_manager->release_buffer(std::move(buf));
+                        //             _segment_manager->notify_memory_written(size);
+                    }).await;
 
                 // Update metrics
 //                _segment_manager->totals.bytes_written += bytes;
                 //                     _segment_manager->totals.total_size_on_disk += bytes;
                 //                     ++_segment_manager->totals.cycle_count;
 
-                // If failed do some nice logging
-                // error!(self_clone.inner.log, "Failed to persist commits to disk {}");
-
-                // Finally, always return the buffer to the pool.
-//                _segment_manager->release_buffer(std::move(buf));
-                //             _segment_manager->notify_memory_written(size);
-
+                res.map_err(|err| {
+                    error!(self_clone.inner.log, "Failed to persist commits to disk {}", err);
+                    err
+                });
             },
             async move {
                 if flush_after {
