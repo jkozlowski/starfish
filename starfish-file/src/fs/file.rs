@@ -10,8 +10,13 @@ use tokio::fs::OpenOptions;
 use std::io::SeekFrom;
 use bytes::Bytes;
 use tokio::io::AsyncWriteExt;
+use crate::Shared;
 
 pub struct File {
+    inner: Shared<Inner>
+}
+
+struct Inner {
     file: fs::File,
     path: PathBuf,
     open_options: OpenOptions,
@@ -19,18 +24,27 @@ pub struct File {
 
 impl File {
     pub fn create(file: fs::File, path: PathBuf, open_options: OpenOptions) -> File {
-        File { file, path, open_options }
+        File {
+            inner:
+            Shared::new(
+                Inner {
+                    file,
+                    path,
+                    open_options,
+                }),
+        }
     }
 
     pub async fn truncate(&mut self, len: u64) -> io::Result<()> {
-        self.file.set_len(len).await
+        let mut inner = self.inner.borrow_mut();
+        inner.file.set_len(len).await
     }
 
     pub async fn write<F>(&mut self, pos: SeekFrom, buf: Bytes, finalizer: F) -> io::Result<()>
         where F: Fn(Bytes) -> () {
         let res = File::open_seek_write(
-            self.open_options.clone(),
-            self.path.clone(),
+            self.inner.open_options.clone(),
+            self.inner.path.clone(),
             pos,
             &buf).await;
         finalizer(buf);
