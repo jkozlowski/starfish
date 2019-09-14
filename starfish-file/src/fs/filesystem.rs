@@ -20,8 +20,9 @@ impl FileSystem {
         P: AsRef<Path> + Send + Unpin + 'static,
     {
         let tokio_options = TokioOpenOptions::from(options);
+        let path_copy = path.as_ref().to_path_buf();
         let file = tokio_options.open(path).await?;
-        Ok(File::create(file))
+        Ok(File::create(file, path_copy, tokio_options))
     }
 
     pub async fn read_dir<P>(&self, path: P) -> io::Result<ReadDir>

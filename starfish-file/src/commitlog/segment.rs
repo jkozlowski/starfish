@@ -181,7 +181,8 @@ impl Segment {
         // but all previous write/flush pairs.
         let self_clone = self.clone();
         let self_clone1= self.clone();
-        let ret: Result<Segment> = self.inner.pending_ops.run_with_ordered_post_op(
+        let pending_ops_clone = self.inner.pending_ops.clone();
+        let ret: Result<Segment> = pending_ops_clone.run_with_ordered_post_op(
             rp,
             async {
                 // Write buffer at "off" to segment file
