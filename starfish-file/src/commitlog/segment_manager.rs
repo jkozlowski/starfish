@@ -22,6 +22,9 @@ use crate::spawn;
 struct Stats {
     segments_created: u64,
     bytes_slack: u64,
+
+    pending_flushes: u64,
+    flush_limit_exceeded: u64,
 }
 
 impl Default for Stats {
@@ -29,6 +32,8 @@ impl Default for Stats {
         Stats {
             segments_created: 0,
             bytes_slack: 0,
+            pending_flushes: 0,
+            flush_limit_exceeded: 0,
         }
     }
 }
@@ -154,6 +159,22 @@ impl SegmentManager {
         // request_controller.consume(size);
     }
 
+    // TODO(jkozlowski): This should be some sort of lock-like API
+    pub async fn begin_flush(&self) {
+        self.inner.borrow_mut().stats.pending_flushes += 1;
+        if self.inner.stats.pending_flushes >= self.inner.cfg.max_active_flushes as u64 {
+            self.inner.borrow_mut().stats.flush_limit_exceeded += 1;
+            trace!(self.inner.log,
+                   "Flush ops overflow. Will block.";
+                   "pending_flushes" => self.inner.stats.pending_flushes);
+        }
+//        if (totals.pending_flushes >= cfg.max_active_flushes) {
+//            + + totals.flush_limit_exceeded;
+//            clogger.trace("Flush ops overflow: {}. Will block.", totals.pending_flushes);
+//        }
+//        return _flush_semaphore.wait();
+    }
+
     async fn allocate_segment(&self) -> Result<Segment> {
         let new_segment_id = self.next_segment_id();
 
@@ -197,7 +218,9 @@ impl SegmentManager {
         ) -> std::result::Result<(), ()> {
             poll_fn(|cx| tx.poll_ready(cx)).await.map_err(|_| ())?;
             let segment = manager.allocate_segment().await.map_err(|_| ())?;
-            info!(manager.inner.borrow().log, "Created segment");
+            info!(manager.inner.borrow().log,
+                  "Created segment";
+                  &segment);
             tx.try_send(segment).map_err(|_| ())
         }
 

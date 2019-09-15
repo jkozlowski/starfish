@@ -10,6 +10,8 @@ use simple_error::bail;
 use simple_error::require_with;
 use simple_error::try_with;
 use slog;
+use serde::Serialize;
+use slog::Key;
 
 use lazy_static::lazy_static;
 
@@ -50,20 +52,40 @@ impl TryFrom<&str> for Version {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub struct Descriptor {
     segment_id: SegmentId,
     filename: String,
 }
 
+impl slog::SerdeValue for Descriptor {
+    fn as_serde(&self) -> &dyn erased_serde::Serialize {
+        self
+    }
+
+    fn to_sendable(&self) -> Box<slog::SerdeValue + Send + 'static> {
+        Box::new(self.clone())
+    }
+}
+
 impl slog::KV for Descriptor {
-    fn serialize(
-        &self,
-        _rec: &slog::Record<'_>,
-        serializer: &mut dyn slog::Serializer,
-    ) -> slog::Result {
-        serializer.emit_u64("segment_it", self.segment_id)?;
-        serializer.emit_str("filename", &self.filename)
+    fn serialize(&self,
+                 _record: &slog::Record,
+                 serializer: &mut dyn slog::Serializer)
+                 -> slog::Result
+    {
+        serializer.emit_serde(Key::from("descriptor"), self)
+    }
+}
+
+impl slog::Value for Descriptor {
+    fn serialize(&self,
+                 _record: &slog::Record,
+                 key: slog::Key,
+                 serializer: &mut slog::Serializer)
+                 -> slog::Result
+    {
+        serializer.emit_serde(key, self)
     }
 }
 

@@ -8,6 +8,9 @@ use bytes::BytesMut;
 use slog::Logger;
 use crc::crc32;
 use crc::Hasher32;
+use serde::Serialize;
+use slog;
+use slog::Key;
 
 use crate::commitlog::Descriptor;
 use crate::commitlog::flush_queue::FlushQueue;
@@ -342,6 +345,27 @@ fn crc() -> crc32::Digest {
 impl Drop for Inner {
     fn drop(&mut self) {
         // TODO(jakubk): Make sure stuff gets closed and deleted
+    }
+}
+
+impl slog::KV for Segment {
+    fn serialize(&self,
+                 _record: &slog::Record,
+                 serializer: &mut dyn slog::Serializer)
+                 -> slog::Result
+    {
+        serializer.emit_serde(Key::from("segment"), &self.inner.descriptor)
+    }
+}
+
+impl slog::Value for Segment {
+    fn serialize(&self,
+                 _record: &slog::Record,
+                 key: slog::Key,
+                 serializer: &mut slog::Serializer)
+                 -> slog::Result
+    {
+        serializer.emit_serde(key, &self.inner.descriptor)
     }
 }
 

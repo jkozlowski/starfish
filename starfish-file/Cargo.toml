@@ -14,10 +14,11 @@ liburing-sys = ""
 
 simple-error = ""
 snafu = ""
-slog = "2.5.2"
+
 regex = ""
 lazy_static = ""
 
+# 5f2f3f076d7c68c6cd31ff388ca14f3e7b463ab7
 tokio = { git = "https://github.com/tokio-rs/tokio.git", rev="654f9d7", features=["rt-full", "sync"] }
 tokio-executor = { git = "https://github.com/tokio-rs/tokio.git", rev="654f9d7", features=["current-thread"] }
 tokio-fs = { git = "https://github.com/tokio-rs/tokio.git", rev="654f9d7" }
@@ -26,13 +27,16 @@ tokio-timer = { git = "https://github.com/tokio-rs/tokio.git", rev="654f9d7" }
 futures-preview = "=0.3.0-alpha.18"
 futures-intrusive = ""
 
-intrusive-collections = ""
 bytes = ""
 byteorder = ""
-derive_builder = ""
-err-derive = ""
-enum_dispatch = ""
 crc = ""
+derive_builder = ""
+enum_dispatch = ""
+err-derive = ""
+intrusive-collections = ""
+slog = {version = "2.5.2", features = ["nested-values", "nothreads"] }
+erased-serde = ""
+serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
 hamcrest2 = "*"
