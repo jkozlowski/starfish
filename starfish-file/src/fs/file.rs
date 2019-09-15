@@ -56,9 +56,15 @@ impl File {
                                 pos: SeekFrom,
                                 buf: &[u8]) -> io::Result<()>
         where P: AsRef<Path> + Send + Unpin + 'static {
+        // TODO(jakubk): I think this could be optimised to keep the one File if the
+        // code is not submitting writes/reads fast enough.
+        // So could try to get mutable access and if that fails, clone.
         let mut tokio_file = open_options.open(path).await?;
         tokio_file.seek(pos).await?;
-        tokio_file.write_all(buf).await
+        tokio_file.write_all(buf).await?;
+        // Unfortunately this is necessary
+        tokio_file.flush().await?;
+        tokio_file.shutdown().await
     }
 }
 
