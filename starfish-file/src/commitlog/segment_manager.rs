@@ -2,7 +2,6 @@ use std::cmp;
 use std::fs::OpenOptions;
 
 use futures::future::poll_fn;
-use futures::TryStreamExt;
 use futures_intrusive::sync::Semaphore;
 use slog::Logger;
 use tokio_sync::Lock;
@@ -20,6 +19,8 @@ use crate::Shared;
 use crate::spawn;
 
 struct Stats {
+    flush_count: u64,
+
     segments_created: u64,
     bytes_slack: u64,
 
@@ -30,8 +31,11 @@ struct Stats {
 impl Default for Stats {
     fn default() -> Self {
         Stats {
+            flush_count: 0,
+
             segments_created: 0,
             bytes_slack: 0,
+
             pending_flushes: 0,
             flush_limit_exceeded: 0,
         }
@@ -50,6 +54,17 @@ pub trait EntryWriter: Sized {
 #[derive(Clone)]
 pub struct SegmentManager {
     inner: Shared<Inner>,
+}
+
+pub struct FlushGuard {
+    segment_manager: SegmentManager
+}
+
+impl Drop for FlushGuard {
+    fn drop(&mut self) {
+        //_flush_semaphore.signal();
+        //--totals.pending_flushes;
+    }
 }
 
 struct Inner {
@@ -155,12 +170,16 @@ impl SegmentManager {
         self.account_memory_usage(slack);
     }
 
+    pub fn record_flush_success(&self) {
+        self.inner.borrow_mut().stats.flush_count += 1;
+    }
+
     pub fn account_memory_usage(&self, size: usize) {
         // request_controller.consume(size);
     }
 
     // TODO(jkozlowski): This should be some sort of lock-like API
-    pub async fn begin_flush(&self) {
+    pub async fn begin_flush(&self) -> FlushGuard {
         self.inner.borrow_mut().stats.pending_flushes += 1;
         if self.inner.stats.pending_flushes >= self.inner.cfg.max_active_flushes as u64 {
             self.inner.borrow_mut().stats.flush_limit_exceeded += 1;
@@ -173,6 +192,7 @@ impl SegmentManager {
 //            clogger.trace("Flush ops overflow: {}. Will block.", totals.pending_flushes);
 //        }
 //        return _flush_semaphore.wait();
+        unimplemented!();
     }
 
     async fn allocate_segment(&self) -> Result<Segment> {

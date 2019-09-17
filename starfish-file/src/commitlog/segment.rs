@@ -1,27 +1,30 @@
 use std::boxed::Box;
+use std::cmp;
+use std::io::SeekFrom;
 use std::mem::size_of;
 use std::pin::Pin;
 
 use byteorder::NetworkEndian;
 use bytes::BufMut;
 use bytes::BytesMut;
-use slog::Logger;
 use crc::crc32;
 use crc::Hasher32;
 use serde::Serialize;
 use slog;
 use slog::Key;
+use slog::Logger;
 
 use crate::commitlog::Descriptor;
+use crate::commitlog::Error;
 use crate::commitlog::flush_queue::FlushQueue;
 use crate::commitlog::Position;
 use crate::commitlog::ReplayPosition;
 use crate::commitlog::Result;
+use crate::commitlog::segment_manager::FlushGuard;
 use crate::commitlog::segment_manager::SegmentManager;
 use crate::fs::File;
 use crate::shared::Shared;
 use crate::spawn;
-use std::io::SeekFrom;
 
 // The commit log entry overhead in bytes (int: length + int: head checksum + int: tail checksum)
 const ENTRY_OVERHEAD_SIZE: u64 = (3 * size_of::<u32>()) as u64;
@@ -93,6 +96,14 @@ impl Segment {
         !self.inner.closed && self.position() < self.inner.segment_manager.max_size()
     }
 
+    async fn begin_flush(&self) -> FlushGuard {
+        // This is maintaining the semantica of only using the write-lock
+        // as a gate for flushing, i.e. once we've begun a flush for position X
+        // we are ok with writes to positions > X
+        let segment_manager_clone = self.inner.segment_manager.clone();
+        segment_manager_clone.begin_flush().await
+    }
+
     pub async fn allocate<W>(&self, size: u64, writer: &W) -> Result<()>
         where
             W: Fn(BytesMut),
@@ -131,7 +142,31 @@ impl Segment {
     }
 
     async fn do_flush(&self, pos: u64) -> Result<Segment> {
-        unimplemented!();
+        let _ = self.begin_flush().await;
+
+        if pos <= self.inner.flush_pos {
+            trace!(self.inner.log,
+                "Already synced!";
+                "pos" => pos,
+                "flush_pos" => self.inner.flush_pos);
+            return Ok(self.clone());
+        }
+
+        // TODO(jkozlowski): Wait do I need to wait for this pos to actually finish writing?
+
+        let file_clone = self.inner.file.clone();
+        match file_clone.flush().await {
+            Ok(()) => {
+                self.inner.borrow_mut().flush_pos = cmp::max(pos, self.inner.flush_pos);
+                // TODO(jkozlowski): Make into a span
+                trace!(self.inner.log, "Finished sync"; "flush_pos" => self.inner.flush_pos);
+                return Ok(self.clone());
+            }
+            Err(err) => {
+                error!(self.inner.log, "Failed to flush commits to disk: {}", err);
+                return Err(Error::IO(err));
+            }
+        }
     }
 
     /**
@@ -240,27 +275,27 @@ impl Segment {
          * to complete as well. Then we close the ops
          * queue, just to be sure.
          */
-        // if (shutdown) {
-        //     auto me = shared_from_this();
-        //     return _gate.close().then([me] {
-        //         me->_closed = true;
-        //         return me->sync().finally([me] {
-        //             // When we get here, nothing should add ops,
-        //             // and we should have waited out all pending.
-        //             return me->_pending_ops.close().finally([me] {
-        //                 return me->_file.truncate(me->_flush_pos).then([me] {
-        //                     return me->_file.close();
-        //                 });
-        //             });
-        //         });
-        //     });
-        // }
+        if shutdown {
+            unimplemented!();
+            //     auto me = shared_from_this();
+            //     return _gate.close().then([me] {
+            //         me->_closed = true;
+            //         return me->sync().finally([me] {
+            //             // When we get here, nothing should add ops,
+            //             // and we should have waited out all pending.
+            //             return me->_pending_ops.close().finally([me] {
+            //                 return me->_file.truncate(me->_flush_pos).then([me] {
+            //                     return me->_file.close();
+            //                 });
+            //             });
+            //         });
+            //     });
+        }
 
-        // // Note: this is not a marker for when sync was finished.
-        // // It is when it was initiated
-        // reset_sync_time();
-        // return cycle(true);
-        unimplemented!()
+        // Note: this is not a marker for when sync was finished.
+        // It is when it was initiated
+        self.reset_sync_time();
+        self.cycle(true).await
     }
 
     async fn flush_from_start(&self) -> Result<Segment> {
@@ -350,7 +385,7 @@ impl Drop for Inner {
 
 impl slog::KV for Segment {
     fn serialize(&self,
-                 _record: &slog::Record,
+                 _record: &slog::Record<'_>,
                  serializer: &mut dyn slog::Serializer)
                  -> slog::Result
     {
@@ -360,9 +395,9 @@ impl slog::KV for Segment {
 
 impl slog::Value for Segment {
     fn serialize(&self,
-                 _record: &slog::Record,
+                 _record: &slog::Record<'_>,
                  key: slog::Key,
-                 serializer: &mut slog::Serializer)
+                 serializer: &mut dyn slog::Serializer)
                  -> slog::Result
     {
         serializer.emit_serde(key, &self.inner.descriptor)

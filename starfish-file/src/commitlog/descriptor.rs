@@ -63,14 +63,14 @@ impl slog::SerdeValue for Descriptor {
         self
     }
 
-    fn to_sendable(&self) -> Box<slog::SerdeValue + Send + 'static> {
+    fn to_sendable(&self) -> Box<dyn slog::SerdeValue + Send + 'static> {
         Box::new(self.clone())
     }
 }
 
 impl slog::KV for Descriptor {
     fn serialize(&self,
-                 _record: &slog::Record,
+                 _record: &slog::Record<'_>,
                  serializer: &mut dyn slog::Serializer)
                  -> slog::Result
     {
@@ -80,9 +80,9 @@ impl slog::KV for Descriptor {
 
 impl slog::Value for Descriptor {
     fn serialize(&self,
-                 _record: &slog::Record,
+                 _record: &slog::Record<'_>,
                  key: slog::Key,
-                 serializer: &mut slog::Serializer)
+                 serializer: &mut dyn slog::Serializer)
                  -> slog::Result
     {
         serializer.emit_serde(key, self)

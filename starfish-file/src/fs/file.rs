@@ -1,17 +1,20 @@
 use std::io;
-use tokio::fs;
-use std::task::Poll::Ready;
-use std::task::Poll::Pending;
-use std::task::Poll;
 use std::io::ErrorKind::Other;
-use std::path::PathBuf;
-use std::path::Path;
-use tokio::fs::OpenOptions;
 use std::io::SeekFrom;
+use std::path::Path;
+use std::path::PathBuf;
+use std::task::Poll;
+use std::task::Poll::Pending;
+use std::task::Poll::Ready;
+
 use bytes::Bytes;
+use tokio::fs;
+use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
+
 use crate::Shared;
 
+#[derive(Clone)]
 pub struct File {
     inner: Shared<Inner>
 }
@@ -40,7 +43,7 @@ impl File {
         inner.file.set_len(len).await
     }
 
-    pub async fn write<F>(&mut self, pos: SeekFrom, buf: Bytes, finalizer: F) -> io::Result<()>
+    pub async fn write<F>(&self, pos: SeekFrom, buf: Bytes, finalizer: F) -> io::Result<()>
         where F: Fn(Bytes) -> () {
         let res = File::open_seek_write(
             self.inner.open_options.clone(),
@@ -49,6 +52,16 @@ impl File {
             &buf).await;
         finalizer(buf);
         res
+    }
+
+    pub async fn flush(&self) -> io::Result<()> {
+        unimplemented!()
+    }
+
+    async fn reopen<P>(open_options: OpenOptions,
+                       path: P) -> io::Result<fs::File>
+        where P: AsRef<Path> + Send + Unpin + 'static {
+        open_options.open(path).await
     }
 
     async fn open_seek_write<P>(open_options: OpenOptions,
