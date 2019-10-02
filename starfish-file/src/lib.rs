@@ -17,6 +17,7 @@ pub type FileId = u64;
 
 pub mod commitlog;
 pub mod fs;
+mod future;
 
 mod shared;
 pub use shared::Shared;
