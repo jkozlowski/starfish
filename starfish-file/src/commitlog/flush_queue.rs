@@ -151,7 +151,7 @@ mod tests {
     use rand::thread_rng;
     use std::mem;
     use std::time::Duration;
-    use tokio_timer::sleep;
+    use tokio::timer::delay_for;
 
     #[tokio::test]
     pub async fn test_run_with_ordered_post_op() {
@@ -218,7 +218,7 @@ mod tests {
         let mut ops = vec![];
         for i in &expected_result {
             // Tests overlaping borrows
-            sleep(Duration::from_nanos(1)).await;
+            delay_for(Duration::from_nanos(1)).await;
             let (f, handle) = run_single_op(*i, queue.clone(), env.clone()).remote_handle();
             spawn(f);
             ops.push(handle);
@@ -235,7 +235,7 @@ mod tests {
                 let p = &mut env.borrow_mut().promises[i];
                 mem::replace(&mut p.sender, None).unwrap()
             };
-            sleep(Duration::from_nanos(1)).await;
+            delay_for(Duration::from_nanos(1)).await;
             sender.send(()).unwrap();
         }
 

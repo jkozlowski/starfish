@@ -192,7 +192,7 @@ mod test {
             })
                 .await;
 
-            sender.send(res.map_err(|_| "Oops".to_owned()));
+            sender.send(res.map_err(|_| "Oops".to_owned())).unwrap();
         });
 
         futures::executor::block_on(receiver).unwrap()

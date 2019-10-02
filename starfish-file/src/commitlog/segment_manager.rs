@@ -4,7 +4,7 @@ use std::fs::OpenOptions;
 use futures::future::poll_fn;
 use futures_intrusive::sync::Semaphore;
 use slog::Logger;
-use tokio_sync::Lock;
+use tokio_sync::Mutex;
 use tokio_sync::mpsc;
 
 use crate::commitlog::Config;
@@ -77,7 +77,7 @@ struct Inner {
 
     segments: Vec<Segment>,
 
-    new_segments: Lock<mpsc::Receiver<Segment>>,
+    new_segments: Shared<Mutex<mpsc::Receiver<Segment>>>,
 
     max_size: u64,
     max_mutation_size: u64,
@@ -111,7 +111,7 @@ impl SegmentManager {
                 flush_semaphore: Semaphore::new(false, max_active_flushes),
 
                 segments: vec![],
-                new_segments: Lock::new(rx),
+                new_segments: Shared::new(Mutex::new(rx)),
 
                 max_size,
                 max_mutation_size: max_size >> 1,

@@ -245,7 +245,7 @@ impl Segment {
                 res.map_err(|err| {
                     error!(self_clone.inner.log, "Failed to persist commits to disk {}", err);
                     err
-                });
+                }).unwrap();
             },
             async move {
                 if flush_after {
