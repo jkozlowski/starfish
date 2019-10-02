@@ -16,9 +16,9 @@ pub enum Error {
     Closed,
 
     #[error(
-    display = "Mutation of {:?} bytes is too large for the maxiumum size of {:?}",
-    size,
-    max_size
+        display = "Mutation of {:?} bytes is too large for the maxiumum size of {:?}",
+        size,
+        max_size
     )]
     MutationTooLarge { size: u64, max_size: u64 },
 

@@ -1,8 +1,8 @@
-use tokio::sync::watch;
 use crate::shared::Shared;
 use futures::channel::oneshot;
-use futures::future::Shared as SharedFut;
 use futures::channel::oneshot::channel;
+use futures::future::Shared as SharedFut;
+use tokio::sync::watch;
 
 /// Facility to stop new requests, and to tell when existing requests are done.
 ///
@@ -11,7 +11,7 @@ use futures::channel::oneshot::channel;
 /// requests have completed.  The \c gate class provides a solution.
 #[derive(Clone)]
 pub struct Gate {
-    inner: Shared<Inner>
+    inner: Shared<Inner>,
 }
 
 pub struct GateGuard {}
@@ -27,7 +27,7 @@ impl Gate {
             inner: Shared::new(Inner {
                 count: 0,
                 stopped: None,
-            })
+            }),
         }
     }
 

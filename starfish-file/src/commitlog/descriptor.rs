@@ -6,11 +6,11 @@ use std::str::FromStr;
 
 use futures::TryStreamExt;
 use regex::Regex;
+use serde::Serialize;
 use simple_error::bail;
 use simple_error::require_with;
 use simple_error::try_with;
 use slog;
-use serde::Serialize;
 use slog::Key;
 
 use lazy_static::lazy_static;
@@ -25,7 +25,7 @@ pub enum Version {
 impl Into<u32> for Version {
     fn into(self) -> u32 {
         match self {
-            Version::V1 => 1
+            Version::V1 => 1,
         }
     }
 }
@@ -69,22 +69,22 @@ impl slog::SerdeValue for Descriptor {
 }
 
 impl slog::KV for Descriptor {
-    fn serialize(&self,
-                 _record: &slog::Record<'_>,
-                 serializer: &mut dyn slog::Serializer)
-                 -> slog::Result
-    {
+    fn serialize(
+        &self,
+        _record: &slog::Record<'_>,
+        serializer: &mut dyn slog::Serializer,
+    ) -> slog::Result {
         serializer.emit_serde(Key::from("descriptor"), self)
     }
 }
 
 impl slog::Value for Descriptor {
-    fn serialize(&self,
-                 _record: &slog::Record<'_>,
-                 key: slog::Key,
-                 serializer: &mut dyn slog::Serializer)
-                 -> slog::Result
-    {
+    fn serialize(
+        &self,
+        _record: &slog::Record<'_>,
+        key: slog::Key,
+        serializer: &mut dyn slog::Serializer,
+    ) -> slog::Result {
         serializer.emit_serde(key, self)
     }
 }
@@ -133,8 +133,8 @@ impl Descriptor {
         fs: &mut FileSystem,
         path: P,
     ) -> Result<Vec<Descriptor>, Box<dyn Error>>
-        where
-            P: AsRef<Path> + Clone + Send + 'static,
+    where
+        P: AsRef<Path> + Clone + Send + 'static,
     {
         let mut files = fs.read_dir(path.clone()).await?;
 

@@ -14,14 +14,14 @@ use slog;
 use slog::Key;
 use slog::Logger;
 
+use crate::commitlog::flush_queue::FlushQueue;
+use crate::commitlog::segment_manager::FlushGuard;
+use crate::commitlog::segment_manager::SegmentManager;
 use crate::commitlog::Descriptor;
 use crate::commitlog::Error;
-use crate::commitlog::flush_queue::FlushQueue;
 use crate::commitlog::Position;
 use crate::commitlog::ReplayPosition;
 use crate::commitlog::Result;
-use crate::commitlog::segment_manager::FlushGuard;
-use crate::commitlog::segment_manager::SegmentManager;
 use crate::fs::File;
 use crate::shared::Shared;
 use crate::spawn;
@@ -105,8 +105,8 @@ impl Segment {
     }
 
     pub async fn allocate<W>(&self, size: u64, writer: &W) -> Result<()>
-        where
-            W: Fn(BytesMut),
+    where
+        W: Fn(BytesMut),
     {
         let total_size = size + ENTRY_OVERHEAD_SIZE as u64;
         self.inner.segment_manager.sanity_check_size(total_size)?;
@@ -119,7 +119,7 @@ impl Segment {
             // https://github.com/rust-lang/rust/issues/53690
             // https://github.com/rust-lang/rust/issues/62284
             // https://www.reddit.com/r/rust/comments/cbdxxm/why_are_recursive_async_fns_forbidden/
-            let recurse: Pin<Box<dyn std::future::Future<Output=_>>> =
+            let recurse: Pin<Box<dyn std::future::Future<Output = _>>> =
                 Box::pin(segment.allocate(size, writer));
             return recurse.await;
         } else if total_size as usize > self.inner.buffer.remaining_mut() {
@@ -193,7 +193,9 @@ impl Segment {
         self.inner.borrow_mut().num_allocs = 0;
 
         let mut header_size = 0;
-        unsafe { buf.set_len(0); }
+        unsafe {
+            buf.set_len(0);
+        }
 
         if off == 0 {
             // first block. write file header.
@@ -211,49 +213,65 @@ impl Segment {
         );
 
         // Reset len back to what it's supposed to be
-        unsafe { buf.set_len(size as usize); }
+        unsafe {
+            buf.set_len(size as usize);
+        }
         let rp = ReplayPosition::new(self.inner.descriptor.segment_id(), off);
 
-        trace!(self.inner.log, "Writing {} entries, {} k in {} -> {}", num, size, off, off + size);
+        trace!(
+            self.inner.log,
+            "Writing {} entries, {} k in {} -> {}",
+            num,
+            size,
+            off,
+            off + size
+        );
 
         // The write will be allowed to start now, but flush (below) must wait for not only this,
         // but all previous write/flush pairs.
         let self_clone = self.clone();
         let self_clone1 = self.clone();
         let pending_ops_clone = self.inner.pending_ops.clone();
-        let ret: Result<Segment> = pending_ops_clone.run_with_ordered_post_op(
-            rp,
-            async move {
-                // Write buffer at "off" to segment file
-                // TODO(jakubk): Fix that borrow_mut; Also probably need to make File
-                // Have it's own lifetime and be reference counted
-                let mut inner = self_clone.inner.borrow_mut();
-                let res = inner.file.write(
-                    SeekFrom::Start(off),
-                    buf.freeze(),
-                    |buff| {
-                        // Finally, always return the buffer to the pool.
-//                _segment_manager->release_buffer(std::move(buf));
-                        //             _segment_manager->notify_memory_written(size);
-                    }).await;
+        let ret: Result<Segment> = pending_ops_clone
+            .run_with_ordered_post_op(
+                rp,
+                async move {
+                    // Write buffer at "off" to segment file
+                    // TODO(jakubk): Fix that borrow_mut; Also probably need to make File
+                    // Have it's own lifetime and be reference counted
+                    let mut inner = self_clone.inner.borrow_mut();
+                    let res = inner
+                        .file
+                        .write(SeekFrom::Start(off), buf.freeze(), |buff| {
+                            // Finally, always return the buffer to the pool.
+                            //                _segment_manager->release_buffer(std::move(buf));
+                            //             _segment_manager->notify_memory_written(size);
+                        })
+                        .await;
 
-                // Update metrics
-//                _segment_manager->totals.bytes_written += bytes;
-                //                     _segment_manager->totals.total_size_on_disk += bytes;
-                //                     ++_segment_manager->totals.cycle_count;
+                    // Update metrics
+                    //                _segment_manager->totals.bytes_written += bytes;
+                    //                     _segment_manager->totals.total_size_on_disk += bytes;
+                    //                     ++_segment_manager->totals.cycle_count;
 
-                res.map_err(|err| {
-                    error!(self_clone.inner.log, "Failed to persist commits to disk {}", err);
-                    err
-                }).unwrap();
-            },
-            async move {
-                if flush_after {
-                    self_clone1.flush(top).await
-                } else {
-                    Ok(self_clone1)
-                }
-            }).await;
+                    res.map_err(|err| {
+                        error!(
+                            self_clone.inner.log,
+                            "Failed to persist commits to disk {}", err
+                        );
+                        err
+                    })
+                    .unwrap();
+                },
+                async move {
+                    if flush_after {
+                        self_clone1.flush(top).await
+                    } else {
+                        Ok(self_clone1)
+                    }
+                },
+            )
+            .await;
         ret
     }
 
@@ -356,7 +374,8 @@ fn write_chunk_header(
     buf: &mut BytesMut,
     descriptor: &Descriptor,
     data_offset: u32,
-    end_of_chunk_offset: u32) {
+    end_of_chunk_offset: u32,
+) {
     let segment_id: u64 = descriptor.segment_id().into();
 
     let mut crc = crc();
@@ -384,22 +403,22 @@ impl Drop for Inner {
 }
 
 impl slog::KV for Segment {
-    fn serialize(&self,
-                 _record: &slog::Record<'_>,
-                 serializer: &mut dyn slog::Serializer)
-                 -> slog::Result
-    {
+    fn serialize(
+        &self,
+        _record: &slog::Record<'_>,
+        serializer: &mut dyn slog::Serializer,
+    ) -> slog::Result {
         serializer.emit_serde(Key::from("segment"), &self.inner.descriptor)
     }
 }
 
 impl slog::Value for Segment {
-    fn serialize(&self,
-                 _record: &slog::Record<'_>,
-                 key: slog::Key,
-                 serializer: &mut dyn slog::Serializer)
-                 -> slog::Result
-    {
+    fn serialize(
+        &self,
+        _record: &slog::Record<'_>,
+        key: slog::Key,
+        serializer: &mut dyn slog::Serializer,
+    ) -> slog::Result {
         serializer.emit_serde(key, &self.inner.descriptor)
     }
 }
@@ -413,9 +432,9 @@ mod tests {
 
     #[test]
     fn test_align_up() {
-        assert_that!(align_up(&vec![0;0][0..], ALIGNMENT), is(eq(0)));
+        assert_that!(align_up(&vec![0; 0][0..], ALIGNMENT), is(eq(0)));
         for i in 1..ALIGNMENT {
-            assert_that!(align_up(&vec![0;i][0..], ALIGNMENT), is(eq(ALIGNMENT)));
+            assert_that!(align_up(&vec![0; i][0..], ALIGNMENT), is(eq(ALIGNMENT)));
         }
     }
 

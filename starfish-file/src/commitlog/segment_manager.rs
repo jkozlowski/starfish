@@ -4,19 +4,19 @@ use std::fs::OpenOptions;
 use futures::future::poll_fn;
 use futures_intrusive::sync::Semaphore;
 use slog::Logger;
-use tokio_sync::Mutex;
 use tokio_sync::mpsc;
+use tokio_sync::Mutex;
 
+use crate::commitlog::segment::Segment;
 use crate::commitlog::Config;
 use crate::commitlog::Descriptor;
 use crate::commitlog::Error;
 use crate::commitlog::Position;
 use crate::commitlog::Result;
-use crate::commitlog::segment::Segment;
 use crate::commitlog::SegmentId;
 use crate::fs::FileSystem;
-use crate::Shared;
 use crate::spawn;
+use crate::Shared;
 
 struct Stats {
     flush_count: u64,
@@ -57,7 +57,7 @@ pub struct SegmentManager {
 }
 
 pub struct FlushGuard {
-    segment_manager: SegmentManager
+    segment_manager: SegmentManager,
 }
 
 impl Drop for FlushGuard {
@@ -187,11 +187,11 @@ impl SegmentManager {
                    "Flush ops overflow. Will block.";
                    "pending_flushes" => self.inner.stats.pending_flushes);
         }
-//        if (totals.pending_flushes >= cfg.max_active_flushes) {
-//            + + totals.flush_limit_exceeded;
-//            clogger.trace("Flush ops overflow: {}. Will block.", totals.pending_flushes);
-//        }
-//        return _flush_semaphore.wait();
+        //        if (totals.pending_flushes >= cfg.max_active_flushes) {
+        //            + + totals.flush_limit_exceeded;
+        //            clogger.trace("Flush ops overflow: {}. Will block.", totals.pending_flushes);
+        //        }
+        //        return _flush_semaphore.wait();
         unimplemented!();
     }
 

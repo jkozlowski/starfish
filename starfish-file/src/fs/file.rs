@@ -16,7 +16,7 @@ use crate::Shared;
 
 #[derive(Clone)]
 pub struct File {
-    inner: Shared<Inner>
+    inner: Shared<Inner>,
 }
 
 struct Inner {
@@ -28,13 +28,11 @@ struct Inner {
 impl File {
     pub fn create(file: fs::File, path: PathBuf, open_options: OpenOptions) -> File {
         File {
-            inner:
-            Shared::new(
-                Inner {
-                    file,
-                    path,
-                    open_options,
-                }),
+            inner: Shared::new(Inner {
+                file,
+                path,
+                open_options,
+            }),
         }
     }
 
@@ -44,12 +42,16 @@ impl File {
     }
 
     pub async fn write<F>(&self, pos: SeekFrom, buf: Bytes, finalizer: F) -> io::Result<()>
-        where F: Fn(Bytes) -> () {
+    where
+        F: Fn(Bytes) -> (),
+    {
         let res = File::open_seek_write(
             self.inner.open_options.clone(),
             self.inner.path.clone(),
             pos,
-            &buf).await;
+            &buf,
+        )
+        .await;
         finalizer(buf);
         res
     }
@@ -58,17 +60,22 @@ impl File {
         unimplemented!()
     }
 
-    async fn reopen<P>(open_options: OpenOptions,
-                       path: P) -> io::Result<fs::File>
-        where P: AsRef<Path> + Send + Unpin + 'static {
+    async fn reopen<P>(open_options: OpenOptions, path: P) -> io::Result<fs::File>
+    where
+        P: AsRef<Path> + Send + Unpin + 'static,
+    {
         open_options.open(path).await
     }
 
-    async fn open_seek_write<P>(open_options: OpenOptions,
-                                path: P,
-                                pos: SeekFrom,
-                                buf: &[u8]) -> io::Result<()>
-        where P: AsRef<Path> + Send + Unpin + 'static {
+    async fn open_seek_write<P>(
+        open_options: OpenOptions,
+        path: P,
+        pos: SeekFrom,
+        buf: &[u8],
+    ) -> io::Result<()>
+    where
+        P: AsRef<Path> + Send + Unpin + 'static,
+    {
         // TODO(jakubk): I think this could be optimised to keep the one File if the
         // code is not submitting writes/reads fast enough.
         // So could try to get mutable access and if that fails, clone.
