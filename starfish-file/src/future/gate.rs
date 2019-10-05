@@ -2,10 +2,10 @@ use crate::shared::Shared;
 use futures::channel::oneshot;
 use futures::channel::oneshot::channel;
 use futures::future::Shared as SharedFut;
-use tokio::sync::watch;
-use std::fmt;
 use std::error;
+use std::fmt;
 use std::mem;
+use tokio::sync::watch;
 
 /// Facility to stop new requests, and to tell when existing requests are done.
 ///
@@ -32,8 +32,7 @@ impl Drop for GateGuard {
         if self.inner.count != 0 {
             return;
         }
-        if self.inner.closed.is_some()
-        {
+        if self.inner.closed.is_some() {
             let sender = {
                 let inner = &mut self.inner.borrow_mut().closed;
                 mem::replace(inner, None).unwrap()
@@ -73,7 +72,7 @@ impl Gate {
         }
         self.inner.borrow_mut().count += 1;
         Ok(GateGuard {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         })
     }
 
@@ -100,7 +99,10 @@ impl Gate {
     /// made ready.
     pub async fn close(&self) {
         // TODO: Throwing here kinda sucks, should just save the received and await
-        assert!(self.inner.closed.is_none(), "close() cannot be called more than once");
+        assert!(
+            self.inner.closed.is_none(),
+            "close() cannot be called more than once"
+        );
         if self.inner.count == 0 {
             return;
         }
