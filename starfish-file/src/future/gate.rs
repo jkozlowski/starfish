@@ -3,6 +3,9 @@ use futures::channel::oneshot;
 use futures::channel::oneshot::channel;
 use futures::future::Shared as SharedFut;
 use tokio::sync::watch;
+use std::fmt;
+use std::error;
+use std::mem;
 
 /// Facility to stop new requests, and to tell when existing requests are done.
 ///
@@ -14,100 +17,110 @@ pub struct Gate {
     inner: Shared<Inner>,
 }
 
-pub struct GateGuard {}
+pub struct GateGuard {
+    inner: Shared<Inner>,
+}
 
 struct Inner {
     count: usize,
-    stopped: Option<(oneshot::Sender<()>, SharedFut<oneshot::Receiver<()>>)>,
+    closed: Option<oneshot::Sender<()>>,
 }
+
+impl Drop for GateGuard {
+    fn drop(&mut self) {
+        self.inner.borrow_mut().count -= 1;
+        if self.inner.count != 0 {
+            return;
+        }
+        if self.inner.closed.is_some()
+        {
+            let sender = {
+                let inner = &mut self.inner.borrow_mut().closed;
+                mem::replace(inner, None).unwrap()
+            };
+            sender.send(()).unwrap();
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Closed;
+
+impl fmt::Display for Closed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Gate closed")
+    }
+}
+
+impl std::error::Error for Closed {}
 
 impl Gate {
     pub fn new() -> Self {
         Gate {
             inner: Shared::new(Inner {
                 count: 0,
-                stopped: None,
+                closed: None,
             }),
         }
     }
 
-    // Registers an in-progress request.
-    //
-    // If the gate is not closed, the request is registered. Otherwise, error is returned.
+    /// Registers an in-progress request.
+    ///
+    /// If the gate is not closed, the request is registered. Otherwise, error is returned.
+    pub fn enter(&self) -> Result<GateGuard, Closed> {
+        if self.inner.closed.is_some() {
+            return Err(Closed);
+        }
+        self.inner.borrow_mut().count += 1;
+        Ok(GateGuard {
+            inner: self.inner.clone()
+        })
+    }
+
+    /// Potentially stop an in-progress request.
+    ///
+    /// If the gate is already closed, error is returned.
+    /// By using ``enter``, the program can ensure that
+    /// no further requests are serviced. However, long-running requests may
+    /// continue to run. The ``check()`` method allows such a long operation to
+    /// voluntarily stop itself after the gate is closed, by making calls to
+    /// ``check()`` in appropriate places. ``check()`` will return error and
+    /// bail out of the long-running code if the gate is closed.
+    pub fn check(&self) -> Result<(), Closed> {
+        if self.inner.closed.is_some() {
+            return Err(Closed);
+        }
+        Ok(())
+    }
+
+    /// Closes the gate.
+    ///
+    /// Future calls to ``enter()`` will error, and when
+    /// all current requests finish, the returned future will be
+    /// made ready.
+    pub async fn close(&self) {
+        // TODO: Throwing here kinda sucks, should just save the received and await
+        assert!(self.inner.closed.is_none(), "close() cannot be called more than once");
+        if self.inner.count == 0 {
+            return;
+        }
+        let (sender, receiver) = oneshot::channel();
+        self.inner.borrow_mut().closed = Some(sender);
+        receiver.await.unwrap();
+    }
+
+    /// Returns a current number of registered in-progress requests.
+    pub fn get_count(&self) -> usize {
+        self.inner.count
+    }
+
+    /// Returns whether the gate is closed.
+    pub fn is_closed(&self) -> bool {
+        return self.inner.closed.is_some();
+    }
 }
 
-//    Registers an in-progress request.
-//    //
-//    // If the gate is not closed, the request is registered.  Otherwise,
-//    // a \ref gate_closed_exception is thrown.
-//    void enter() {
-//    if (_stopped) {
-//    throw gate_closed_exception();
-//    }
-//    ++_count;
-//    }
-//    /// Unregisters an in-progress request.
-//    ///
-//    /// If the gate is closed, and there are no more in-progress requests,
-//    /// the \ref closed() promise will be fulfilled.
-//    void leave() {
-//    --_count;
-//    if (!_count && _stopped) {
-//    _stopped->set_value();
-//    }
-//    }
-//    /// Potentially stop an in-progress request.
-//    ///
-//    /// If the gate is already closed, a \ref gate_closed_exception is thrown.
-//    /// By using \ref enter() and \ref leave(), the program can ensure that
-//    /// no further requests are serviced. However, long-running requests may
-//    /// continue to run. The check() method allows such a long operation to
-//    /// voluntarily stop itself after the gate is closed, by making calls to
-//    /// check() in appropriate places. check() with throw an exception and
-//    /// bail out of the long-running code if the gate is closed.
-//    void check() {
-//    if (_stopped) {
-//    throw gate_closed_exception();
-//    }
-//    }
-//    /// Closes the gate.
-//    ///
-//    /// Future calls to \ref enter() will fail with an exception, and when
-//    /// all current requests call \ref leave(), the returned future will be
-//    /// made ready.
-//    future<> close() {
-//    assert(!_stopped && "seastar::gate::close() cannot be called more than once");
-//    _stopped = compat::make_optional(promise<>());
-//    if (!_count) {
-//    _stopped->set_value();
-//    }
-//    return _stopped->get_future();
-//    }
-//
-//    /// Returns a current number of registered in-progress requests.
-//    size_t get_count() const {
-//    return _count;
-//    }
-//
-//    /// Returns whether the gate is closed.
-//    bool is_closed() const {
-//    return bool(_stopped);
-//    }
-//    };
-//
-//    /// Executes the function \c func making sure the gate \c g is properly entered
-//    /// and later on, properly left.
-//    ///
-//    /// \param func function to be executed
-//    /// \param g the gate. Caller must make sure that it outlives this function.
-//    /// \returns whatever \c func returns
-//    ///
-//    /// \relates gate
-//    template <typename Func>
-//    inline
-//    auto
-//    with_gate(gate& g, Func&& func) {
-//    g.enter();
-//    return futurize_apply(std::forward<Func>(func)).finally([&g] { g.leave(); });
-//    }
-//    /// @}
+#[cfg(test)]
+mod tests {
+    use super::*;
+}
