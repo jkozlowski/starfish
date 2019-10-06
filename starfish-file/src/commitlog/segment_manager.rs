@@ -339,8 +339,13 @@ impl SegmentManager {
         }
     }
 
+    /// Gets the current segment if it can still be allocated to
     fn current_segment(&self) -> Option<Segment> {
-        self.inner.segments.last().cloned()
+        self.inner
+            .segments
+            .last()
+            .filter(|segment| segment.is_still_allocating())
+            .cloned()
     }
 
     fn next_segment_id(&self) -> SegmentId {
