@@ -89,10 +89,6 @@ impl Segment {
         }
     }
 
-    pub fn reset_sync_time(&self) {
-        unimplemented!();
-    }
-
     pub fn is_still_allocating(&self) -> bool {
         !self.inner.closed && self.position() < self.inner.segment_manager.max_size()
     }
@@ -313,10 +309,6 @@ impl Segment {
             //         });
             //     });
         }
-
-        // Note: this is not a marker for when sync was finished.
-        // It is when it was initiated
-        self.reset_sync_time();
 
         if self.inner.closed {
             self.cycle(false).await;

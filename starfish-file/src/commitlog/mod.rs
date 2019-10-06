@@ -49,6 +49,8 @@ impl From<Box<dyn std::error::Error>> for Error {
     }
 }
 
+/// We only want to run in batch mode: we don't ack writes until the commit log has been
+/// fsynced to disk.
 #[derive(Builder, Debug, PartialEq)]
 pub struct Config {
     commit_log_location: PathBuf,
@@ -58,6 +60,7 @@ pub struct Config {
 
     #[builder(default = "32")]
     commitlog_segment_size_in_mb: u64,
+
     #[builder(default = "10 * 1000")]
     commitlog_sync_period_in_ms: u64,
 

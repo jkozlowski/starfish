@@ -20,6 +20,7 @@ use crate::fs::FileSystem;
 use crate::spawn;
 use crate::Shared;
 use bytes::BytesMut;
+use tokio::timer;
 
 struct Stats {
     flush_count: u64,
@@ -134,10 +135,21 @@ impl SegmentManager {
             }),
         };
 
+        // TODO(jkozlowski): Figure out if we need a separate #init method,
+        // or if doing this in constructor is fine.
+
+        // TODO(jkozlowski): List descriptors and whatnot
+
         spawn(SegmentManager::replenish_reserve(
             segment_manager.clone(),
             tx,
         ));
+
+        // always run the timer now, since we need to handle segment pre-alloc etc as well.
+        let segment_manager_1 = segment_manager.clone();
+        spawn(async move {
+            segment_manager_1.timer_loop();
+        });
 
         Ok(segment_manager)
     }
@@ -265,7 +277,6 @@ impl SegmentManager {
         //        }
 
         let new_segment = new_segments.recv().await.ok_or(Error::Closed)?;
-        new_segment.reset_sync_time();
 
         self.inner.borrow_mut().segments.push(new_segment.clone());
         Ok(new_segment)
@@ -297,5 +308,20 @@ impl SegmentManager {
         let next_segment_id = self.inner.next_segment_id;
         self.inner.borrow_mut().next_segment_id += 1;
         next_segment_id
+    }
+
+    async fn timer_loop(&self) {
+        // IFF a new segment was put in use since last we checked, and we're
+        // above threshold, request flush.
+        if self.inner.new_counter > 0 {
+            //            auto max = max_disk_size;
+            //            auto cur = totals.total_size_on_disk;
+            //            if (max != 0 && cur >= max) {
+            //                _new_counter = 0;
+            //                clogger.debug("Size on disk {} MB exceeds local maximum {} MB", cur / (1024 * 1024), max / (1024 * 1024));
+            //                flush_segments();
+            //            }
+        }
+        //        return do_pending_deletes();
     }
 }
