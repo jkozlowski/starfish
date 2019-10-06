@@ -259,6 +259,11 @@ impl SegmentManager {
 
         self.inner.borrow_mut().new_counter += 1;
 
+        //        if (_reserve_segments.empty() && (_reserve_segments.max_size() < cfg.max_reserve_segments)) {
+        //            _reserve_segments.set_max_size(_reserve_segments.max_size() + 1);
+        //            clogger.debug("Increased segment reserve count to {}", _reserve_segments.max_size());
+        //        }
+
         let new_segment = new_segments.recv().await.ok_or(Error::Closed)?;
         new_segment.reset_sync_time();
 

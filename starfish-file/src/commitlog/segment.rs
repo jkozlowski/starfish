@@ -281,6 +281,7 @@ impl Segment {
     async fn finish_and_get_new(&self) -> Result<Segment> {
         self.inner.borrow_mut().closed = true;
         let self_clone = self.clone();
+        // TODO(jkozlowski): Should track this somehow
         spawn(async move {
             self_clone.sync(false).await.map_err(|_| ()).unwrap();
         });
@@ -316,7 +317,13 @@ impl Segment {
         // Note: this is not a marker for when sync was finished.
         // It is when it was initiated
         self.reset_sync_time();
-        self.cycle(true).await
+
+        if self.inner.closed {
+            self.cycle(false).await;
+            self.flush(0).await
+        } else {
+            self.cycle(true).await
+        }
     }
 
     async fn flush_from_start(&self) -> Result<Segment> {
