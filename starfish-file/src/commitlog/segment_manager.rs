@@ -2,10 +2,12 @@ use std::cmp;
 use std::fs::OpenOptions;
 
 use crate::commitlog::segment;
+use crate::future::gate::Gate;
 use crate::future::semaphore::Semaphore;
 use crate::future::semaphore::SemaphoreGuard;
 use futures::future::poll_fn;
 use slog::Logger;
+use std::time::Duration;
 use tokio_sync::mpsc;
 use tokio_sync::Mutex;
 
@@ -23,28 +25,36 @@ use bytes::BytesMut;
 use tokio::timer;
 
 struct Stats {
+    cycle_count: u64,
     flush_count: u64,
-
-    segments_created: u64,
+    allocation_count: u64,
+    bytes_written: u64,
     bytes_slack: u64,
-
+    segments_created: u64,
+    segments_destroyed: u64,
     pending_flushes: u64,
     flush_limit_exceeded: u64,
-
+    total_size: u64,
+    buffer_list_bytes: u64,
+    total_size_on_disk: u64,
     requests_blocked_memory: u64,
 }
 
 impl Default for Stats {
     fn default() -> Self {
         Stats {
+            cycle_count: 0,
             flush_count: 0,
-
-            segments_created: 0,
+            allocation_count: 0,
+            bytes_written: 0,
             bytes_slack: 0,
-
+            segments_created: 0,
+            segments_destroyed: 0,
             pending_flushes: 0,
             flush_limit_exceeded: 0,
-
+            total_size: 0,
+            buffer_list_bytes: 0,
+            total_size_on_disk: 0,
             requests_blocked_memory: 0,
         }
     }
@@ -82,7 +92,9 @@ struct Inner {
 
     max_size: u64,
     max_mutation_size: u64,
+    max_disk_size: u64, // per-shard
 
+    gate: Gate,
     new_counter: u64,
     next_segment_id: SegmentId,
 
@@ -108,13 +120,19 @@ impl SegmentManager {
         // always be admitted for processing.
         let max_request_controller_units = max_mutation_size as usize + segment::DEFAULT_SIZE;
 
+        // Divide the size-on-disk threshold by #cpus used, since we assume
+        // we distribute stuff more or less equally across shards.
+        let commitlog_total_space_in_mb = cfg.commitlog_total_space_in_mb as f64;
+        let smp_count = 1 as f64; // TODO(jkozlowski): Pull out num of cores
+        let max_disk_size = ((commitlog_total_space_in_mb / smp_count).ceil() as u64) * 1024 * 1024;
+
         let segment_manager = SegmentManager {
             inner: Shared::new(Inner {
                 cfg,
 
                 fs,
 
-                log,
+                log: log.clone(),
 
                 flush_semaphore: Semaphore::new(max_active_flushes),
 
@@ -125,7 +143,9 @@ impl SegmentManager {
 
                 max_size,
                 max_mutation_size,
+                max_disk_size,
 
+                gate: Gate::new(),
                 new_counter: 0,
                 next_segment_id: 0,
 
@@ -145,10 +165,15 @@ impl SegmentManager {
             tx,
         ));
 
+        // TODO(jkozlowski): Finish this off
+        //let delay = engine().cpu_id() * std::ceil(double(cfg.commitlog_sync_period_in_ms) / smp::count);
+        let delay = Duration::from_secs(1);
+        trace!(log.clone(), "Delaying timer loop"; "delay" => ?delay);
+
         // always run the timer now, since we need to handle segment pre-alloc etc as well.
         let segment_manager_1 = segment_manager.clone();
         spawn(async move {
-            segment_manager_1.timer_loop();
+            segment_manager_1.timer_loop(delay).await;
         });
 
         Ok(segment_manager)
@@ -282,6 +307,14 @@ impl SegmentManager {
         Ok(new_segment)
     }
 
+    async fn flush_segments(&self, force: bool) {
+        if self.inner.segments.is_empty() {
+            return;
+        }
+    }
+
+    async fn do_pending_deletes(&self) {}
+
     async fn replenish_reserve(manager: SegmentManager, mut tx: mpsc::Sender<Segment>) {
         async fn send_one(
             manager: &SegmentManager,
@@ -310,18 +343,39 @@ impl SegmentManager {
         next_segment_id
     }
 
-    async fn timer_loop(&self) {
-        // IFF a new segment was put in use since last we checked, and we're
-        // above threshold, request flush.
-        if self.inner.new_counter > 0 {
-            //            auto max = max_disk_size;
-            //            auto cur = totals.total_size_on_disk;
-            //            if (max != 0 && cur >= max) {
-            //                _new_counter = 0;
-            //                clogger.debug("Size on disk {} MB exceeds local maximum {} MB", cur / (1024 * 1024), max / (1024 * 1024));
-            //                flush_segments();
-            //            }
+    async fn timer_loop(&self, initial_delay: Duration) {
+        let mut initial = true;
+        let period = Duration::from_millis(self.inner.cfg.commitlog_sync_period_in_ms);
+        loop {
+            let delay = if initial {
+                initial = false;
+                period + initial_delay
+            } else {
+                period
+            };
+
+            timer::delay_for(delay).await;
+
+            let res = self.inner.gate.enter();
+            if let Err(_) = res {
+                break;
+            }
+
+            // IFF a new segment was put in use since last we checked, and we're
+            // above threshold, request flush.
+            if self.inner.new_counter > 0 {
+                let max = self.inner.max_disk_size;
+                let cur = self.inner.stats.total_size_on_disk;
+                if max != 0 && cur >= max {
+                    self.inner.borrow_mut().new_counter = 0;
+                    debug!(self.inner.log,
+                       "Size on disk exceeds local maximum";
+                       "size_on_disk" => cur / (1024 * 1024),
+                       "max_disk_size" => max / (1024 * 1024));
+                    self.flush_segments(false).await;
+                }
+            }
+            self.do_pending_deletes().await
         }
-        //        return do_pending_deletes();
     }
 }
