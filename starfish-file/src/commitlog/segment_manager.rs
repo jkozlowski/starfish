@@ -3,6 +3,7 @@ use std::fs::OpenOptions;
 
 use crate::commitlog::segment;
 use crate::future::semaphore::Semaphore;
+use crate::future::semaphore::SemaphoreGuard;
 use futures::future::poll_fn;
 use slog::Logger;
 use tokio_sync::mpsc;
@@ -44,15 +45,6 @@ impl Default for Stats {
     }
 }
 
-pub trait EntryWriter: Sized {
-    // How much to write
-    fn size() -> usize;
-    // virtual size_t size(segment&) = 0;
-    //     // Returns segment-independent size of the entry. Must be <= than segment-dependant size.
-    //     virtual size_t size() = 0;
-    //     virtual void write(segment&, output&) = 0;
-}
-
 #[derive(Clone)]
 pub struct SegmentManager {
     inner: Shared<Inner>,
@@ -60,12 +52,12 @@ pub struct SegmentManager {
 
 pub struct FlushGuard {
     inner: Shared<Inner>,
+    guard: SemaphoreGuard,
 }
 
 impl Drop for FlushGuard {
     fn drop(&mut self) {
-        //_flush_semaphore.signal();
-        //--totals.pending_flushes;
+        self.inner.borrow_mut().stats.pending_flushes -= 1;
     }
 }
 
@@ -208,7 +200,7 @@ impl SegmentManager {
         // request_controller.consume(size);
     }
 
-    pub async fn begin_flush(&self) -> FlushGuard {
+    pub async fn begin_flush(&self) -> Result<FlushGuard> {
         self.inner.borrow_mut().stats.pending_flushes += 1;
         if self.inner.stats.pending_flushes >= self.inner.cfg.max_active_flushes as u64 {
             self.inner.borrow_mut().stats.flush_limit_exceeded += 1;
@@ -216,9 +208,16 @@ impl SegmentManager {
                    "Flush ops overflow. Will block.";
                    "pending_flushes" => self.inner.stats.pending_flushes);
         }
-        return FlushGuard {
+        let guard = self
+            .inner
+            .flush_semaphore
+            .wait(1)
+            .await
+            .map_err(|broken| Error::FailedToFlush(Box::new(broken)))?;
+        return Ok(FlushGuard {
             inner: self.inner.clone(),
-        };
+            guard,
+        });
     }
 
     async fn allocate_segment(&self) -> Result<Segment> {

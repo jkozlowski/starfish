@@ -97,8 +97,8 @@ impl Segment {
         !self.inner.closed && self.position() < self.inner.segment_manager.max_size()
     }
 
-    async fn begin_flush(&self) -> FlushGuard {
-        // This is maintaining the semantica of only using the write-lock
+    async fn begin_flush(&self) -> Result<FlushGuard> {
+        // This is maintaining the semantics of only using the write-lock
         // as a gate for flushing, i.e. once we've begun a flush for position X
         // we are ok with writes to positions > X
         let segment_manager_clone = self.inner.segment_manager.clone();

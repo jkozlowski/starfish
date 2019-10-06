@@ -22,6 +22,9 @@ pub enum Error {
     )]
     MutationTooLarge { size: u64, max_size: u64 },
 
+    #[error(display = "Failed to flush: _1")]
+    FailedToFlush(Box<dyn std::error::Error>),
+
     #[error(display = "IO Error: _1")]
     IO(#[error(cause)] std::io::Error),
 
