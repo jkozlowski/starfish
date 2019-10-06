@@ -16,7 +16,7 @@ pub enum Error {
     Closed,
 
     #[error(
-        display = "Mutation of {:?} bytes is too large for the maxiumum size of {:?}",
+        display = "Mutation of {:?} bytes is too large for the maximum size of {:?}",
         size,
         max_size
     )]
@@ -88,6 +88,4 @@ impl ReplayPosition {
     }
 }
 
-pub struct ReplayPositionHolder {
-
-}
+pub struct ReplayPositionHolder {}

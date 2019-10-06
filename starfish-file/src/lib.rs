@@ -18,7 +18,13 @@ pub mod fs;
 mod future;
 
 mod shared;
+
 pub use shared::Shared;
 
 mod executor;
+
 pub use executor::spawn;
+
+pub const fn align_up(len: usize, align: usize) -> usize {
+    (len + align - 1) & !(align - 1)
+}

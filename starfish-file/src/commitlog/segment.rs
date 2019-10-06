@@ -33,6 +33,7 @@ static DESCRIPTOR_HEADER_SIZE: u64 = (5 * size_of::<u32>()) as u64;
 static SEGMENT_MAGIC: u32 =
     (('S' as u32) << 24) | (('C' as u32) << 16) | (('L' as u32) << 8) | ('C' as u32);
 static ALIGNMENT: usize = 4096;
+pub static DEFAULT_SIZE: usize = crate::align_up(128 * 1024, ALIGNMENT);
 
 // A single commit log file on disk.
 #[derive(Clone)]
@@ -338,12 +339,12 @@ impl Segment {
     }
 }
 
-fn align_up(buf: &[u8], align: usize) -> usize {
-    (buf.len() + align - 1) & !(align - 1)
+fn align_buf_up(buf: &[u8], align: usize) -> usize {
+    crate::align_up(buf.len(), align)
 }
 
 fn clear_buffer_slack(buf: &mut BytesMut) -> usize {
-    let new_size = align_up(&buf, ALIGNMENT);
+    let new_size = align_buf_up(&buf, ALIGNMENT);
     let slack_size = new_size - buf.len();
     // TODO(jkozlowski): Get rid of this sloppy allocation.
     let slack = vec![0 as u8; slack_size];
@@ -432,9 +433,9 @@ mod tests {
 
     #[test]
     fn test_align_up() {
-        assert_that!(align_up(&vec![0; 0][0..], ALIGNMENT), is(eq(0)));
+        assert_that!(align_buf_up(&vec![0; 0][0..], ALIGNMENT), is(eq(0)));
         for i in 1..ALIGNMENT {
-            assert_that!(align_up(&vec![0; i][0..], ALIGNMENT), is(eq(ALIGNMENT)));
+            assert_that!(align_buf_up(&vec![0; i][0..], ALIGNMENT), is(eq(ALIGNMENT)));
         }
     }
 

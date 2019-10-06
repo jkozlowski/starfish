@@ -1,22 +1,24 @@
 use std::cmp;
 use std::fs::OpenOptions;
 
+use crate::commitlog::segment;
+use crate::future::semaphore::Semaphore;
 use futures::future::poll_fn;
-use futures_intrusive::sync::LocalSemaphore as Semaphore;
 use slog::Logger;
 use tokio_sync::mpsc;
 use tokio_sync::Mutex;
 
 use crate::commitlog::segment::Segment;
-use crate::commitlog::Config;
 use crate::commitlog::Descriptor;
 use crate::commitlog::Error;
 use crate::commitlog::Position;
 use crate::commitlog::Result;
 use crate::commitlog::SegmentId;
+use crate::commitlog::{Config, ReplayPositionHolder};
 use crate::fs::FileSystem;
 use crate::spawn;
 use crate::Shared;
+use bytes::BytesMut;
 
 struct Stats {
     flush_count: u64,
@@ -73,7 +75,9 @@ struct Inner {
     fs: FileSystem,
     log: Logger,
 
-    flush_semaphore: Shared<Semaphore>,
+    flush_semaphore: Semaphore,
+
+    request_controller: Semaphore,
 
     segments: Vec<Segment>,
 
@@ -96,9 +100,16 @@ impl SegmentManager {
             u64::from(Position::max_value()),
             cmp::max(cfg.commitlog_segment_size_in_mb, 1) * 1024 * 1024,
         );
+        let max_mutation_size = max_size >> 1;
 
         let (tx, rx) = mpsc::channel(cfg.max_reserve_segments);
         let max_active_flushes = cfg.max_active_flushes;
+
+        // That is enough concurrency to allow for our largest mutation (max_mutation_size), plus
+        // an existing in-flight buffer. Since we'll force the cycling() of any buffer that is bigger
+        // than default_size at the end of the allocation, that allows for every valid mutation to
+        // always be admitted for processing.
+        let max_request_controller_units = max_mutation_size as usize + segment::DEFAULT_SIZE;
 
         let segment_manager = SegmentManager {
             inner: Shared::new(Inner {
@@ -108,15 +119,15 @@ impl SegmentManager {
 
                 log,
 
-                flush_semaphore: Shared::new(
-                    Semaphore::new(false, max_active_flushes)
-                ),
+                flush_semaphore: Semaphore::new(max_active_flushes),
+
+                request_controller: Semaphore::new(max_request_controller_units),
 
                 segments: vec![],
                 new_segments: Shared::new(Mutex::new(rx)),
 
                 max_size,
-                max_mutation_size: max_size >> 1,
+                max_mutation_size,
 
                 new_counter: 0,
                 next_segment_id: 0,
@@ -135,9 +146,26 @@ impl SegmentManager {
         Ok(segment_manager)
     }
 
-    pub async fn allocate_when_possible(&self) -> Result<()> {
+    pub async fn allocate_when_possible<W>(
+        &self,
+        size: u64,
+        writer: W,
+    ) -> Result<ReplayPositionHolder>
+    where
+        W: Fn(BytesMut),
+    {
+        // If this is already too big now, we should throw early. It's also a correctness issue, since
+        // if we are too big at this moment we'll never reach allocate() to actually throw at that
+        // point.
+        self.sanity_check_size(size)?;
+
+        //        auto fut = get_units(_request_controller, size, timeout);
+        //        if (_request_controller.waiters()) {
+        //            totals.requests_blocked_memory++;
+        //        }
+
         let segment = self.active_segment().await?;
-        Ok(())
+        unimplemented!()
     }
 
     pub async fn active_segment(&self) -> Result<Segment> {
@@ -189,7 +217,7 @@ impl SegmentManager {
                    "pending_flushes" => self.inner.stats.pending_flushes);
         }
         return FlushGuard {
-            inner: self.inner.clone()
+            inner: self.inner.clone(),
         };
     }
 
