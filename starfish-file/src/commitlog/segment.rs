@@ -239,28 +239,30 @@ impl Segment {
                     // TODO(jakubk): Fix that borrow_mut; Also probably need to make File
                     // Have it's own lifetime and be reference counted
                     let mut inner = self_clone.inner.borrow_mut();
+                    let buf = buf.freeze();
+                    let bytes = buf.len();
                     let res = inner
                         .file
-                        .write(SeekFrom::Start(off), buf.freeze(), |buff| {
+                        .write(SeekFrom::Start(off), buf, |buff| {
                             // Finally, always return the buffer to the pool.
                             //                _segment_manager->release_buffer(std::move(buf));
                             //             _segment_manager->notify_memory_written(size);
                         })
                         .await;
 
-                    // Update metrics
-                    //                _segment_manager->totals.bytes_written += bytes;
-                    //                     _segment_manager->totals.total_size_on_disk += bytes;
-                    //                     ++_segment_manager->totals.cycle_count;
-
-                    res.map_err(|err| {
-                        error!(
-                            self_clone.inner.log,
-                            "Failed to persist commits to disk {}", err
-                        );
-                        err
-                    })
-                    .unwrap();
+                    match res {
+                        Ok(()) => {
+                            // Update metrics
+                            // TODO(jkozlowski): Handle this with some sort of guard
+                            self_clone.inner.segment_manager.record_cycle_success(bytes);
+                        }
+                        Err(err) => {
+                            error!(
+                                self_clone.inner.log,
+                                "Failed to persist commits to disk {}", err
+                            );
+                        }
+                    }
                 },
                 async move {
                     if flush_after {

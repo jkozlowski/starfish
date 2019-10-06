@@ -243,6 +243,12 @@ impl SegmentManager {
         self.inner.borrow_mut().stats.flush_count += 1;
     }
 
+    pub fn record_cycle_success(&self, bytes: usize) {
+        self.inner.borrow_mut().stats.bytes_written += bytes as u64;
+        self.inner.borrow_mut().stats.total_size_on_disk += bytes as u64;
+        self.inner.borrow_mut().stats.cycle_count += 1;
+    }
+
     pub fn account_memory_usage(&self, size: usize) {
         // request_controller.consume(size);
     }
