@@ -55,4 +55,9 @@ impl Semaphore {
     pub async fn wait(&self, nr: usize) -> Result<SemaphoreGuard, Broken> {
         Ok(SemaphoreGuard {})
     }
+
+    pub const fn may_proceed(&self, nr: usize) -> bool {
+        //return has_available_units(nr) && _wait_list.empty();
+        true
+    }
 }

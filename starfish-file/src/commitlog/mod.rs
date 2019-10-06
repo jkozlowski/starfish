@@ -25,6 +25,9 @@ pub enum Error {
     #[error(display = "Failed to flush: _1")]
     FailedToFlush(Box<dyn std::error::Error>),
 
+    #[error(display = "Failed to append: _1")]
+    FailedToAppend(Box<dyn std::error::Error>),
+
     #[error(display = "IO Error: _1")]
     IO(#[error(cause)] std::io::Error),
 

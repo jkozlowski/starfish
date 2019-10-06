@@ -18,7 +18,7 @@ impl Commitlog {
         })
     }
 
-    pub async fn add<W>(&self, size: u64, writer: W) -> Result<ReplayPositionHolder>
+    pub async fn add<W>(&self, size: u64, writer: &W) -> Result<ReplayPositionHolder>
     where
         W: Fn(BytesMut),
     {

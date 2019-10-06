@@ -29,6 +29,8 @@ struct Stats {
 
     pending_flushes: u64,
     flush_limit_exceeded: u64,
+
+    requests_blocked_memory: u64,
 }
 
 impl Default for Stats {
@@ -41,6 +43,8 @@ impl Default for Stats {
 
             pending_flushes: 0,
             flush_limit_exceeded: 0,
+
+            requests_blocked_memory: 0,
         }
     }
 }
@@ -141,7 +145,7 @@ impl SegmentManager {
     pub async fn allocate_when_possible<W>(
         &self,
         size: u64,
-        writer: W,
+        writer: &W,
     ) -> Result<ReplayPositionHolder>
     where
         W: Fn(BytesMut),
@@ -151,13 +155,19 @@ impl SegmentManager {
         // point.
         self.sanity_check_size(size)?;
 
-        //        auto fut = get_units(_request_controller, size, timeout);
-        //        if (_request_controller.waiters()) {
-        //            totals.requests_blocked_memory++;
-        //        }
+        if !self.inner.request_controller.may_proceed(size as usize) {
+            self.inner.borrow_mut().stats.requests_blocked_memory += 1;
+        }
+
+        let _ = self
+            .inner
+            .request_controller
+            .wait(size as usize)
+            .await
+            .map_err(|broken| Error::FailedToAppend(Box::new(broken)))?;
 
         let segment = self.active_segment().await?;
-        unimplemented!()
+        segment.allocate(size, writer).await
     }
 
     pub async fn active_segment(&self) -> Result<Segment> {

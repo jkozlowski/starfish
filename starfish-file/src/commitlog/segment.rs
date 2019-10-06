@@ -17,11 +17,11 @@ use slog::Logger;
 use crate::commitlog::flush_queue::FlushQueue;
 use crate::commitlog::segment_manager::FlushGuard;
 use crate::commitlog::segment_manager::SegmentManager;
-use crate::commitlog::Descriptor;
 use crate::commitlog::Error;
 use crate::commitlog::Position;
 use crate::commitlog::ReplayPosition;
 use crate::commitlog::Result;
+use crate::commitlog::{Descriptor, ReplayPositionHolder};
 use crate::fs::File;
 use crate::shared::Shared;
 use crate::spawn;
@@ -105,7 +105,7 @@ impl Segment {
         segment_manager_clone.begin_flush().await
     }
 
-    pub async fn allocate<W>(&self, size: u64, writer: &W) -> Result<()>
+    pub async fn allocate<W>(&self, size: u64, writer: &W) -> Result<ReplayPositionHolder>
     where
         W: Fn(BytesMut),
     {
@@ -137,9 +137,11 @@ impl Segment {
             //         clogger.error("Failed to flush commits to disk: {}", ex);
             //     });
             // }
-            return Ok(());
+            //            return Ok(());
+            unimplemented!();
         }
-        Ok(())
+        //        Ok(());
+        unimplemented!()
     }
 
     async fn do_flush(&self, pos: u64) -> Result<Segment> {
