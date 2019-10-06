@@ -87,3 +87,7 @@ impl ReplayPosition {
         ReplayPosition { id, position }
     }
 }
+
+pub struct ReplayPositionHolder {
+
+}

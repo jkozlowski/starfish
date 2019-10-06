@@ -1,6 +1,7 @@
 use crate::commitlog::segment_manager::SegmentManager;
 use crate::commitlog::Config;
 use crate::commitlog::Result;
+use crate::commitlog::ReplayPositionHolder;
 use crate::fs::FileSystem;
 use slog::Logger;
 
@@ -14,5 +15,9 @@ impl Commitlog {
         Ok(Commitlog {
             segment_manager: SegmentManager::create(cfg, fs, log).await?,
         })
+    }
+
+    pub async fn add() -> Result<ReplayPositionHolder> {
+        unimplemented!()
     }
 }

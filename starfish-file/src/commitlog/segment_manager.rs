@@ -2,7 +2,7 @@ use std::cmp;
 use std::fs::OpenOptions;
 
 use futures::future::poll_fn;
-use futures_intrusive::sync::Semaphore;
+use futures_intrusive::sync::LocalSemaphore as Semaphore;
 use slog::Logger;
 use tokio_sync::mpsc;
 use tokio_sync::Mutex;
@@ -57,7 +57,7 @@ pub struct SegmentManager {
 }
 
 pub struct FlushGuard {
-    segment_manager: SegmentManager,
+    inner: Shared<Inner>,
 }
 
 impl Drop for FlushGuard {
@@ -73,7 +73,7 @@ struct Inner {
     fs: FileSystem,
     log: Logger,
 
-    flush_semaphore: Semaphore,
+    flush_semaphore: Shared<Semaphore>,
 
     segments: Vec<Segment>,
 
@@ -108,7 +108,9 @@ impl SegmentManager {
 
                 log,
 
-                flush_semaphore: Semaphore::new(false, max_active_flushes),
+                flush_semaphore: Shared::new(
+                    Semaphore::new(false, max_active_flushes)
+                ),
 
                 segments: vec![],
                 new_segments: Shared::new(Mutex::new(rx)),
@@ -178,7 +180,6 @@ impl SegmentManager {
         // request_controller.consume(size);
     }
 
-    // TODO(jkozlowski): This should be some sort of lock-like API
     pub async fn begin_flush(&self) -> FlushGuard {
         self.inner.borrow_mut().stats.pending_flushes += 1;
         if self.inner.stats.pending_flushes >= self.inner.cfg.max_active_flushes as u64 {
@@ -187,12 +188,9 @@ impl SegmentManager {
                    "Flush ops overflow. Will block.";
                    "pending_flushes" => self.inner.stats.pending_flushes);
         }
-        //        if (totals.pending_flushes >= cfg.max_active_flushes) {
-        //            + + totals.flush_limit_exceeded;
-        //            clogger.trace("Flush ops overflow: {}. Will block.", totals.pending_flushes);
-        //        }
-        //        return _flush_semaphore.wait();
-        unimplemented!();
+        return FlushGuard {
+            inner: self.inner.clone()
+        };
     }
 
     async fn allocate_segment(&self) -> Result<Segment> {
