@@ -313,7 +313,7 @@ impl Segment {
         }
 
         if self.inner.closed {
-            self.cycle(false).await;
+            self.cycle(false).await?;
             self.flush(0).await
         } else {
             self.cycle(true).await
