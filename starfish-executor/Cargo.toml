@@ -6,8 +6,10 @@ description = """
 Single threaded executor for futures-rs. No Arc in sight.
 """
 
+edition = '2018'
+
 [dependencies]
-futures-preview = "= 0.3.0-alpha.17"
+futures-preview = ""
 
 [dev-dependencies]
 hamcrest2 = "*"
